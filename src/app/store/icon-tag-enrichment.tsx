@@ -1,9 +1,8 @@
 /**
  * Comprehensive icon tag enrichment system.
  *
- * Analyses every icon's **name** (case-insensitive word splitting) and basic
- * **SVG structure** (fill vs stroke, common shapes) to produce additional tags
- * that align with popular UI metaphors.
+ * Analyses every icon's **name** (case-insensitive word splitting) to produce
+ * additional tags that align with popular UI metaphors.
  *
  * Design-system icon libraries typically follow naming conventions like
  * "arrow-right-circle-fill".  The enrichment splits those names into tokens
@@ -646,36 +645,11 @@ const NAME_TAG_MAP: Record<string, string[]> = {
 };
 
 // ──────────────────────────────────────────────────────────────
-// 2.  SVG-STRUCTURE TAGS
-//     Quick heuristics on the raw SVG markup.
-// ──────────────────────────────────────────────────────────────
-
-function svgStructureTags(svg: string): string[] {
-  const tags: string[] = [];
-  // Fill vs stroke style
-  const hasFillNone = /fill\s*=\s*"none"/i.test(svg);
-  const hasStroke   = /stroke\s*=/i.test(svg);
-  const hasFillAttr = /fill\s*=\s*"(?!none)[^"]+"/i.test(svg);
-
-  if (hasFillNone && hasStroke) tags.push("outline", "stroke");
-  if (hasFillAttr && !hasFillNone) tags.push("solid", "filled");
-
-  // Detect common shapes
-  if (/<circle/i.test(svg))   tags.push("circle");
-  if (/<rect/i.test(svg) && !/<svg/i.test(svg.replace(/<svg[^>]*>/, ""))) tags.push("rectangle");
-  if (/<polygon/i.test(svg))  tags.push("polygon");
-  if (/<line /i.test(svg))    tags.push("line");
-
-  return tags;
-}
-
-// ──────────────────────────────────────────────────────────────
-// 3.  PUBLIC ENRICHMENT FUNCTION
+// 2.  PUBLIC ENRICHMENT FUNCTION
 // ──────────────────────────────────────────────────────────────
 
 /**
- * Analyse every icon's name and SVG structure and append
- * semantically-relevant search tags.
+ * Analyse every icon's name and append semantically-relevant search tags.
  * Returns the enriched array, or `null` if nothing changed.
  */
 export function enrichAllIconTags(icons: IconItem[]): IconItem[] | null {
@@ -698,14 +672,6 @@ export function enrichAllIconTags(icons: IconItem[]): IconItem[] | null {
             newTags.push(tag);
           }
         }
-      }
-    }
-
-    // 3b. SVG structure tags
-    const structTags = svgStructureTags(icon.svgContent);
-    for (const tag of structTags) {
-      if (!existingLower.has(tag) && !newTags.includes(tag)) {
-        newTags.push(tag);
       }
     }
 
