@@ -464,6 +464,8 @@ export function IconologyPage() {
                               className="text-center text-muted-foreground w-full"
                               style={{
                                 fontSize: "var(--text-label)",
+                                lineHeight: "1.5",
+                                minHeight: "calc(var(--text-label) * 3)",
                                 display: "-webkit-box",
                                 WebkitBoxOrient: "vertical",
                                 WebkitLineClamp: 2,
@@ -530,6 +532,8 @@ export function IconologyPage() {
                               className="text-center text-muted-foreground w-full"
                               style={{
                                 fontSize: "var(--text-label)",
+                                lineHeight: "1.5",
+                                minHeight: "calc(var(--text-label) * 3)",
                                 display: "-webkit-box",
                                 WebkitBoxOrient: "vertical",
                                 WebkitLineClamp: 2,
@@ -596,6 +600,8 @@ export function IconologyPage() {
                               className="text-center text-muted-foreground w-full"
                               style={{
                                 fontSize: "var(--text-label)",
+                                lineHeight: "1.5",
+                                minHeight: "calc(var(--text-label) * 3)",
                                 display: "-webkit-box",
                                 WebkitBoxOrient: "vertical",
                                 WebkitLineClamp: 2,
