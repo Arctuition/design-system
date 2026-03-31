@@ -8,6 +8,7 @@ import { ArrowLeft, Upload, Plus, Pencil, Trash2, Save, X, Tag, Search, FolderDo
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
 import { downloadIconsAsZip } from "../../components/shared/icon-zip-utils";
+import { getIconDownloadFileName, iconFileNameToDisplayName } from "../../components/shared/icon-file-utils";
 import { buildIconTagsFromName } from "../../store/icon-tag-enrichment";
 import type { IconItem } from "../../store/data-store";
 
@@ -195,7 +196,7 @@ export function IconEditor() {
 
   const startEdit = (icon: typeof icons[0]) => {
     setEditing(icon.id);
-    setEditName(icon.name);
+    setEditName(getIconDownloadFileName(icon.fileName, icon.name).replace(/\.svg$/i, ""));
     setEditTags(tagsToInputValue(icon.tags));
     setHasManualTagEdits(false);
   };
@@ -221,14 +222,17 @@ export function IconEditor() {
 
   const saveEdit = () => {
     if (!editing) return;
-    const normalizedName = editName.trim();
-    if (!normalizedName) {
+    const normalizedFileBase = editName.trim().replace(/\.svg$/i, "");
+    if (!normalizedFileBase) {
       toast.error("Icon name is required");
       return;
     }
 
+    const nextFileName = `${normalizedFileBase}.svg`;
+
     updateIcon(editing, {
-      name: normalizedName,
+      name: iconFileNameToDisplayName(nextFileName),
+      fileName: nextFileName,
       tags: parseTagsInput(editTags),
     });
     setEditing(null);
