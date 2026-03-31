@@ -6,6 +6,7 @@ import { Button } from "../components/ui/button";
 import { Search, Download, Copy, FolderDown, X, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { downloadIconsAsZip } from "../components/shared/icon-zip-utils";
+import { getIconDownloadFileName } from "../components/shared/icon-file-utils";
 import type { IconItem } from "../store/data-store";
 import { copyToClipboard } from "../utils/clipboard";
 
@@ -224,7 +225,7 @@ export function IconologyPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = icon.fileName;
+    a.download = getIconDownloadFileName(icon.fileName, icon.name);
     a.click();
     URL.revokeObjectURL(url);
   };

@@ -8,6 +8,7 @@ import { ArrowLeft, Upload, Plus, Pencil, Trash2, Save, X, Tag, Search, FolderDo
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
 import { downloadIconsAsZip } from "../../components/shared/icon-zip-utils";
+import { getIconDownloadFileName, iconFileNameToDisplayName } from "../../components/shared/icon-file-utils";
 import type { IconItem } from "../../store/data-store";
 
 /** Allow Cmd/Ctrl+A to select all text inside an input instead of being swallowed by the host environment */
@@ -114,7 +115,7 @@ export function IconEditor() {
       reader.onload = (ev) => {
         const content = ev.target?.result as string;
         addIcon({
-          name: file.name.replace(/\.svg$/i, "").replace(/[-_]/g, " "),
+          name: iconFileNameToDisplayName(file.name),
           tags: [],
           svgContent: content,
           fileName: file.name,
@@ -142,7 +143,7 @@ export function IconEditor() {
       reader.onload = (ev) => {
         const content = ev.target?.result as string;
         addIcon({
-          name: file.name.replace(/\.svg$/i, "").replace(/[-_]/g, " "),
+          name: iconFileNameToDisplayName(file.name),
           tags: [],
           svgContent: content,
           fileName: file.name,
@@ -160,9 +161,11 @@ export function IconEditor() {
     if (!file || !replacingId) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
+      const nextFileName = file.name;
       updateIcon(replacingId, {
         svgContent: ev.target?.result as string,
-        fileName: file.name,
+        fileName: nextFileName,
+        name: iconFileNameToDisplayName(nextFileName),
       });
       toast.success("Icon replaced");
       setReplacingId(null);
@@ -173,14 +176,23 @@ export function IconEditor() {
 
   const startEdit = (icon: typeof icons[0]) => {
     setEditing(icon.id);
-    setEditName(icon.name);
+    setEditName(getIconDownloadFileName(icon.fileName, icon.name).replace(/\.svg$/i, ""));
     setEditTags(icon.tags.join(", "));
   };
 
   const saveEdit = () => {
     if (!editing) return;
+    const normalizedFileBase = editName.trim().replace(/\.svg$/i, "");
+    if (!normalizedFileBase) {
+      toast.error("Icon name is required");
+      return;
+    }
+
+    const nextFileName = `${normalizedFileBase}.svg`;
+
     updateIcon(editing, {
-      name: editName,
+      name: iconFileNameToDisplayName(nextFileName),
+      fileName: nextFileName,
       tags: editTags.split(",").map((t) => t.trim()).filter(Boolean),
     });
     setEditing(null);
