@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { loadStateFromServer, saveStateKey, bulkSaveState } from "./api";
 import { projectId, publicAnonKey } from "/utils/supabase/info";
-import { enrichAllIconTags } from "./icon-tag-enrichment";
+import { buildIconTagsFromName, enrichAllIconTags, rebuildIconTags } from "./icon-tag-enrichment";
 
 // ---- Types ----
 export interface ChangeLogEntry {
@@ -362,6 +362,28 @@ function loadFromLocalStorage(): AppState | null {
   return null;
 }
 
+function withAutoIconTags(icon: IconItem): IconItem {
+  return rebuildIconTags(icon);
+}
+
+function withAutoIconTagsForList(icons: IconItem[]): IconItem[] {
+  return icons.map(withAutoIconTags);
+}
+
+function normalizeIconTags(tags: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const tag of tags) {
+    const normalized = tag.trim().toLowerCase();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    result.push(normalized);
+  }
+
+  return result;
+}
+
 function persistKey(key: string, value: any): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));
@@ -394,6 +416,8 @@ const AppContext = createContext<AppContextType | null>(null);
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(() => {
     const initialState = loadStateFromLocalStorage();
+    const initialIcons = enrichAllIconTags(initialState.icons) ?? initialState.icons;
+    const hydratedInitialState = { ...initialState, icons: initialIcons };
     // Restore auth session from localStorage if available and not expired
     try {
       const authSession = localStorage.getItem('ds-auth-session');
@@ -406,13 +430,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           console.log('🔒 Auth session expired, logged out');
         } else if (isAuthenticated && currentUser) {
           // Session valid, restore it
-          return { ...initialState, isAuthenticated, currentUser, authExpiry };
+          return { ...hydratedInitialState, isAuthenticated, currentUser, authExpiry };
         }
       }
     } catch (err) {
       console.error("Failed to restore auth session:", err);
     }
-    return initialState;
+    return hydratedInitialState;
   });
   const [isLoading, setIsLoading] = useState(true);
   const initializedRef = useRef(false);
@@ -433,13 +457,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           const hasData = Object.values(serverData).some((v) => v !== null);
           if (hasData) {
             const newState = buildStateFromServer(serverData);
-            setState((prev) => ({ ...newState, isAuthenticated: prev.isAuthenticated, currentUser: prev.currentUser, authExpiry: prev.authExpiry }));
-
-            // Idempotent tag enrichment: adds semantic search tags based on icon names & SVG structure
             const enriched = enrichAllIconTags(newState.icons);
+            const nextIcons = enriched ?? newState.icons;
+            setState((prev) => ({
+              ...newState,
+              icons: nextIcons,
+              isAuthenticated: prev.isAuthenticated,
+              currentUser: prev.currentUser,
+              authExpiry: prev.authExpiry,
+            }));
             if (enriched) {
-              setState((prev) => ({ ...prev, icons: enriched }));
               persistKey("ds:icons", enriched);
+              pendingSyncRef.current.add("icons");
+              saveStateKey("icons", enriched).catch(() => {
+                // Silently fail - localStorage is the primary storage
+              });
             }
 
             console.log("✅ Loaded state from server");
@@ -452,7 +484,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         console.log("⚠️ Server has no data, using localStorage");
         const localState = loadFromLocalStorage();
         if (localState && Object.keys(localState).length > 0) {
-          setState((prev) => ({ ...localState, isAuthenticated: prev.isAuthenticated, currentUser: prev.currentUser, authExpiry: prev.authExpiry }));
+          const enriched = enrichAllIconTags(localState.icons);
+          const nextIcons = enriched ?? localState.icons;
+          setState((prev) => ({
+            ...localState,
+            icons: nextIcons,
+            isAuthenticated: prev.isAuthenticated,
+            currentUser: prev.currentUser,
+            authExpiry: prev.authExpiry,
+          }));
+          if (enriched) {
+            persistKey("ds:icons", enriched);
+            pendingSyncRef.current.add("icons");
+            saveStateKey("icons", enriched).catch(() => {
+              // Silently fail - localStorage is the primary storage
+            });
+          }
           console.log("✅ Loaded state from localStorage");
           setIsLoading(false);
           return;
@@ -470,7 +517,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         try {
           const localState = loadFromLocalStorage();
           if (localState && Object.keys(localState).length > 0) {
-            setState((prev) => ({ ...localState, isAuthenticated: prev.isAuthenticated, currentUser: prev.currentUser, authExpiry: prev.authExpiry }));
+            const enriched = enrichAllIconTags(localState.icons);
+            const nextIcons = enriched ?? localState.icons;
+            setState((prev) => ({
+              ...localState,
+              icons: nextIcons,
+              isAuthenticated: prev.isAuthenticated,
+              currentUser: prev.currentUser,
+              authExpiry: prev.authExpiry,
+            }));
+            if (enriched) {
+              persistKey("ds:icons", enriched);
+              pendingSyncRef.current.add("icons");
+              saveStateKey("icons", enriched).catch(() => {
+                // Silently fail - localStorage is the primary storage
+              });
+            }
             console.log("✅ Loaded state from localStorage");
             setIsLoading(false);
             return;
@@ -677,12 +739,36 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setIconologyArticle: (html) => update({ iconologyArticle: html }, "iconologyArticle"),
     addIcon: (icon) => {
       const now = new Date().toISOString();
-      setState((prev) => ({ ...prev, icons: [...prev.icons, { ...icon, id: uid(), createdAt: icon.createdAt || now, updatedAt: icon.updatedAt || now }] }));
+      const nextIcon = withAutoIconTags({
+        ...icon,
+        id: uid(),
+        createdAt: icon.createdAt || now,
+        updatedAt: icon.updatedAt || now,
+      });
+      setState((prev) => ({ ...prev, icons: [...prev.icons, nextIcon] }));
       pendingSyncRef.current.add("icons");
       syncToServer();
     },
     updateIcon: (id, icon) => {
-      setState((prev) => ({ ...prev, icons: prev.icons.map((i) => (i.id === id ? { ...i, ...icon, updatedAt: new Date().toISOString() } : i)) }));
+      setState((prev) => ({
+        ...prev,
+        icons: prev.icons.map((i) => {
+          if (i.id !== id) return i;
+          const nextIcon = {
+            ...i,
+            ...icon,
+            updatedAt: new Date().toISOString(),
+          };
+          if (icon.tags !== undefined) {
+            const normalizedTags = normalizeIconTags(icon.tags);
+            return {
+              ...nextIcon,
+              tags: normalizedTags.length > 0 ? normalizedTags : buildIconTagsFromName(nextIcon.name),
+            };
+          }
+          return icon.name !== undefined ? withAutoIconTags(nextIcon) : nextIcon;
+        }),
+      }));
       pendingSyncRef.current.add("icons");
       syncToServer();
     },
@@ -697,7 +783,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         ...prev,
         icons: [
           ...prev.icons,
-          ...icons.map((icon) => ({ ...icon, id: uid(), createdAt: icon.createdAt || now, updatedAt: icon.updatedAt || now })),
+          ...withAutoIconTagsForList(
+            icons.map((icon) => ({
+              ...icon,
+              id: uid(),
+              createdAt: icon.createdAt || now,
+              updatedAt: icon.updatedAt || now,
+            }))
+          ),
         ],
       }));
       pendingSyncRef.current.add("icons");

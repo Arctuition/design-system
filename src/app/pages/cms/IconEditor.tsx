@@ -4,11 +4,11 @@ import { useAppData } from "../../store/data-store";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { ArticleEditorPage } from "../../components/shared/ArticleEditorPage";
-import { ArrowLeft, Upload, Plus, Pencil, Trash2, Save, X, Tag, Search, FolderDown, ChevronDown } from "lucide-react";
+import { ArrowLeft, Upload, Plus, Pencil, Trash2, Save, X, Tag, Search, FolderDown, ChevronDown, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
 import { downloadIconsAsZip } from "../../components/shared/icon-zip-utils";
-import { getIconDownloadFileName, iconFileNameToDisplayName } from "../../components/shared/icon-file-utils";
+import { buildIconTagsFromName } from "../../store/icon-tag-enrichment";
 import type { IconItem } from "../../store/data-store";
 
 /** Allow Cmd/Ctrl+A to select all text inside an input instead of being swallowed by the host environment */
@@ -90,11 +90,30 @@ function groupIconsByDateModified(icons: IconItem[]): Map<string, IconItem[]> {
 
 type GroupByMode = "size" | "date" | "dateModified";
 
+function tagsToInputValue(tags: string[]): string {
+  return tags.join(", ");
+}
+
+function parseTagsInput(value: string): string[] {
+  const seen = new Set<string>();
+  const tags: string[] = [];
+
+  for (const part of value.split(",")) {
+    const normalized = part.trim().toLowerCase();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    tags.push(normalized);
+  }
+
+  return tags;
+}
+
 export function IconEditor() {
   const { isAuthenticated, icons, addIcon, updateIcon, removeIcon } = useAppData();
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editTags, setEditTags] = useState("");
+  const [hasManualTagEdits, setHasManualTagEdits] = useState(false);
   const [search, setSearch] = useState("");
   const [sizeFilter, setSizeFilter] = useState<number | null>(null);
   const [styleFilters, setStyleFilters] = useState<Set<string>>(new Set());
@@ -176,24 +195,41 @@ export function IconEditor() {
 
   const startEdit = (icon: typeof icons[0]) => {
     setEditing(icon.id);
-    setEditName(getIconDownloadFileName(icon.fileName, icon.name).replace(/\.svg$/i, ""));
-    setEditTags(icon.tags.join(", "));
+    setEditName(icon.name);
+    setEditTags(tagsToInputValue(icon.tags));
+    setHasManualTagEdits(false);
+  };
+
+  const regenerateTags = () => {
+    const generatedTags = buildIconTagsFromName(editName);
+    setEditTags(tagsToInputValue(generatedTags));
+    setHasManualTagEdits(false);
+    toast.success(`Regenerated ${generatedTags.length} tag${generatedTags.length === 1 ? "" : "s"}`);
+  };
+
+  const handleEditNameChange = (value: string) => {
+    setEditName(value);
+    if (!hasManualTagEdits) {
+      setEditTags(tagsToInputValue(buildIconTagsFromName(value)));
+    }
+  };
+
+  const handleEditTagsChange = (value: string) => {
+    setEditTags(value);
+    setHasManualTagEdits(true);
   };
 
   const saveEdit = () => {
     if (!editing) return;
-    const normalizedFileBase = editName.trim().replace(/\.svg$/i, "");
-    if (!normalizedFileBase) {
+    const normalizedName = editName.trim();
+    if (!normalizedName) {
       toast.error("Icon name is required");
       return;
     }
 
-    const nextFileName = `${normalizedFileBase}.svg`;
-
     updateIcon(editing, {
-      name: iconFileNameToDisplayName(nextFileName),
-      fileName: nextFileName,
-      tags: editTags.split(",").map((t) => t.trim()).filter(Boolean),
+      name: normalizedName,
+      tags: parseTagsInput(editTags),
     });
     setEditing(null);
     toast.success("Icon updated");
@@ -261,10 +297,13 @@ export function IconEditor() {
 
       {editing === icon.id ? (
         <div className="flex-1 min-w-0 space-y-2">
-          <Input value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={handleInputKeyDown} placeholder="Icon name" />
+          <Input value={editName} onChange={(e) => handleEditNameChange(e.target.value)} onKeyDown={handleInputKeyDown} placeholder="Icon name" />
           <div className="flex items-center gap-1.5">
             <Tag className="size-3.5 shrink-0" style={{ color: "var(--color-label-tertiary)" }} />
-            <Input value={editTags} onChange={(e) => setEditTags(e.target.value)} onKeyDown={handleInputKeyDown} placeholder="Tags (comma separated)" />
+            <Input value={editTags} onChange={(e) => handleEditTagsChange(e.target.value)} onKeyDown={handleInputKeyDown} placeholder="Tags (comma separated)" />
+            <Button size="sm" variant="outline" type="button" onClick={regenerateTags}>
+              <RefreshCw className="size-3.5 mr-1" /> Regenerate Tags
+            </Button>
           </div>
           <div className="flex gap-2">
             <Button size="sm" onClick={saveEdit}><Save className="size-3.5 mr-1" /> Save</Button>

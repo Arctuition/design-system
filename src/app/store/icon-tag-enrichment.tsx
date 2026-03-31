@@ -16,7 +16,7 @@ import type { IconItem } from "./data-store";
 // 1.  NAME-KEYWORD → ADDITIONAL TAGS
 //     Each key is a word that may appear in an icon name.
 //     The value is an array of search tags to add.
-//     We only add tags that are NOT already present.
+//     Tags are rebuilt deterministically from the icon name.
 // ──────────────────────────────────────────────────────────────
 
 const NAME_TAG_MAP: Record<string, string[]> = {
@@ -294,7 +294,6 @@ const NAME_TAG_MAP: Record<string, string[]> = {
   /* ── Style modifiers ─────────────────────────────────── */
   fill:         ["solid", "filled"],
   filled:       ["solid", "fill"],
-  outline:      ["stroke", "line", "border", "hollow"],
   duotone:      ["two tone", "dual", "layered"],
   solid:        ["fill", "filled"],
   thin:         ["light", "hairline", "fine"],
@@ -580,7 +579,7 @@ const NAME_TAG_MAP: Record<string, string[]> = {
   directory:    ["folder", "catalog", "list", "index"],
   index:        ["directory", "list", "catalog", "toc"],
   toc:          ["table of contents", "index", "outline"],
-  outline:      ["toc", "structure", "hierarchy", "stroke"],
+  outline:      ["stroke", "line", "border", "hollow", "toc", "structure", "hierarchy"],
   structure:    ["outline", "hierarchy", "tree", "architecture"],
   hierarchy:    ["tree", "structure", "organization", "levels"],
   sitemap:      ["structure", "map", "hierarchy", "navigation"],
@@ -644,43 +643,57 @@ const NAME_TAG_MAP: Record<string, string[]> = {
   spread:       ["zoom", "gesture", "scale", "expand"],
 };
 
+function uniqueTags(tags: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const tag of tags) {
+    const normalized = tag.trim().toLowerCase();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    result.push(normalized);
+  }
+
+  return result;
+}
+
+export function buildIconTagsFromName(name: string): string[] {
+  const words = name.toLowerCase().split(/[\s\-_\.]+/).filter(Boolean);
+  const tags: string[] = [...words];
+
+  for (const word of words) {
+    const mapped = NAME_TAG_MAP[word];
+    if (!mapped) continue;
+
+    for (const tag of mapped) {
+      if (!words.includes(tag)) {
+        tags.push(tag);
+      }
+    }
+  }
+
+  return uniqueTags(tags);
+}
+
+export function rebuildIconTags(icon: IconItem): IconItem {
+  return { ...icon, tags: buildIconTagsFromName(icon.name) };
+}
+
 // ──────────────────────────────────────────────────────────────
 // 2.  PUBLIC ENRICHMENT FUNCTION
 // ──────────────────────────────────────────────────────────────
 
 /**
- * Analyse every icon's name and append semantically-relevant search tags.
- * Returns the enriched array, or `null` if nothing changed.
+ * Rebuild tags for every icon using the current name-only rule set.
+ * Returns the rebuilt array, or `null` if nothing changed.
  */
 export function enrichAllIconTags(icons: IconItem[]): IconItem[] | null {
-  let changed = false;
-
-  const enriched = icons.map((icon) => {
-    const existingLower = new Set(icon.tags.map((t) => t.toLowerCase()));
-    const nameLower = icon.name.toLowerCase();
-    const newTags: string[] = [];
-
-    // 3a. Name-based enrichment
-    // Split name into words: "arrow-right-circle-fill" → ["arrow","right","circle","fill"]
-    const words = nameLower.split(/[\s\-_\.]+/).filter(Boolean);
-
-    for (const word of words) {
-      const mapped = NAME_TAG_MAP[word];
-      if (mapped) {
-        for (const tag of mapped) {
-          if (!existingLower.has(tag) && !newTags.includes(tag) && !words.includes(tag)) {
-            newTags.push(tag);
-          }
-        }
-      }
-    }
-
-    if (newTags.length > 0) {
-      changed = true;
-      return { ...icon, tags: [...icon.tags, ...newTags] };
-    }
-    return icon;
+  const rebuilt = icons.map(rebuildIconTags);
+  const changed = rebuilt.some((icon, index) => {
+    const previous = icons[index];
+    if (icon.tags.length !== previous.tags.length) return true;
+    return icon.tags.some((tag, tagIndex) => tag !== previous.tags[tagIndex]);
   });
 
-  return changed ? enriched : null;
+  return changed ? rebuilt : null;
 }
