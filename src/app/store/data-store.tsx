@@ -91,6 +91,7 @@ interface AppContextType extends AppState {
   updateIcon: (id: string, icon: Partial<IconItem>) => void;
   removeIcon: (id: string) => void;
   bulkAddIcons: (icons: Omit<IconItem, "id">[]) => void;
+  regenerateAllIconTags: () => { changed: boolean; iconCount: number };
   addPattern: (pattern: Omit<PatternArticle, "id" | "createdAt" | "updatedAt" | "deleted">) => void;
   updatePattern: (id: string, pattern: Partial<PatternArticle>) => void;
   softDeletePattern: (id: string) => void;
@@ -796,6 +797,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       pendingSyncRef.current.add("icons");
       syncToServer();
     },
+    regenerateAllIconTags: () => {
+      const enriched = enrichAllIconTags(state.icons);
+      if (!enriched) return { changed: false, iconCount: state.icons.length };
+      persistKey("ds:icons", enriched);
+      update({ icons: enriched }, "icons");
+      return { changed: true, iconCount: enriched.length };
+    },
     addPattern: (pattern) =>
       update({
         patterns: [
@@ -940,6 +948,7 @@ export function useAppData() {
       updateIcon: () => {},
       removeIcon: () => {},
       bulkAddIcons: () => {},
+      regenerateAllIconTags: () => ({ changed: false, iconCount: 0 }),
       setPatternsArticle: () => {},
       addPattern: () => {},
       updatePattern: () => {},

@@ -432,7 +432,7 @@ export function IconologyPage() {
                         return (
                           <div
                             key={icon.id}
-                            className={`flex flex-col items-center justify-center gap-2 p-4 rounded-[var(--radius-card)] transition-all cursor-pointer ${
+                            className={`flex flex-col items-center justify-center gap-2 p-4 pb-2 align-bottom rounded-[var(--radius-card)] transition-all cursor-pointer ${
                               selectedIcon?.id === icon.id
                                 ? "ring-1 ring-primary"
                                 : ""
@@ -500,7 +500,7 @@ export function IconologyPage() {
                         return (
                           <div
                             key={icon.id}
-                            className={`flex flex-col items-center justify-center gap-2 p-4 rounded-[var(--radius-card)] transition-all cursor-pointer ${
+                            className={`flex flex-col items-center justify-center gap-2 p-4 pb-2 align-bottom rounded-[var(--radius-card)] transition-all cursor-pointer ${
                               selectedIcon?.id === icon.id
                                 ? "ring-1 ring-primary"
                                 : ""
@@ -568,7 +568,7 @@ export function IconologyPage() {
                         return (
                           <div
                             key={icon.id}
-                            className={`flex flex-col items-center justify-center gap-2 p-4 rounded-[var(--radius-card)] transition-all cursor-pointer ${
+                            className={`flex flex-col items-center justify-center gap-2 p-4 pb-2 align-bottom rounded-[var(--radius-card)] transition-all cursor-pointer ${
                               selectedIcon?.id === icon.id
                                 ? "ring-1 ring-primary"
                                 : ""
