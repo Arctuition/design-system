@@ -1,0 +1,362 @@
+@import './fonts.css';
+@import './tailwind.css';
+@import './theme.css';
+
+/* Article content styles */
+.article-content {
+  font-family: 'Roboto', sans-serif;
+  color: var(--foreground);
+  line-height: 1.5;
+}
+
+.article-content h1 {
+  font-size: var(--text-h1);
+  font-weight: var(--font-weight-normal);
+  font-family: 'Roboto', sans-serif;
+  line-height: 1.5;
+  margin-top: 48px;
+  margin-bottom: 16px;
+  color: var(--foreground);
+}
+
+.article-content h1:first-child {
+  margin-top: 0;
+}
+
+.article-content h2 {
+  font-size: var(--text-h2);
+  font-weight: var(--font-weight-normal);
+  font-family: 'Roboto', sans-serif;
+  line-height: 1.5;
+  margin-top: 40px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground);
+}
+
+.article-content h3 {
+  font-size: var(--text-h3);
+  font-weight: var(--font-weight-normal);
+  font-family: 'Roboto', sans-serif;
+  line-height: 1.5;
+  margin-top: 32px;
+  margin-bottom: 8px;
+  color: var(--foreground);
+}
+
+.article-content h4 {
+  font-size: var(--text-h4);
+  font-weight: var(--font-weight-medium);
+  font-family: 'Roboto', sans-serif;
+  line-height: 1.5;
+  margin-top: 24px;
+  margin-bottom: 8px;
+  color: var(--foreground);
+}
+
+/* Ensure bold weight is preserved for H4 */
+.article-content h4,
+.article-content h4 *,
+.article-content h4 strong {
+  font-weight: var(--font-weight-medium) !important;
+}
+
+.article-content h5,
+.article-content h6 {
+  font-size: var(--text-h4);
+  font-weight: var(--font-weight-medium);
+  font-family: 'Roboto', sans-serif;
+  line-height: 1.5;
+  margin-top: 20px;
+  margin-bottom: 8px;
+  color: var(--foreground);
+}
+
+.article-content p {
+  font-size: var(--text-p);
+  font-weight: var(--font-weight-normal);
+  font-family: 'Roboto', sans-serif;
+  line-height: 1.7;
+  margin-bottom: 12px;
+  color: var(--card-foreground);
+}
+
+.article-content ul,
+.article-content ol {
+  padding-left: 24px;
+  margin-bottom: 12px;
+}
+
+.article-content ul {
+  list-style-type: disc;
+}
+
+.article-content ol {
+  list-style-type: decimal;
+}
+
+.article-content li {
+  font-size: var(--text-p);
+  font-family: 'Roboto', sans-serif;
+  line-height: 1.7;
+  margin-bottom: 6px;
+  color: var(--card-foreground);
+}
+
+.article-content strong,
+.article-content b {
+  font-weight: var(--font-weight-medium);
+}
+
+.article-content code {
+  background: var(--secondary);
+  padding: 2px 6px;
+  border-radius: var(--radius);
+  font-size: 0.9em;
+}
+
+.article-content blockquote {
+  border-left: 3px solid var(--primary);
+  padding-left: 16px;
+  margin: 16px 0;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.article-content img {
+  max-width: 100%;
+  border-radius: var(--radius-card);
+  margin: 16px 0;
+}
+
+.article-content figure {
+  margin: 16px 0;
+}
+
+.article-content figcaption {
+  font-size: var(--text-label);
+  color: var(--color-label-primary);
+  margin-top: 8px;
+  margin-bottom: 0;
+  line-height: 1.4;
+  font-style: italic;
+  font-weight: var(--font-weight-medium);
+  font-family: 'Roboto', sans-serif;
+}
+
+/* Ensure italic is preserved even with nested tags */
+.article-content figcaption,
+.article-content figcaption *,
+.article-content figcaption strong,
+.article-content figcaption em {
+  font-style: italic !important;
+}
+
+/* Ensure bold weight is preserved for figcaption */
+.article-content figcaption,
+.article-content figcaption *,
+.article-content figcaption strong {
+  font-weight: var(--font-weight-medium) !important;
+}
+
+.article-content [data-role="fig-description"] {
+  font-size: var(--text-label);
+  color: var(--color-label-secondary);
+  margin-top: 0;
+  margin-bottom: 0;
+  line-height: 1.4;
+  font-style: italic;
+  font-weight: var(--font-weight-normal);
+  font-family: 'Roboto', sans-serif;
+}
+
+/* Ensure italic is preserved even with nested tags */
+.article-content [data-role="fig-description"],
+.article-content [data-role="fig-description"] *,
+.article-content [data-role="fig-description"] em {
+  font-style: italic !important;
+}
+
+/* Hide empty captions and descriptions on the public page */
+.article-content figcaption:empty,
+.article-content [data-role="fig-description"]:empty {
+  display: none;
+}
+
+.article-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-family: 'Roboto', sans-serif;
+}
+
+.article-content th {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  background: var(--secondary);
+  font-size: var(--text-table-header);
+  font-weight: var(--font-weight-medium);
+  font-family: 'Roboto', sans-serif;
+  text-align: left;
+}
+
+/* Ensure bold weight is preserved for table headers */
+.article-content th,
+.article-content th *,
+.article-content th strong {
+  font-weight: var(--font-weight-medium) !important;
+}
+
+.article-content td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  font-size: var(--text-p);
+  font-family: 'Roboto', sans-serif;
+}
+
+.article-content hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 24px 0;
+}
+
+.article-content a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.article-content a:hover {
+  color: var(--accent);
+}
+
+/* RTE editor specific overrides */
+.rte-editor h1,
+.rte-editor h2,
+.rte-editor h3,
+.rte-editor h4,
+.rte-editor h5,
+.rte-editor h6 {
+  display: block;
+}
+
+.rte-editor h2 {
+  margin-top: 24px;
+}
+
+.rte-editor figure {
+  margin: 16px 0;
+  position: relative;
+}
+
+.rte-editor figure figcaption,
+.rte-editor figure [data-role="fig-description"] {
+  min-height: 1.5em;
+  cursor: text;
+  /* Override .article-content :empty { display:none } — in the editor,
+     empty fields must remain visible so the CSS placeholder appears. */
+  display: block !important;
+}
+
+.rte-editor figure figcaption[data-empty]::before {
+  content: "Add caption here...";
+  color: var(--color-label-tertiary);
+  font-style: italic;
+  pointer-events: none;
+  user-select: none;
+  display: block;
+}
+
+.rte-editor figure [data-role="fig-description"][data-empty]::before {
+  content: "Add description here...";
+  color: var(--color-label-tertiary);
+  font-style: italic;
+  pointer-events: none;
+  user-select: none;
+  display: block;
+}
+
+.rte-editor figure figcaption:focus,
+.rte-editor figure [data-role="fig-description"]:focus {
+  outline: 1px dashed var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+.rte-editor table,
+.rte-editor .rte-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-family: 'Roboto', sans-serif;
+}
+
+.rte-editor table th,
+.rte-editor .rte-table th {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  background: var(--secondary);
+  font-size: var(--text-table-header);
+  font-weight: var(--font-weight-medium);
+  font-family: 'Roboto', sans-serif;
+  text-align: left;
+}
+
+.rte-editor table td,
+.rte-editor .rte-table td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  font-size: var(--text-p);
+  font-family: 'Roboto', sans-serif;
+}
+
+.rte-editor table td[colspan]:not([colspan="1"]),
+.rte-editor table th[colspan]:not([colspan="1"]) {
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+/* ─── Column layout — editor + renderer ─────────────────────────────────── */
+
+[data-rte-cols] {
+  display: grid;
+  gap: 24px;
+  margin: 16px 0;
+}
+[data-rte-cols="2"] { grid-template-columns: repeat(2, 1fr); }
+[data-rte-cols="3"] { grid-template-columns: repeat(3, 1fr); }
+[data-rte-cols="4"] { grid-template-columns: repeat(4, 1fr); }
+
+/* Editor-only visual affordances */
+.rte-editor [data-rte-cols] {
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-card);
+  padding: 10px;
+  position: relative;
+}
+
+.rte-editor [data-rte-col] {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  min-height: 64px;
+  cursor: text;
+  transition: border-color 120ms ease;
+}
+
+.rte-editor [data-rte-col]:focus-within {
+  border-color: var(--primary);
+  border-style: solid;
+  outline: none;
+}
+
+.rte-editor [data-rte-col] p:last-child {
+  margin-bottom: 0;
+}
+
+/* Responsive collapse for rendered output on narrow screens */
+@media (max-width: 640px) {
+  [data-rte-cols] {
+    grid-template-columns: 1fr !important;
+  }
+}

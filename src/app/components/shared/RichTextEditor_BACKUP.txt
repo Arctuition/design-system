@@ -1,0 +1,11 @@
+Summary of changes made to fix markdown paste issue:
+
+1. Changed hasHtmlTags check to hasSemanticTags - now specifically looks for h1-h6, strong, em, code, pre, ul, ol, li, blockquote, a, img, table, del, hr tags instead of ANY HTML tags
+
+2. Enhanced markdown detection regex to properly detect all markdown patterns with multiline flag
+
+3. Updated pasteContent function to parse markdown when plain text is pasted  
+
+4. Updated pasteFromToolbar to read from system clipboard instead of just using empty strings
+
+The main remaining issue is that pasteContent doesn't sanitize external HTML when it comes from systemHtml parameter. But this should work for the markdown paste case since it will use the plain text with markdown parsing.

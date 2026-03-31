@@ -1,0 +1,227 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Reorder a CSS vars file exported from Tokens Studio / Figma into:
+1) Semantic tokens
+2) Global tokens
+
+Adds a mode-specific header:
+- SEMANTIC TOKENS FOR LIGHT MODE
+- SEMANTIC TOKENS FOR DARK MODE
+
+Usage:
+  python reorder_tokens.py --in color-light.css --out color-light.sorted.css --mode light
+  python reorder_tokens.py --in color-dark.css  --out color-dark.sorted.css  --mode dark
+"""
+
+import argparse
+import re
+from collections import defaultdict
+from pathlib import Path
+
+
+DECL_RE = re.compile(r'^\s*(--[A-Za-z0-9_-]+)\s*:\s*(.+?)\s*;\s*$')
+ROOT_START_RE = re.compile(r'^\s*:root\s*\{\s*$')
+ROOT_END_RE = re.compile(r'^\s*\}\s*$')
+
+SEMANTIC_PREFIX_ORDER = [
+    ("Border", "--color-border-"),
+    ("Divider", "--color-divider-"),
+    ("Fill", "--color-fill-"),
+    ("Label", "--color-label-"),
+    ("Surface", "--color-surface-"),
+]
+
+GLOBAL_FAMILY_ORDER = [
+    ("Blue", "blue"),
+    ("Brand Orange", "brand-orange"),
+    ("Gray", "gray"),
+    ("Green", "green"),
+    ("Orange", "orange"),
+    ("Red", "red"),
+    ("Yellow", "yellow"),
+]
+
+def parse_css_vars(text: str):
+    """
+    Extract CSS var declarations inside :root { ... }.
+    Returns dict[name] = value (value string WITHOUT trailing ';').
+    """
+    in_root = False
+    vars_map = {}
+
+    for line in text.splitlines():
+        if not in_root and ROOT_START_RE.match(line):
+            in_root = True
+            continue
+        if in_root and ROOT_END_RE.match(line):
+            in_root = False
+            continue
+        if not in_root:
+            continue
+
+        m = DECL_RE.match(line)
+        if m:
+            name, value = m.group(1), m.group(2)
+            vars_map[name] = value
+
+    return vars_map
+
+
+def split_semantic_and_global(vars_map: dict):
+    semantic = {}
+    global_ = {}
+    other = {}
+
+    for k, v in vars_map.items():
+        if k.startswith("--color-global-"):
+            global_[k] = v
+        elif k.startswith("--color-"):
+            semantic[k] = v
+        else:
+            other[k] = v
+
+    return semantic, global_, other
+
+
+def group_semantic(semantic: dict):
+    grouped = defaultdict(list)
+
+    # Known semantic buckets by prefix
+    for name, value in semantic.items():
+        placed = False
+        for label, prefix in SEMANTIC_PREFIX_ORDER:
+            if name.startswith(prefix):
+                grouped[label].append((name, value))
+                placed = True
+                break
+        if not placed:
+            grouped["Other Semantic"].append((name, value))
+
+    # sort tokens within each bucket
+    for k in grouped:
+        grouped[k].sort(key=lambda x: x[0])
+
+    return grouped
+
+
+def global_family_key(var_name: str):
+    """
+    From --color-global-<family>-..., return <family> string.
+    Example: --color-global-brand-orange-50 -> brand-orange
+    """
+    rest = var_name[len("--color-global-"):]  # e.g. "brand-orange-50"
+    parts = rest.split("-")
+    if len(parts) >= 2 and parts[0] == "brand" and parts[1] == "orange":
+        return "brand-orange"
+    if parts[0] in ("blue", "gray", "green", "orange", "red", "yellow"):
+        return parts[0]
+    # transparency tokens begin with e.g. gray-transparency-on-dark-...
+    if "transparency" in rest:
+        # categorize under the base color if possible
+        base = parts[0]
+        return base if base in ("blue", "gray", "green", "orange", "red", "yellow") else "transparency"
+    return "other"
+
+
+def group_global(global_: dict):
+    grouped = defaultdict(list)
+    for name, value in global_.items():
+        fam = global_family_key(name)
+        grouped[fam].append((name, value))
+
+    for k in grouped:
+        grouped[k].sort(key=lambda x: x[0])
+
+    return grouped
+
+
+def format_block(title: str, items: list[tuple[str, str]]):
+    lines = []
+    if title:
+        lines.append(f"/* {title} */")
+        lines.append("")
+    for k, v in items:
+        lines.append(f"\t{k}: {v};")
+    return "\n".join(lines)
+
+
+def build_output(mode: str, semantic_grouped: dict, global_grouped: dict):
+    mode_upper = "LIGHT MODE" if mode.lower() == "light" else "DARK MODE"
+
+    out = []
+    out.append(":root {")
+    out.append("")
+    out.append("/* =========================================")
+    out.append(f"SEMANTIC TOKENS FOR {mode_upper}")
+    out.append("========================================= */")
+    out.append("")
+
+    # Semantic sections in preferred order
+    for label, _prefix in SEMANTIC_PREFIX_ORDER:
+        items = semantic_grouped.get(label, [])
+        if items:
+            out.append(format_block(label, items))
+            out.append("")
+            out.append("")
+
+    # Other semantic (if any)
+    other_sem = semantic_grouped.get("Other Semantic", [])
+    if other_sem:
+        out.append(format_block("Other Semantic", other_sem))
+        out.append("")
+        out.append("")
+
+    out.append("/* =========================================")
+    out.append("GLOBAL TOKENS")
+    out.append("========================================= */")
+    out.append("")
+    out.append("")
+
+    # Global families in preferred order
+    for display, fam in GLOBAL_FAMILY_ORDER:
+        items = global_grouped.get(fam, [])
+        if items:
+            out.append(format_block(display, items))
+            out.append("")
+            out.append("")
+
+    # Any leftover global tokens
+    leftovers = []
+    for fam, items in global_grouped.items():
+        if fam not in {f for _d, f in GLOBAL_FAMILY_ORDER}:
+            leftovers.extend(items)
+    leftovers.sort(key=lambda x: x[0])
+    if leftovers:
+        out.append(format_block("Other Global", leftovers))
+        out.append("")
+        out.append("")
+
+    out.append("}")
+    out.append("")
+    return "\n".join(out)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--in", dest="infile", required=True, help="Input CSS vars file (Tokens export)")
+    ap.add_argument("--out", dest="outfile", required=True, help="Output CSS vars file (reordered)")
+    ap.add_argument("--mode", choices=["light", "dark"], required=True, help="Theme mode for header")
+    args = ap.parse_args()
+
+    text = Path(args.infile).read_text(encoding="utf-8")
+    vars_map = parse_css_vars(text)
+
+    semantic, global_, _other = split_semantic_and_global(vars_map)
+    semantic_grouped = group_semantic(semantic)
+    global_grouped = group_global(global_)
+
+    out_text = build_output(args.mode, semantic_grouped, global_grouped)
+    Path(args.outfile).write_text(out_text, encoding="utf-8")
+
+    print(f"Done. Wrote: {args.outfile}")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,361 @@
+/* ==============================
+   SEMANTIC TOKENS FOR LIGHT MODE
+   ============================== */
+
+/* Text */
+--color-label-primary: var(--color-global-gray-85);
+--color-label-secondary: var(--color-global-gray-55);
+--color-label-tertiary: var(--color-global-gray-25);
+--color-label-quaternary: var(--color-global-gray-15);
+
+--color-label-primary-increased-contrast: var(--color-global-gray-transparency-on-light-85);
+--color-label-secondary-increased-contrast: var(--color-global-gray-transparency-on-light-55);
+--color-label-tertiary-increased-contrast: var(--color-global-gray-transparency-on-light-25);
+--color-label-quaternary-increased-contrast: var(--color-global-gray-transparency-on-light-15);
+
+--color-label-primary-on-dark-increased-contrast: var(--color-global-gray-transparency-on-dark-100);
+--color-label-secondary-on-dark-increased-contrast: var(--color-global-gray-transparency-on-dark-60);
+--color-label-tertiary-on-dark-increased-contrast: var(--color-global-gray-transparency-on-dark-30);
+--color-label-quaternary-on-dark-increased-contrast: var(--color-global-gray-transparency-on-dark-20);
+
+/* Text: Brand */
+--color-label-brand-primary: var(--color-global-brandorange-60);
+--color-label-brand-secondary: var(--color-global-brandorange-40);
+--color-label-brand-tertiary: var(--color-global-brandorange-30);
+--color-label-brand-quaternary: var(--color-global-brandorange-20);
+
+--color-label-brand-secondary-increased-contrast: var(--color-global-brandorange-transparency-on-light-40);
+--color-label-brand-tertiary-increased-contrast: var(--color-global-brandorange-transparency-on-light-30);
+--color-label-brand-quaternary-increased-contrast: var(--color-global-brandorange-transparency-on-light-20);
+
+--color-label-brand-primary-on-dark-increased-contrast: var(--color-global-brandorange-50);
+--color-label-brand-secondary-on-dark-increased-contrast: var(--color-global-brandorange-transparency-on-dark-70);
+--color-label-brand-tertiary-on-dark-increased-contrast: var(--color-global-brandorange-transparency-on-dark-80);
+--color-label-brand-quaternary-on-dark-increased-contrast: var(--color-global-brandorange-transparency-on-dark-90);
+
+/* Text: Action */
+--color-label-action-primary: var(--color-global-blue-60);
+--color-label-action-secondary: var(--color-global-blue-40);
+--color-label-action-tertiary: var(--color-global-blue-30);
+--color-label-action-quaternary: var(--color-global-blue-20);
+
+--color-label-action-secondary-increased-contrast: var(--color-global-blue-transparency-on-light-40);
+--color-label-action-tertiary-increased-contrast: var(--color-global-blue-transparency-on-light-30);
+--color-label-action-quaternary-increased-contrast: var(--color-global-blue-transparency-on-light-20);
+
+--color-label-action-primary-on-dark-increased-contrast: var(--color-global-blue-50);
+--color-label-action-secondary-on-dark-increased-contrast: var(--color-global-blue-transparency-on-dark-70);
+--color-label-action-tertiary-on-dark-increased-contrast: var(--color-global-blue-transparency-on-dark-80);
+--color-label-action-quaternary-on-dark-increased-contrast: var(--color-global-blue-transparency-on-dark-90);
+
+/* Text: Success */
+--color-label-success-primary: var(--color-global-green-60);
+--color-label-success-secondary: var(--color-global-green-40);
+--color-label-success-tertiary: var(--color-global-green-30);
+--color-label-success-quaternary: var(--color-global-green-20);
+
+--color-label-success-secondary-increased-contrast: var(--color-global-green-transparency-on-light-40);
+--color-label-success-tertiary-increased-contrast: var(--color-global-green-transparency-on-light-30);
+--color-label-success-quaternary-increased-contrast: var(--color-global-green-transparency-on-light-20);
+
+--color-label-success-primary-on-dark-increased-contrast: var(--color-global-green-50);
+--color-label-success-secondary-on-dark-increased-contrast: var(--color-global-green-transparency-on-dark-70);
+--color-label-success-tertiary-on-dark-increased-contrast: var(--color-global-green-transparency-on-dark-80);
+--color-label-success-quaternary-on-dark-increased-contrast: var(--color-global-green-transparency-on-dark-90);
+
+/* Text: Caution (Orange) */
+--color-label-caution-primary: var(--color-global-orange-60);
+--color-label-caution-secondary: var(--color-global-orange-40);
+--color-label-caution-tertiary: var(--color-global-orange-30);
+--color-label-caution-quaternary: var(--color-global-orange-20);
+
+--color-label-caution-secondary-increased-contrast: var(--color-global-orange-transparency-on-light-40);
+--color-label-caution-tertiary-increased-contrast: var(--color-global-orange-transparency-on-light-30);
+--color-label-caution-quaternary-increased-contrast: var(--color-global-orange-transparency-on-light-20);
+
+--color-label-caution-primary-on-dark-increased-contrast: var(--color-global-orange-50);
+--color-label-caution-secondary-on-dark-increased-contrast: var(--color-global-orange-transparency-on-dark-70);
+--color-label-caution-tertiary-on-dark-increased-contrast: var(--color-global-orange-transparency-on-dark-80);
+--color-label-caution-quaternary-on-dark-increased-contrast: var(--color-global-orange-transparency-on-dark-90);
+
+/* Text: Caution (Yellow) */
+--color-label-caution-yellow-primary: var(--color-global-yellow-65);
+--color-label-caution-yellow-secondary: var(--color-global-yellow-40);
+--color-label-caution-yellow-tertiary: var(--color-global-yellow-30);
+--color-label-caution-yellow-quaternary: var(--color-global-yellow-20);
+
+--color-label-caution-yellow-secondary-increased-contrast: var(--color-global-yellow-transparency-on-light-40);
+--color-label-caution-yellow-tertiary-increased-contrast: var(--color-global-yellow-transparency-on-light-30);
+--color-label-caution-yellow-quaternary-increased-contrast: var(--color-global-yellow-transparency-on-light-20);
+
+--color-label-caution-yellow-primary-on-dark-increased-contrast: var(--color-global-yellow-50);
+--color-label-caution-yellow-secondary-on-dark-increased-contrast: var(--color-global-yellow-transparency-on-dark-70);
+--color-label-caution-yellow-tertiary-on-dark-increased-contrast: var(--color-global-yellow-transparency-on-dark-80);
+--color-label-caution-yellow-quaternary-on-dark-increased-contrast: var(--color-global-yellow-transparency-on-dark-90);
+
+/* Text: Danger */
+--color-label-danger-primary: var(--color-global-red-60);
+--color-label-danger-secondary: var(--color-global-red-40);
+--color-label-danger-tertiary: var(--color-global-red-30);
+--color-label-danger-quaternary: var(--color-global-red-20);
+
+--color-label-danger-secondary-increased-contrast: var(--color-global-red-transparency-on-light-40);
+--color-label-danger-tertiary-increased-contrast: var(--color-global-red-transparency-on-light-30);
+--color-label-danger-quaternary-increased-contrast: var(--color-global-red-transparency-on-light-20);
+
+--color-label-danger-primary-on-dark-increased-contrast: var(--color-global-red-50);
+--color-label-danger-secondary-on-dark-increased-contrast: var(--color-global-red-transparency-on-dark-70);
+--color-label-danger-tertiary-on-dark-increased-contrast: var(--color-global-red-transparency-on-dark-80);
+--color-label-danger-quaternary-on-dark-increased-contrast: var(--color-global-red-transparency-on-dark-90);
+
+/* Surface / Container */
+--color-surface-default: var(--color-global-gray-00);
+--color-surface-dim: var(--color-global-gray-02);
+
+--color-surface-container-default: var(--color-global-gray-00);
+--color-surface-container-high: var(--color-global-gray-06);
+--color-surface-container-higher: var(--color-global-gray-10);
+
+--color-surface-container-default-increased-contrast: var(--color-global-gray-00);
+--color-surface-container-high-increased-contrast: var(--color-global-gray-transparency-on-light-06);
+--color-surface-container-higher-increased-contrast: var(--color-global-gray-transparency-on-light-10);
+
+/* Fill: Neutral */
+--color-fill-bright: var(--color-global-gray-00);
+--color-fill-secondary: var(--color-global-gray-10);
+--color-fill-tertiary: var(--color-global-gray-06);
+
+/* Fill + Container: Brand */
+--color-fill-brand-primary: var(--color-global-brandorange-60);
+--color-fill-brand-secondary: var(--color-global-brandorange-20);
+--color-surface-container-brand: var(--color-global-brandorange-10);
+
+/* Fill + Container: Action */
+--color-fill-action-primary: var(--color-global-blue-60);
+--color-fill-action-primary-hover: var(--color-global-blue-70);
+--color-fill-action-secondary: var(--color-global-blue-20);
+--color-fill-action-secondary-hover: var(--color-global-blue-30);
+--color-surface-container-action: var(--color-global-blue-10);
+--color-surface-container-action-hover: var(--color-global-blue-20);
+
+/* Fill + Container: Success */
+--color-fill-success-primary: var(--color-global-green-60);
+--color-fill-success-secondary: var(--color-global-green-20);
+--color-surface-container-success: var(--color-global-green-10);
+
+/* Fill + Container: Caution (Orange) */
+--color-fill-caution-primary: var(--color-global-orange-60);
+--color-fill-caution-secondary: var(--color-global-orange-20);
+--color-surface-container-caution: var(--color-global-orange-10);
+
+/* Fill + Container: Caution (Yellow) */
+--color-fill-caution-yellow-primary: var(--color-global-yellow-60);
+--color-fill-caution-yellow-secondary: var(--color-global-yellow-20);
+--color-surface-container-caution-yellow: var(--color-global-yellow-10);
+
+/* Fill + Container: Danger */
+--color-fill-danger-primary: var(--color-global-red-60);
+--color-fill-danger-secondary: var(--color-global-red-20);
+--color-surface-container-danger: var(--color-global-red-10);
+
+/* Dividers */
+--color-divider-default: var(--color-global-gray-10);
+--color-divider-extra: var(--color-global-gray-20);
+--color-divider-default-increased-contrast: var(--color-global-gray-transparency-on-light-10);
+--color-divider-extra-increased-contrast: var(--color-global-gray-transparency-on-light-20);
+
+/* Borders */
+--color-border-default: var(--color-global-gray-15);
+--color-border-extra: var(--color-global-gray-25);
+--color-border-default-increased-contrast: var(--color-global-gray-transparency-on-light-15);
+--color-border-extra-increased-contrast: var(--color-global-gray-transparency-on-light-25);
+
+--color-border-action-primary: var(--color-global-blue-60);
+--color-border-action-secondary: var(--color-global-blue-30);
+
+--color-border-success-primary: var(--color-global-green-60);
+--color-border-success-secondary: var(--color-global-green-30);
+
+--color-border-danger-primary: var(--color-global-red-60);
+--color-border-danger-secondary: var(--color-global-red-30);
+
+--color-border-caution-primary: var(--color-global-orange-60);
+--color-border-caution-secondary: var(--color-global-orange-30);
+
+--color-border-caution-yellow-primary: var(--color-global-yellow-60);
+--color-border-caution-yellow-secondary: var(--color-global-yellow-30);
+
+--color-border-brand-primary: var(--color-global-brandorange-60);
+--color-border-brand-secondary: var(--color-global-brandorange-30);
+
+/* =========================
+   Global tokens
+   ========================= */
+--color-global-gray-100: #000000;
+--color-label-danger-secondary-increased-contrast: var(--color-global-red-transparency-on-light-40);
+--color-global-gray-95: #0C0C0C;
+--color-label-danger-tertiary-increased-contrast: var(--color-global-red-transparency-on-light-30);
+--color-global-gray-90: #191919;
+--color-global-gray-85: #262626;
+--color-global-gray-80: #333333;
+--color-global-gray-75: #404040;
+--color-global-gray-70: #4C4C4C;
+--color-global-gray-65: #595959;
+--color-global-gray-60: #666666;
+--color-global-gray-55: #737373;
+--color-global-gray-50: #7F7F7F;
+--color-global-gray-40: #999999;
+--color-global-gray-30: #B2B2B2;
+--color-global-gray-25: #BFBFBF;
+--color-global-gray-20: #CCCCCC;
+--color-global-gray-15: #D9D9D9;
+--color-global-gray-10: #E6E6E6;
+--color-global-gray-06: #F0F0F0;
+--color-global-gray-02: #F9F9F9;
+--color-global-gray-00: #FFFFFF;
+--color-label-danger-quaternary-increased-contrast: var(--color-global-red-transparency-on-light-20);
+--color-label-danger-primary-on-dark-increased-contrast: var(--color-global-red-50);
+--color-label-danger-secondary-on-dark-increased-contrast: var(--color-global-red-transparency-on-dark-70);
+--color-label-danger-tertiary-on-dark-increased-contrast: var(--color-global-red-transparency-on-dark-80);
+--color-label-danger-quaternary-on-dark-increased-contrast: var(--color-global-red-transparency-on-dark-90);
+--color-global-gray-transparency-on-light-100: #000000;
+--color-global-gray-transparency-on-light-85: #000000D8;
+--color-global-gray-transparency-on-light-80: #000000CC;
+--color-global-gray-transparency-on-light-75: #000000BF;
+--color-global-gray-transparency-on-light-70: #000000B2;
+--color-global-gray-transparency-on-light-65: #000000A5;
+--color-global-gray-transparency-on-light-55: #0000008C;
+--color-global-gray-transparency-on-light-40: #00000066;
+--color-global-gray-transparency-on-light-25: #0000003F;
+--color-global-gray-transparency-on-light-20: #00000033;
+--color-global-gray-transparency-on-light-15: #00000026;
+--color-global-gray-transparency-on-light-10: #00000019;
+--color-global-gray-transparency-on-light-06: #0000000F;
+--color-global-gray-transparency-on-light-02: #00000005;
+--color-global-gray-transparency-on-light-00: #00000000;
+--color-global-gray-transparency-on-dark-100: #FFFFFF;
+--color-global-gray-transparency-on-dark-85: #FFFFFFD8;
+--color-global-gray-transparency-on-dark-80: #FFFFFFCC;
+--color-global-gray-transparency-on-dark-75: #FFFFFFBF;
+--color-global-gray-transparency-on-dark-70: #FFFFFFB2;
+--color-global-gray-transparency-on-dark-65: #FFFFFFA5;
+--color-global-gray-transparency-on-dark-60: #FFFFFF99;
+--color-global-gray-transparency-on-dark-55: #FFFFFF8C;
+--color-global-gray-transparency-on-dark-40: #FFFFFF66;
+--color-global-gray-transparency-on-dark-30: #FFFFFF4C;
+--color-global-gray-transparency-on-dark-25: #FFFFFF3F;
+--color-global-gray-transparency-on-dark-20: #FFFFFF33;
+--color-global-gray-transparency-on-dark-15: #FFFFFF26;
+--color-global-gray-transparency-on-dark-10: #FFFFFF19;
+--color-global-gray-transparency-on-dark-06: #FFFFFF0F;
+--color-global-gray-transparency-on-dark-02: #FFFFFF05;
+--color-global-gray-transparency-on-dark-00: #FFFFFF00;
+--color-global-blue-100: #1F252C;
+--color-global-blue-95: #1E252B;
+--color-global-blue-90: #2E4157;
+--color-global-blue-80: #3569A6;
+--color-global-blue-70: #407FC7;
+--color-global-blue-60: #398AE7;
+--color-global-blue-50: #479DFF;
+--color-global-blue-40: #8FC3FF;
+--color-global-blue-30: #B7D9FF;
+--color-global-blue-20: #D1E7FF;
+--color-global-blue-10: #EBF4FF;
+--color-global-blue-05: #F5FAFF;
+--color-global-blue-transparency-on-light-40: #398AE78C;
+--color-global-blue-transparency-on-light-30: #398AE73F;
+--color-global-blue-transparency-on-light-20: #398AE726;
+--color-global-blue-transparency-on-dark-90: #479DFF26;
+--color-global-blue-transparency-on-dark-80: #479DFF3F;
+--color-global-blue-transparency-on-dark-70: #479DFF8C;
+--color-global-green-95: #2E322F;
+--color-global-green-90: #213521;
+--color-global-green-80: #274928;
+--color-global-green-70: #348C37;
+--color-global-green-60: #04B50B;
+--color-global-green-50: #04C20C;
+--color-global-green-40: #52D956;
+--color-global-green-30: #A4EAA6;
+--color-global-green-20: #D0F4D1;
+--color-global-green-10: #EBFFEC;
+--color-global-green-transparency-on-light-40: #04B50B8C;
+--color-global-green-transparency-on-light-30: #04B50B3F;
+--color-global-green-transparency-on-light-20: #04B50B26;
+--color-global-green-transparency-on-dark-90: #04C20C26;
+--color-global-green-transparency-on-dark-80: #04C20C3F;
+--color-global-green-transparency-on-dark-70: #04C20C8C;
+--color-global-red-95: #382D2D;
+--color-global-red-90: #440C0C;
+--color-global-red-80: #661414;
+--color-global-red-70: #A02323;
+--color-global-red-60: #E31C1C;
+--color-global-red-50: #FC3F3F;
+--color-global-red-40: #F47373;
+--color-global-red-30: #F4A8A8;
+--color-global-red-20: #FCC9C9;
+--color-global-red-10: #FFEBEB;
+--color-global-red-transparency-on-light-40: #E31C1C8C;
+--color-global-red-transparency-on-light-30: #E31C1C3F;
+--color-global-red-transparency-on-light-20: #E31C1C26;
+--color-global-red-transparency-on-dark-90: #FC3F3F26;
+--color-global-red-transparency-on-dark-80: #FC3F3F3F;
+--color-global-red-transparency-on-dark-70: #FC3F3F8C;
+--color-global-yellow-95: #353327;
+--color-global-yellow-90: #423A0A;
+--color-global-yellow-80: #5D5109;
+--color-global-yellow-70: #B19B0A;
+--color-global-yellow-65: #D6BB0E;
+--color-global-yellow-60: #E3C712;
+--color-global-yellow-50: #EFD213;
+--color-global-yellow-40: #F1DE64;
+--color-global-yellow-30: #F3E8A4;
+--color-global-yellow-20: #F9F3CC;
+--color-global-yellow-10: #FFFCEB;
+--color-global-yellow-transparency-on-light-40: #E3C7128C;
+--color-global-yellow-transparency-on-light-30: #E3C7123F;
+--color-global-yellow-transparency-on-light-20: #E3C71226;
+--color-global-yellow-transparency-on-dark-90: #F0D21326;
+--color-global-yellow-transparency-on-dark-80: #F0D2133F;
+--color-global-yellow-transparency-on-dark-70: #F0D2138C;
+--color-global-orange-95: #352D27;
+--color-global-orange-90: #42250A;
+--color-global-orange-80: #5D3109;
+--color-global-orange-70: #B15A0A;
+--color-global-orange-60: #E37612;
+--color-global-orange-50: #EF7C13;
+--color-global-orange-40: #F1A764;
+--color-global-orange-30: #F3CAA4;
+--color-global-orange-20: #F9E1CC;
+--color-global-orange-10: #FFF4EB;
+--color-global-orange-transparency-on-light-40: #E376128C;
+--color-global-orange-transparency-on-light-30: #E376123F;
+--color-global-orange-transparency-on-light-20: #E3761226;
+--color-global-orange-transparency-on-dark-90: #F07D1326;
+--color-global-orange-transparency-on-dark-80: #F07D133F;
+--color-global-orange-transparency-on-dark-70: #F07D138C;
+--color-global-brandorange-95: #352B27;
+--color-global-brandorange-90: #421A0A;
+--color-global-brandorange-80: #5D2209;
+--color-global-brandorange-70: #A3421A;
+--color-global-brandorange-60: #E3571C;
+--color-global-brandorange-50: #EF6226;
+--color-global-brandorange-40: #F2946C;
+--color-global-brandorange-30: #F4BDA5;
+--color-global-brandorange-20: #F9D9CC;
+--color-global-brandorange-10: #FFF1EB;
+--color-global-brandorange-transparency-on-light-40: #E3571C8C;
+--color-global-brandorange-transparency-on-light-30: #E3571C3F;
+--color-global-brandorange-transparency-on-light-20: #E3571C26;
+--color-global-brandorange-transparency-on-dark-90: #F0632626;
+--color-global-brandorange-transparency-on-dark-80: #F063263F;
+--color-global-brandorange-transparency-on-dark-70: #F063268C;
+--color-border-success-primary: var(--color-global-green-60);
+--color-border-success-secondary: var(--color-global-green-30);
+--color-border-danger-primary: var(--color-global-red-60);
+--color-border-danger-secondary: var(--color-global-red-30);
+--color-border-caution-primary: var(--color-global-orange-60);
+--color-border-caution-secondary: var(--color-global-orange-30);
+--color-border-caution-yellow-primary: var(--color-global-yellow-60);
+--color-border-caution-yellow-secondary: var(--color-global-yellow-30);
+--color-border-brand-primary: var(--color-global-brandorange-60);
+--color-border-brand-secondary: var(--color-global-brandorange-30);
