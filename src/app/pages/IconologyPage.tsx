@@ -460,7 +460,16 @@ export function IconologyPage() {
                               style={{ width: size, height: size }}
                               dangerouslySetInnerHTML={{ __html: icon.svgContent }}
                             />
-                            <span className="text-center text-muted-foreground truncate w-full" style={{ fontSize: "var(--text-label)" }}>
+                            <span
+                              className="text-center text-muted-foreground w-full"
+                              style={{
+                                fontSize: "var(--text-label)",
+                                display: "-webkit-box",
+                                WebkitBoxOrient: "vertical",
+                                WebkitLineClamp: 2,
+                                overflow: "hidden",
+                              }}
+                            >
                               {icon.name}
                             </span>
                           </div>
@@ -517,7 +526,16 @@ export function IconologyPage() {
                               style={{ width: size, height: size }}
                               dangerouslySetInnerHTML={{ __html: icon.svgContent }}
                             />
-                            <span className="text-center text-muted-foreground truncate w-full" style={{ fontSize: "var(--text-label)" }}>
+                            <span
+                              className="text-center text-muted-foreground w-full"
+                              style={{
+                                fontSize: "var(--text-label)",
+                                display: "-webkit-box",
+                                WebkitBoxOrient: "vertical",
+                                WebkitLineClamp: 2,
+                                overflow: "hidden",
+                              }}
+                            >
                               {icon.name}
                             </span>
                           </div>
@@ -574,7 +592,16 @@ export function IconologyPage() {
                               style={{ width: size, height: size }}
                               dangerouslySetInnerHTML={{ __html: icon.svgContent }}
                             />
-                            <span className="text-center text-muted-foreground truncate w-full" style={{ fontSize: "var(--text-label)" }}>
+                            <span
+                              className="text-center text-muted-foreground w-full"
+                              style={{
+                                fontSize: "var(--text-label)",
+                                display: "-webkit-box",
+                                WebkitBoxOrient: "vertical",
+                                WebkitLineClamp: 2,
+                                overflow: "hidden",
+                              }}
+                            >
                               {icon.name}
                             </span>
                           </div>
