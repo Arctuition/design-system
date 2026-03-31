@@ -21,6 +21,7 @@ function Input({ className, type, onKeyDown, ...props }: React.ComponentProps<"i
         }
         onKeyDown?.(e);
       }}
+      style={{ borderColor: "var(--color-border-default)" }}
       {...props}
     />
   );
