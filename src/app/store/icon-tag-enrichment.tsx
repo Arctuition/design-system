@@ -75,6 +75,7 @@ const NAME_TAG_MAP: Record<string, string[]> = {
   attach:       ["paperclip", "clip", "pin", "connect"],
   paperclip:    ["attach", "attachment", "clip"],
   link:         ["chain", "url", "connect", "hyperlink", "anchor"],
+  linked:       ["link", "chain", "url", "connect", "hyperlink", "anchor", "connected", "attached"],
   unlink:       ["disconnect", "break", "detach"],
   external:     ["link", "outside", "new window", "open"],
 
@@ -144,6 +145,9 @@ const NAME_TAG_MAP: Record<string, string[]> = {
   person:       ["user", "profile", "human", "avatar"],
   people:       ["users", "team", "group", "community"],
   team:         ["group", "people", "users", "members", "organization"],
+  collaborate:  ["collaboration", "teamwork", "together", "cooperate", "co-op", "partner", "share", "group", "team"],
+  collaboration:["collaborate", "teamwork", "together", "cooperate", "co-op", "partner", "share", "group", "team"],
+  teamwork:     ["team", "collaborate", "collaboration", "group"],
   group:        ["team", "people", "users", "collection", "cluster"],
   profile:      ["user", "account", "avatar", "bio"],
   avatar:       ["user", "profile", "picture", "photo"],
@@ -226,6 +230,7 @@ const NAME_TAG_MAP: Record<string, string[]> = {
 
   /* ── Settings & System ───────────────────────────────── */
   settings:     ["gear", "cog", "config", "preferences", "options", "wrench"],
+  setting:      ["settings", "gear", "cog", "config", "preferences", "options", "wrench"],
   gear:         ["settings", "cog", "config", "mechanical", "options"],
   cog:          ["gear", "settings", "config", "mechanical"],
   wrench:       ["tool", "settings", "fix", "repair", "configure", "spanner"],
@@ -621,6 +626,7 @@ const NAME_TAG_MAP: Record<string, string[]> = {
   score:        ["rate", "point", "grade", "number"],
   grade:        ["score", "rate", "level", "rank"],
   badge2:       ["achievement", "verified", "status", "icon"],
+  indicator:    ["status", "state", "badge", "signal", "dot", "marker"],
   status:       ["state", "badge", "indicator", "condition"],
   state:        ["status", "condition", "mode"],
   condition:    ["state", "status", "rule", "if"],
@@ -657,19 +663,47 @@ function uniqueTags(tags: string[]): string[] {
   return result;
 }
 
+function toKebabTokens(name: string): string[] {
+  // Normalize: split camelCase/PascalCase and break digit boundaries.
+  // Preserve size patterns like "16x16" so we don't emit meaningless "x" tokens.
+  const sizeProtected = name.replace(/(\d{1,3})x(\d{1,3})/gi, "$1×$2");
+
+  const normalized = sizeProtected
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/(\d)([a-zA-Z])/g, "$1 $2")
+    .replace(/([a-zA-Z])(\d)/g, "$1 $2");
+
+  return normalized
+    .toLowerCase()
+    .split(/[\s\-_\.]+/)
+    .map((t) => t.replace(/×/g, "x"))
+    .filter((t) => Boolean(t) && t !== "x");
+}
+
+function singularize(token: string): string {
+  // Cheap, deterministic singularization for common icon naming.
+  if (token.endsWith("ies") && token.length > 3) return `${token.slice(0, -3)}y`;
+  if (token.endsWith("ses") && token.length > 3) return token.slice(0, -2); // "classes" -> "class"
+  if (token.endsWith("s") && token.length > 2 && !token.endsWith("ss")) return token.slice(0, -1);
+  return token;
+}
+
 export function buildIconTagsFromName(name: string): string[] {
-  const words = name.toLowerCase().split(/[\s\-_\.]+/).filter(Boolean);
-  const tags: string[] = [...words];
+  const rawTokens = toKebabTokens(name);
+  const tokens = uniqueTags([...rawTokens, ...rawTokens.map(singularize)]);
+  const tags: string[] = [...tokens];
 
-  for (const word of words) {
-    const mapped = NAME_TAG_MAP[word];
-    if (!mapped) continue;
-
-    for (const tag of mapped) {
-      if (!words.includes(tag)) {
-        tags.push(tag);
-      }
+  for (const token of tokens) {
+    const sizeMatch = token.match(/^(\d{1,3})x(\d{1,3})$/);
+    if (sizeMatch) {
+      const w = sizeMatch[1];
+      const h = sizeMatch[2];
+      tags.push(`${w}x${h}`);
+      if (parseInt(w, 10) <= 16 && parseInt(h, 10) <= 16) tags.push("small");
     }
+
+    const mapped = NAME_TAG_MAP[token];
+    if (mapped) tags.push(...mapped);
   }
 
   return uniqueTags(tags);

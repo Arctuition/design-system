@@ -4,12 +4,24 @@ import { useAppData } from "../../store/data-store";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { ArticleEditorPage } from "../../components/shared/ArticleEditorPage";
-import { ArrowLeft, Upload, Plus, Pencil, Trash2, Save, X, Tag, Search, FolderDown, ChevronDown, RefreshCw } from "lucide-react";
+import { ArrowLeft, Upload, Plus, Pencil, Trash2, Save, X, Tag, Search, FolderDown, ChevronDown, RefreshCw, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
 import { downloadIconsAsZip } from "../../components/shared/icon-zip-utils";
 import { getIconDownloadFileName, iconFileNameToDisplayName } from "../../components/shared/icon-file-utils";
 import { buildIconTagsFromName } from "../../store/icon-tag-enrichment";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../../components/ui/alert-dialog";
 import type { IconItem } from "../../store/data-store";
 
 /** Allow Cmd/Ctrl+A to select all text inside an input instead of being swallowed by the host environment */
@@ -110,7 +122,7 @@ function parseTagsInput(value: string): string[] {
 }
 
 export function IconEditor() {
-  const { isAuthenticated, icons, addIcon, updateIcon, removeIcon } = useAppData();
+  const { isAuthenticated, icons, addIcon, updateIcon, removeIcon, regenerateAllIconTags } = useAppData();
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editTags, setEditTags] = useState("");
@@ -295,6 +307,15 @@ export function IconEditor() {
     }
   };
 
+  const regenerateTagsForAllIcons = () => {
+    const res = regenerateAllIconTags();
+    if (!res.changed) {
+      toast.success(`Tags are already up to date (${res.iconCount} icons)`);
+      return;
+    }
+    toast.success(`Regenerated tags for ${res.iconCount} icons`);
+  };
+
   const renderIconRow = (icon: IconItem) => (
     <div key={icon.id} className="flex items-center gap-4 p-3 border rounded-[var(--radius-card)]" style={{ borderColor: "var(--color-border-default)" }}>
       <div className="size-10 flex items-center justify-center shrink-0" style={{ color: "var(--color-label-primary)" }} dangerouslySetInnerHTML={{ __html: icon.svgContent }} />
@@ -395,6 +416,38 @@ export function IconEditor() {
               <FolderDown className="size-4 mr-1.5" />
               {isDownloading ? "Zipping..." : `Download All (${filteredIcons.length})`}
             </Button>
+            <div className="w-px h-6" style={{ backgroundColor: "var(--color-divider-default)" }} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="size-10" aria-label="More actions">
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <RefreshCw className="size-4" />
+                      Regenerate all tags
+                    </DropdownMenuItem>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Regenerate tags for all icons?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will overwrite existing tags for all {icons.length} icons. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={regenerateTagsForAllIcons}>
+                        Regenerate all tags
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Sticky search & filters */}
