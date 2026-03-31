@@ -134,7 +134,7 @@ export function IconEditor() {
       reader.onload = (ev) => {
         const content = ev.target?.result as string;
         addIcon({
-          name: file.name.replace(/\.svg$/i, "").replace(/[-_]/g, " "),
+          name: iconFileNameToDisplayName(file.name),
           tags: [],
           svgContent: content,
           fileName: file.name,
@@ -162,7 +162,7 @@ export function IconEditor() {
       reader.onload = (ev) => {
         const content = ev.target?.result as string;
         addIcon({
-          name: file.name.replace(/\.svg$/i, "").replace(/[-_]/g, " "),
+          name: iconFileNameToDisplayName(file.name),
           tags: [],
           svgContent: content,
           fileName: file.name,
@@ -180,9 +180,11 @@ export function IconEditor() {
     if (!file || !replacingId) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
+      const nextFileName = file.name;
       updateIcon(replacingId, {
         svgContent: ev.target?.result as string,
-        fileName: file.name,
+        fileName: nextFileName,
+        name: iconFileNameToDisplayName(nextFileName),
       });
       toast.success("Icon replaced");
       setReplacingId(null);

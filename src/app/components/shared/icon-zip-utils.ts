@@ -1,5 +1,6 @@
 import JSZip from "jszip";
 import type { IconItem } from "../../store/data-store";
+import { getIconDownloadFileName } from "./icon-file-utils";
 
 export async function downloadIconsAsZip(icons: IconItem[], zipFileName = "icons.zip") {
   if (icons.length === 0) return;
@@ -7,8 +8,7 @@ export async function downloadIconsAsZip(icons: IconItem[], zipFileName = "icons
   const usedNames = new Map<string, number>();
 
   icons.forEach((icon) => {
-    let name = icon.fileName || `${icon.name}.svg`;
-    if (!name.toLowerCase().endsWith(".svg")) name += ".svg";
+    let name = getIconDownloadFileName(icon.fileName, icon.name);
 
     // Deduplicate file names
     const count = usedNames.get(name) || 0;
@@ -16,7 +16,7 @@ export async function downloadIconsAsZip(icons: IconItem[], zipFileName = "icons
       const base = name.replace(/\.svg$/i, "");
       name = `${base}-${count}.svg`;
     }
-    usedNames.set(icon.fileName || `${icon.name}.svg`, count + 1);
+    usedNames.set(getIconDownloadFileName(icon.fileName, icon.name), count + 1);
 
     zip.file(name, icon.svgContent);
   });
