@@ -22,6 +22,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../../components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../../components/ui/dialog";
 import type { IconItem } from "../../store/data-store";
 
 /** Allow Cmd/Ctrl+A to select all text inside an input instead of being swallowed by the host environment */
@@ -136,6 +143,7 @@ export function IconEditor() {
   const bulkInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
   const [replacingId, setReplacingId] = useState<string | null>(null);
+  const [bulkResult, setBulkResult] = useState<{ added: number; updated: number } | null>(null);
 
   if (!isAuthenticated) return <Navigate to="/cms/login" replace />;
 
@@ -146,13 +154,19 @@ export function IconEditor() {
       const reader = new FileReader();
       reader.onload = (ev) => {
         const content = ev.target?.result as string;
-        addIcon({
-          name: iconFileNameToDisplayName(file.name),
-          tags: [],
-          svgContent: content,
-          fileName: file.name,
-        });
-        toast.success(`Uploaded: ${file.name}`);
+        const existing = icons.find((i) => i.fileName === file.name);
+        if (existing) {
+          updateIcon(existing.id, { svgContent: content });
+          toast.success(`Updated: ${file.name}`);
+        } else {
+          addIcon({
+            name: iconFileNameToDisplayName(file.name),
+            tags: [],
+            svgContent: content,
+            fileName: file.name,
+          });
+          toast.success(`Uploaded: ${file.name}`);
+        }
       };
       reader.readAsText(file);
     });
@@ -169,19 +183,28 @@ export function IconEditor() {
       return;
     }
     let count = 0;
+    let updatedCount = 0;
     const total = svgFiles.length;
     svgFiles.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (ev) => {
         const content = ev.target?.result as string;
-        addIcon({
-          name: iconFileNameToDisplayName(file.name),
-          tags: [],
-          svgContent: content,
-          fileName: file.name,
-        });
+        const existing = icons.find((i) => i.fileName === file.name);
+        if (existing) {
+          updateIcon(existing.id, { svgContent: content });
+          updatedCount++;
+        } else {
+          addIcon({
+            name: iconFileNameToDisplayName(file.name),
+            tags: [],
+            svgContent: content,
+            fileName: file.name,
+          });
+        }
         count++;
-        if (count === total) toast.success(`Imported ${count} icons`);
+        if (count === total) {
+          setBulkResult({ added: total - updatedCount, updated: updatedCount });
+        }
       };
       reader.readAsText(file);
     });
@@ -586,6 +609,37 @@ export function IconEditor() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Bulk import result dialog */}
+      <Dialog open={bulkResult !== null} onOpenChange={(open) => { if (!open) setBulkResult(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk Import Complete</DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-3" style={{ fontSize: "var(--text-p)", color: "var(--color-label-primary)" }}>
+            <div className="flex justify-between">
+              <span>Total processed</span>
+              <span className="font-medium">{(bulkResult?.added ?? 0) + (bulkResult?.updated ?? 0)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>New icons added</span>
+              <span className="font-medium" style={{ color: "var(--color-label-success, green)" }}>{bulkResult?.added ?? 0}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Existing icons updated</span>
+              <span className="font-medium" style={{ color: "var(--color-label-action-primary)" }}>{bulkResult?.updated ?? 0}</span>
+            </div>
+            {(bulkResult?.updated ?? 0) > 0 && (
+              <p className="pt-1" style={{ fontSize: "var(--text-label)", color: "var(--color-label-secondary)" }}>
+                Updated icons had their SVG renewed while keeping their original tags.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setBulkResult(null)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
