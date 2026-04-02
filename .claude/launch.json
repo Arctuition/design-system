@@ -6,12 +6,6 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 5173
-    },
-    {
-      "name": "Supabase Edge Functions",
-      "runtimeExecutable": "supabase",
-      "runtimeArgs": ["functions", "serve"],
-      "port": 54321
     }
   ]
 }

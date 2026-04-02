@@ -1,6 +1,8 @@
 import { projectId, publicAnonKey } from "/utils/supabase/info";
 
-const BASE = `https://${projectId}.supabase.co/functions/v1/make-server-067f252d`;
+const BASE = import.meta.env.DEV
+  ? `http://127.0.0.1:54321/functions/v1/make-server-067f252d`
+  : `https://${projectId}.supabase.co/functions/v1/make-server-067f252d`;
 
 const headers = () => ({
   "Content-Type": "application/json",
