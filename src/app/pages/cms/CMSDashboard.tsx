@@ -2,7 +2,7 @@ import React from "react";
 import { Link, Navigate } from "react-router";
 import { useAppData } from "../../store/data-store";
 import {
-  FileText, Palette, Image, LayoutGrid, Clock, Users, RefreshCw
+  FileText, Palette, Image, LayoutGrid, Clock, Users, RefreshCw, Ruler
 } from "lucide-react";
 
 interface Section {
@@ -18,6 +18,7 @@ const sections: Section[] = [
   { path: "/cms/changelog-editor", label: "Change Log", description: "Manage version changelog entries", icon: Clock },
   { path: "/cms/typography-editor", label: "Typography", description: "Edit the typography article section", icon: FileText },
   { path: "/cms/color-editor", label: "Color Tokens", description: "Upload and manage color tokens", icon: Palette },
+  { path: "/cms/size-editor", label: "Size & Space Tokens", description: "Upload and manage size tokens", icon: Ruler },
   { path: "/cms/icon-editor", label: "Iconology", description: "Upload, tag, and manage icons", icon: Image },
   { path: "/cms/patterns-editor", label: "Patterns", description: "Create, edit, and manage pattern articles", icon: LayoutGrid },
   { path: "/cms/accounts", label: "Accounts", description: "Manage editor accounts (admin only)", icon: Users },
