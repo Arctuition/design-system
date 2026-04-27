@@ -5,6 +5,7 @@ import { ErrorPage } from "./pages/ErrorPage";
 import { HomePage } from "./pages/HomePage";
 import { TypographyPage } from "./pages/TypographyPage";
 import { ColorTokensPage } from "./pages/ColorTokensPage";
+import { SizeTokensPage } from "./pages/SizeTokensPage";
 import { IconologyPage } from "./pages/IconologyPage";
 import { PatternsPage } from "./pages/PatternsPage";
 import { PatternDetailPage } from "./pages/PatternDetailPage";
@@ -15,6 +16,7 @@ import { ChangeLogEditor } from "./pages/cms/ChangeLogEditor";
 import { TypographyEditor, TypographyArticleEditor } from "./pages/cms/TypographyEditor";
 import { ColorTokensEditor } from "./pages/cms/ColorTokensEditor";
 import { ColorArticleEditor } from "./pages/cms/ColorArticleEditor";
+import { SizeTokensEditor } from "./pages/cms/SizeTokensEditor";
 import { IconEditor, IconArticleEditor } from "./pages/cms/IconEditor";
 import { PatternsEditor } from "./pages/cms/PatternsEditor";
 import { PatternArticleEditor } from "./pages/cms/PatternArticleEditor";
@@ -33,7 +35,8 @@ export const router = createBrowserRouter([
         children: [
           { index: true, Component: HomePage },
           { path: "typography", Component: TypographyPage },
-          { path: "color-tokens", Component: ColorTokensPage },
+          { path: "tokens/color", Component: ColorTokensPage },
+          { path: "tokens/size", Component: SizeTokensPage },
           { path: "iconology", Component: IconologyPage },
           { path: "patterns", Component: PatternsPage },
           { path: "patterns/:id", Component: PatternDetailPage },
@@ -46,6 +49,7 @@ export const router = createBrowserRouter([
           { path: "cms/typography-editor/edit", Component: TypographyArticleEditor },
           { path: "cms/color-editor", Component: ColorTokensEditor },
           { path: "cms/color-editor/article", Component: ColorArticleEditor },
+          { path: "cms/size-editor", Component: SizeTokensEditor },
           { path: "cms/icon-editor", Component: IconEditor },
           { path: "cms/icon-editor/article", Component: IconArticleEditor },
           { path: "cms/patterns-editor", Component: PatternsEditor },

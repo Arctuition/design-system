@@ -6,7 +6,7 @@ import {
   Image, Table, Minus, Undo, Redo, AlignLeft, AlignCenter, AlignRight,
   Trash2, ArrowDown, ArrowRight, TableCellsMerge, TableCellsSplit,
   X, Upload, ChevronDown, LayoutTemplate, AlertCircle, Copy, Scissors,
-  ClipboardPaste,
+  ClipboardPaste, Quote, Code, SquareCode,
 } from "lucide-react";
 import { ColorPickerDropdown, parseColorToHex } from "./RteColorPicker";
 
@@ -255,6 +255,9 @@ interface FormatState {
   justifyRight: boolean;
   /** Set when the cursor is inside a figcaption, fig-description field, or table header. */
   contextStyle: "FIGCAPTION" | "FIG-DESCRIPTION" | "TH" | null;
+  blockquote: boolean;
+  inlineCode: boolean;
+  codeBlock: boolean;
 }
 
 interface RichTextEditorProps {
@@ -556,6 +559,7 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
     blockFormat: "P", unorderedList: false, orderedList: false,
     justifyLeft: true, justifyCenter: false, justifyRight: false,
     contextStyle: null,
+    blockquote: false, inlineCode: false, codeBlock: false,
   });
 
   // ── Paragraph style dropdown ──
@@ -710,6 +714,9 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
 
       // Detect if cursor is inside a figcaption, fig-description, or table header
       let contextStyle: "FIGCAPTION" | "FIG-DESCRIPTION" | "TH" | null = null;
+      let blockquote = false;
+      let inlineCode = false;
+      let codeBlock = false;
       const selCheck = window.getSelection();
       if (selCheck && selCheck.rangeCount > 0) {
         const nodeCheck = selCheck.getRangeAt(0).startContainer;
@@ -722,6 +729,17 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
           if (cellEl && cellEl.tagName === "TH") {
             contextStyle = "TH";
           }
+        }
+
+        let cur: Node | null = nodeCheck;
+        while (cur && cur !== editorRef.current) {
+          if (cur.nodeType === 1) {
+            const tag = (cur as HTMLElement).tagName;
+            if (tag === "PRE") codeBlock = true;
+            else if (tag === "CODE" && !codeBlock) inlineCode = true;
+            else if (tag === "BLOCKQUOTE") blockquote = true;
+          }
+          cur = cur.parentNode;
         }
       }
 
@@ -736,6 +754,9 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
         justifyCenter: document.queryCommandState("justifyCenter"),
         justifyRight: document.queryCommandState("justifyRight"),
         contextStyle,
+        blockquote,
+        inlineCode,
+        codeBlock,
       };
       setFormatState(state);
     } catch {}
@@ -785,6 +806,148 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
       onChange(editorRef.current.innerHTML);
     }
     updateFormatState();
+  }, [onChange, updateFormatState]);
+
+  const toggleBlockquote = useCallback(() => {
+    editorRef.current?.focus();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    let node: Node | null = sel.getRangeAt(0).startContainer;
+    let inside = false;
+    while (node && node !== editorRef.current) {
+      if (node.nodeType === 1 && (node as HTMLElement).tagName === "BLOCKQUOTE") { inside = true; break; }
+      node = node.parentNode;
+    }
+    document.execCommand("formatBlock", false, inside ? "p" : "blockquote");
+    if (editorRef.current) {
+      isInternalChange.current = true;
+      onChange(editorRef.current.innerHTML);
+    }
+    setTimeout(updateFormatState, 0);
+  }, [onChange, updateFormatState]);
+
+  const toggleInlineCode = useCallback(() => {
+    editorRef.current?.focus();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+
+    // Disallowed inside a <pre><code> code block.
+    let ancestor: Node | null = range.startContainer;
+    while (ancestor && ancestor !== editorRef.current) {
+      if (ancestor.nodeType === 1 && (ancestor as HTMLElement).tagName === "PRE") return;
+      ancestor = ancestor.parentNode;
+    }
+
+    let node: Node | null = range.startContainer;
+    let codeAncestor: HTMLElement | null = null;
+    while (node && node !== editorRef.current) {
+      if (node.nodeType === 1) {
+        const el = node as HTMLElement;
+        if (el.tagName === "CODE" && el.parentElement?.tagName !== "PRE") {
+          codeAncestor = el;
+          break;
+        }
+      }
+      node = node.parentNode;
+    }
+
+    if (codeAncestor) {
+      // Unwrap
+      const parent = codeAncestor.parentNode!;
+      while (codeAncestor.firstChild) parent.insertBefore(codeAncestor.firstChild, codeAncestor);
+      parent.removeChild(codeAncestor);
+    } else if (!range.collapsed) {
+      // Wrap current selection
+      const text = range.toString();
+      if (!text) return;
+      range.deleteContents();
+      const code = document.createElement("code");
+      code.textContent = text;
+      range.insertNode(code);
+      const newRange = document.createRange();
+      newRange.setStartAfter(code);
+      newRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+    } else {
+      // Collapsed selection: start an empty <code> where the caret sits.
+      // Next keystroke will be typed inside it. A zero-width space gives the
+      // caret a landing place so the browser keeps it inside the element.
+      const code = document.createElement("code");
+      code.textContent = "\u200B";
+      range.insertNode(code);
+      const newRange = document.createRange();
+      newRange.selectNodeContents(code);
+      newRange.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+    }
+
+    if (editorRef.current) {
+      isInternalChange.current = true;
+      onChange(editorRef.current.innerHTML);
+    }
+    setTimeout(updateFormatState, 0);
+  }, [onChange, updateFormatState]);
+
+  const toggleCodeBlock = useCallback(() => {
+    editorRef.current?.focus();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+
+    // Find the nearest block-level ancestor (or the <pre> itself) within the editor.
+    const BLOCKS = new Set(["P","H1","H2","H3","H4","H5","H6","PRE","DIV","BLOCKQUOTE","LI"]);
+    let preAncestor: HTMLElement | null = null;
+    let blockAncestor: HTMLElement | null = null;
+    let cur: Node | null = range.startContainer;
+    while (cur && cur !== editorRef.current) {
+      if (cur.nodeType === 1) {
+        const el = cur as HTMLElement;
+        if (el.tagName === "PRE") { preAncestor = el; break; }
+        if (!blockAncestor && BLOCKS.has(el.tagName)) blockAncestor = el;
+      }
+      cur = cur.parentNode;
+    }
+
+    if (preAncestor) {
+      // Toggle off: replace <pre><code>…</code></pre> with a <p> carrying the text.
+      const p = document.createElement("p");
+      const text = preAncestor.textContent || "";
+      p.textContent = text;
+      if (!text) p.innerHTML = "<br>";
+      preAncestor.parentNode!.replaceChild(p, preAncestor);
+      const r = document.createRange();
+      r.selectNodeContents(p);
+      r.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    } else {
+      const target = blockAncestor;
+      const pre = document.createElement("pre");
+      const code = document.createElement("code");
+      if (target && target.parentNode) {
+        code.textContent = target.textContent || "";
+        pre.appendChild(code);
+        target.parentNode.replaceChild(pre, target);
+      } else {
+        // No block ancestor found (edge case): insert a fresh empty code block.
+        pre.appendChild(code);
+        range.insertNode(pre);
+      }
+      const r = document.createRange();
+      r.selectNodeContents(code);
+      r.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+
+    if (editorRef.current) {
+      isInternalChange.current = true;
+      onChange(editorRef.current.innerHTML);
+    }
+    setTimeout(updateFormatState, 0);
   }, [onChange, updateFormatState]);
 
   // ─── Block style dropdown ──────────────────────────────────────────────────
@@ -1717,6 +1880,231 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
       clearPendingDelete();
     }
 
+    // ── Inline <code> boundary navigation ──────────────────────────────────
+    if (!isMod && !e.shiftKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0 && sel.isCollapsed) {
+        const range = sel.getRangeAt(0);
+        const sc = range.startContainer;
+        const off = range.startOffset;
+        const ZWSP = "\u200B";
+
+        const isInlineCode = (n: Node | null): n is HTMLElement =>
+          !!n && n.nodeType === 1 && (n as HTMLElement).tagName === "CODE"
+              && (n as HTMLElement).parentElement?.tagName !== "PRE";
+
+        // Find inline <code> ancestor (if caret is inside one)
+        let codeEl: HTMLElement | null = null;
+        let n: Node | null = sc;
+        while (n && n !== editorRef.current) {
+          if (n.nodeType === 1) {
+            const el = n as HTMLElement;
+            if (isInlineCode(el)) { codeEl = el; break; }
+            if (el.tagName === "PRE") break;
+          }
+          n = n.parentNode;
+        }
+
+        const firstTextLeaf = (root: Node): Text | null => {
+          if (root.nodeType === 3) return root as Text;
+          for (const c of Array.from(root.childNodes)) {
+            const r = firstTextLeaf(c); if (r) return r;
+          }
+          return null;
+        };
+        const lastTextLeaf = (root: Node): Text | null => {
+          if (root.nodeType === 3) return root as Text;
+          const kids = Array.from(root.childNodes);
+          for (let i = kids.length - 1; i >= 0; i--) {
+            const r = lastTextLeaf(kids[i]); if (r) return r;
+          }
+          return null;
+        };
+
+        // ── Case A: caret is INSIDE an inline <code> ────────────────────
+        if (codeEl) {
+          // Compute caret's offset within code's full textContent. This is
+          // robust against nested elements, multiple text nodes, etc.
+          const probe = document.createRange();
+          probe.selectNodeContents(codeEl);
+          probe.setEnd(sc, off);
+          const offsetInCode = probe.toString().length;
+          const totalLen = (codeEl.textContent || "").length;
+          const atStart = offsetInCode === 0;
+          const atEnd = offsetInCode === totalLen;
+
+          const moveOut = (after: boolean) => {
+            // Reuse an existing adjacent ZWSP rather than inserting a new
+            // one each time (prevents accumulation across navigations).
+            const adj = after ? codeEl!.nextSibling : codeEl!.previousSibling;
+            let landing: Text;
+            if (adj && adj.nodeType === 3 && adj.nodeValue === ZWSP) {
+              landing = adj as Text;
+            } else {
+              landing = document.createTextNode(ZWSP);
+              if (after) codeEl!.parentNode!.insertBefore(landing, codeEl!.nextSibling);
+              else codeEl!.parentNode!.insertBefore(landing, codeEl!);
+            }
+            const r = document.createRange();
+            r.setStart(landing, after ? 1 : 0);
+            r.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(r);
+          };
+
+          if (e.key === "ArrowRight" && atEnd && totalLen > 0) {
+            e.preventDefault();
+            moveOut(true);
+            if (editorRef.current) { isInternalChange.current = true; onChange(editorRef.current.innerHTML); }
+            setTimeout(updateFormatState, 0);
+            return;
+          }
+          if (e.key === "ArrowLeft" && atStart && totalLen > 0) {
+            e.preventDefault();
+            moveOut(false);
+            if (editorRef.current) { isInternalChange.current = true; onChange(editorRef.current.innerHTML); }
+            setTimeout(updateFormatState, 0);
+            return;
+          }
+          // Otherwise (caret strictly inside code), fall through to default
+          // browser behavior — do NOT move out on intermediate offsets.
+        } else {
+          // ── Case B: caret is OUTSIDE code, possibly adjacent to one ──
+          // ArrowRight: if caret sits at the end of its current node and the
+          // next sibling (skipping ZWSPs) is an inline <code>, enter at 0.
+          // ArrowLeft: mirror — enter at end of previous-sibling code.
+          const atNodeEnd = sc.nodeType === 3
+            ? off === (sc.textContent?.length || 0)
+            : off === sc.childNodes.length;
+          const atNodeStart = off === 0;
+
+          const findAdjacentCode = (forward: boolean): HTMLElement | null => {
+            let cur: Node | null = sc;
+            while (cur && cur !== editorRef.current) {
+              let sib = forward ? cur.nextSibling : cur.previousSibling;
+              // Skip over stray ZWSP-only text nodes when looking for code.
+              while (sib && sib.nodeType === 3 && sib.nodeValue === ZWSP) {
+                sib = forward ? sib.nextSibling : sib.previousSibling;
+              }
+              if (sib) return isInlineCode(sib) ? (sib as HTMLElement) : null;
+              cur = cur.parentNode;
+              // Only walk up while still at the boundary of each ancestor.
+              if (!cur || cur === editorRef.current) break;
+              const parent = cur as Node;
+              const idx = Array.from(parent.childNodes).indexOf(cur as ChildNode);
+              // The above is wrong-ish; we just need to keep walking up if we
+              // were at the edge — but for simplicity, stop here. Boundary
+              // detection inside nested inline wrappers is a separate concern.
+              break;
+            }
+            return null;
+          };
+
+          // When entering an inline <code> from outside, Chrome's caret
+          // rendering is ambiguous at the very first/last offset of an inline
+          // element — it visually places the caret OUTSIDE the element even
+          // though the DOM range says inside. To force the caret inside we
+          // ensure a leading/trailing ZWSP exists in the code's text and
+          // place the caret just past it. ZWSPs are stripped on serialize.
+          const enterCode = (target: HTMLElement, fromRight: boolean) => {
+            const r = document.createRange();
+            if (fromRight) {
+              const last = lastTextLeaf(target);
+              if (last) {
+                if (!last.nodeValue?.endsWith(ZWSP)) {
+                  last.nodeValue = (last.nodeValue || "") + ZWSP;
+                }
+                // Place caret BEFORE the trailing ZWSP, i.e. at end of "real" text.
+                r.setStart(last, (last.nodeValue || "").length - 1);
+              } else {
+                const t = document.createTextNode(ZWSP);
+                target.appendChild(t);
+                r.setStart(t, 0);
+              }
+            } else {
+              const first = firstTextLeaf(target);
+              if (first) {
+                if (!first.nodeValue?.startsWith(ZWSP)) {
+                  first.nodeValue = ZWSP + (first.nodeValue || "");
+                }
+                // Place caret AFTER the leading ZWSP.
+                r.setStart(first, 1);
+              } else {
+                const t = document.createTextNode(ZWSP);
+                target.appendChild(t);
+                r.setStart(t, 1);
+              }
+            }
+            r.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(r);
+          };
+
+          if (e.key === "ArrowRight" && atNodeEnd) {
+            const target = findAdjacentCode(true);
+            if (target) {
+              e.preventDefault();
+              enterCode(target, /* fromRight */ false);
+              if (editorRef.current) { isInternalChange.current = true; onChange(editorRef.current.innerHTML); }
+              setTimeout(updateFormatState, 0);
+              return;
+            }
+          }
+          if (e.key === "ArrowLeft" && atNodeStart) {
+            const target = findAdjacentCode(false);
+            if (target) {
+              e.preventDefault();
+              enterCode(target, /* fromRight */ true);
+              if (editorRef.current) { isInternalChange.current = true; onChange(editorRef.current.innerHTML); }
+              setTimeout(updateFormatState, 0);
+              return;
+            }
+          }
+        }
+      }
+    }
+
+    // ── ArrowUp/Down escape for <pre> and <blockquote> at doc edge ────────
+    if (!isMod && !e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const sc = sel.getRangeAt(0).startContainer;
+        let blockEl: HTMLElement | null = null;
+        let n: Node | null = sc;
+        while (n && n !== editorRef.current) {
+          if (n.nodeType === 1) {
+            const tag = (n as HTMLElement).tagName;
+            if (tag === "PRE" || tag === "BLOCKQUOTE") { blockEl = n as HTMLElement; break; }
+          }
+          n = n.parentNode;
+        }
+        if (blockEl && editorRef.current) {
+          const goingUp = e.key === "ArrowUp";
+          const hasNeighbor = goingUp ? !!blockEl.previousElementSibling : !!blockEl.nextElementSibling;
+          if (!hasNeighbor) {
+            const p = document.createElement("p");
+            p.innerHTML = "<br>";
+            if (goingUp) editorRef.current.insertBefore(p, blockEl);
+            else editorRef.current.insertBefore(p, blockEl.nextSibling);
+            e.preventDefault();
+            const r = document.createRange();
+            r.setStart(p, 0);
+            r.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(r);
+            isInternalChange.current = true;
+            onChange(editorRef.current.innerHTML);
+            setTimeout(updateFormatState, 0);
+            return;
+          }
+        }
+      }
+    }
+
+    // (Type-at-edge auto-escape removed: typing inside an inline <code> now
+    //  always inserts inside. Use ArrowLeft/ArrowRight to exit the boundary.)
+
+
     // ── Printable key inside an empty caption/description ────────────────
     // When the field shows the CSS placeholder (data-empty), remove the attr
     // so the placeholder disappears, and let the browser insert the character.
@@ -2278,7 +2666,7 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
 
   // ─── Toolbar items ────────────────────────────────────────────────────────
 
-  type ToolItem = { icon: React.ReactNode; action: () => void; title: string; active?: boolean; group: number };
+  type ToolItem = { icon: React.ReactNode; action: () => void; title: string; active?: boolean; disabled?: boolean; group: number };
   const toolbarItems: ToolItem[] = [
     { icon: <Undo className="size-4" />, action: () => exec("undo"), title: "Undo", group: 0 },
     { icon: <Redo className="size-4" />, action: () => exec("redo"), title: "Redo", group: 0 },
@@ -2291,9 +2679,12 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
     { icon: <AlignLeft className="size-4" />, action: () => exec("justifyLeft"), title: "Align Left", active: formatState.justifyLeft, group: 3 },
     { icon: <AlignCenter className="size-4" />, action: () => exec("justifyCenter"), title: "Align Center", active: formatState.justifyCenter, group: 3 },
     { icon: <AlignRight className="size-4" />, action: () => exec("justifyRight"), title: "Align Right", active: formatState.justifyRight, group: 3 },
-    { icon: <Minus className="size-4" />, action: () => exec("insertHorizontalRule"), title: "Horizontal Rule", group: 4 },
-    { icon: <Image className="size-4" />, action: openImageDialog, title: "Insert Image", group: 4 },
-    { icon: <Table className="size-4" />, action: insertTable, title: "Insert Table", group: 4 },
+    { icon: <Quote className="size-4" />, action: toggleBlockquote, title: "Quote", active: formatState.blockquote, group: 4 },
+    { icon: <Code className="size-4" />, action: toggleInlineCode, title: "Inline Code", active: formatState.inlineCode, disabled: formatState.codeBlock, group: 4 },
+    { icon: <SquareCode className="size-4" />, action: toggleCodeBlock, title: "Code Block", active: formatState.codeBlock, group: 4 },
+    { icon: <Minus className="size-4" />, action: () => exec("insertHorizontalRule"), title: "Horizontal Rule", group: 5 },
+    { icon: <Image className="size-4" />, action: openImageDialog, title: "Insert Image", group: 5 },
+    { icon: <Table className="size-4" />, action: insertTable, title: "Insert Table", group: 5 },
   ];
 
   const groups: Array<ToolItem[]> = [];
@@ -2341,12 +2732,14 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
         <div className={stickyToolbar ? "sticky top-0 z-20" : ""}>
           <div className={`flex flex-wrap items-center gap-0.5 p-2 border-b border-border bg-card/90 backdrop-blur-md ${borderless ? "" : "rounded-t-[var(--radius-card)]"}`}>
 
-            {/* Paragraph style dropdown */}
+            {/* Paragraph style dropdown (disabled inside quote / inline-code / code-block) */}
             <div className="relative mr-1" ref={styleDropdownRef}>
               <button
                 type="button"
-                onClick={() => setShowStyleDropdown((v) => !v)}
-                className={`appearance-none bg-background border border-border rounded-[var(--radius)] pl-2.5 pr-7 h-8 text-foreground cursor-pointer flex items-center gap-1 hover:bg-secondary/50 transition-colors ${showStyleDropdown ? "border-primary" : ""}`}
+                onClick={() => { if (formatState.blockquote || formatState.inlineCode || formatState.codeBlock) return; setShowStyleDropdown((v) => !v); }}
+                disabled={formatState.blockquote || formatState.inlineCode || formatState.codeBlock}
+                title={(formatState.blockquote || formatState.inlineCode || formatState.codeBlock) ? "Clear Quote / Code formatting to change text style" : undefined}
+                className={`appearance-none bg-background border border-border rounded-[var(--radius)] pl-2.5 pr-7 h-8 text-foreground flex items-center gap-1 transition-colors ${showStyleDropdown ? "border-primary" : ""} ${(formatState.blockquote || formatState.inlineCode || formatState.codeBlock) ? "opacity-40 cursor-not-allowed" : "cursor-pointer hover:bg-secondary/50"}`}
                 style={{ fontSize: "var(--text-label)", minWidth: 140 }}
               >
                 <span className="flex-1 text-left leading-none" style={{ fontSize: "var(--text-label)" }}>
@@ -2423,8 +2816,9 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
                 {gi > 0 && <div className="w-px h-6 bg-border mx-1" />}
                 {group.map((item, i) => (
                   <Button key={i} variant="ghost" size="icon"
-                    className={`size-8 ${item.active ? "bg-primary/15 text-primary" : ""}`}
-                    onClick={(e) => { e.preventDefault(); item.action(); }}
+                    className={`size-8 ${item.active ? "bg-primary/15 text-primary" : ""} ${item.disabled ? "opacity-40 cursor-not-allowed" : ""}`}
+                    onClick={(e) => { e.preventDefault(); if (item.disabled) return; item.action(); }}
+                    disabled={item.disabled}
                     title={item.title} type="button"
                   >
                     {item.icon}
