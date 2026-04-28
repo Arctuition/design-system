@@ -13,6 +13,7 @@ export function SizeArticleEditor() {
       backTo="/cms/size-editor"
       backLabel="Back"
       articleKey="size"
+      serverStateKey="sizeArticle"
       initialValue={sizeArticle}
       onSave={setSizeArticle}
     />

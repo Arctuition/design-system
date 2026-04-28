@@ -128,6 +128,15 @@ interface AppContextType extends AppState {
   restoreArticleVersion: (version: ArticleVersion) => void;
   deleteArticleVersion: (versionId: string) => void;
   isLoading: boolean;
+  /** Set of state keys with an in-flight or pending server sync. */
+  syncingKeys: ReadonlySet<string>;
+  /**
+   * Save one state key now, awaitable. Cancels any pending debounced sync
+   * for the same key, performs an immediate PUT, returns true on HTTP 2xx.
+   * Use from explicit save buttons so the UI can show real
+   * "Saving…" / "Saved" / "Save failed" feedback.
+   */
+  saveKeyNow: (key: string, value: any) => Promise<boolean>;
 }
 
 const uid = () => Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
@@ -495,6 +504,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // Track which keys changed for granular server sync
   const pendingSyncRef = useRef<Set<string>>(new Set());
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Public, render-driving copy of the in-flight set so Save buttons can
+  // show real "Saving…" status. Mutations to this set go through React
+  // state so consumers re-render. The internal pendingSyncRef stays the
+  // source of truth for the debounce machinery.
+  const [syncingKeys, setSyncingKeys] = useState<ReadonlySet<string>>(() => new Set());
+  const markSyncing = useCallback((keys: string[]) => {
+    if (keys.length === 0) return;
+    setSyncingKeys((prev) => {
+      const next = new Set(prev);
+      for (const k of keys) next.add(k);
+      return next;
+    });
+  }, []);
+  const markDoneSyncing = useCallback((key: string) => {
+    setSyncingKeys((prev) => {
+      if (!prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  }, []);
 
   // On mount: load from server and seed defaults if needed
   useEffect(() => {
@@ -756,30 +786,96 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           articleVersions: currentState.articleVersions,
         };
 
-        // Save each changed key
+        // Save each changed key. Surface failures via a per-key sticky
+        // toast so the editor knows the change only lives in localStorage —
+        // refreshing while the toast is up will overwrite the unsaved
+        // change with whatever the server still has.
         for (const key of keys) {
           if (stateKeyMap[key] !== undefined) {
-            saveStateKey(key, stateKeyMap[key]).catch(() => {
-              // Silently fail - localStorage is the primary storage
-            });
+            const value = stateKeyMap[key];
+            saveStateKey(key, value)
+              .then((ok) => {
+                markDoneSyncing(key);
+                if (ok) {
+                  // Server accepted — clear any prior failure toast for
+                  // this key, and clear the global "server unreachable"
+                  // toast since the server is clearly reachable now.
+                  toast.dismiss(`save-failed-${key}`);
+                  toast.dismiss("server-offline");
+                } else {
+                  toast.error("Couldn't save to the server", {
+                    description: `Field "${key}" is only stored locally. Re-save once the server is reachable — refreshing now will lose this change.`,
+                    duration: Infinity,
+                    id: `save-failed-${key}`,
+                  });
+                }
+              })
+              .catch((err) => {
+                markDoneSyncing(key);
+                toast.error("Couldn't save to the server", {
+                  description: `Field "${key}" is only stored locally (${(err as Error)?.message ?? "network error"}). Re-save once the server is reachable — refreshing now will lose this change.`,
+                  duration: Infinity,
+                  id: `save-failed-${key}`,
+                });
+              });
+          } else {
+            // Defensive: nothing to send for this key, but the public
+            // syncing-keys set needs to be cleared so any awaiting UI
+            // doesn't get stuck on "Saving…".
+            markDoneSyncing(key);
           }
         }
         return currentState; // no state change
       });
     }, 500); // debounce 500ms
-  }, []);
+  }, [markDoneSyncing]);
 
   const update = useCallback((partial: Partial<AppState>, ...changedKeys: string[]) => {
     setState((prev) => ({ ...prev, ...partial }));
     for (const k of changedKeys) {
       pendingSyncRef.current.add(k);
     }
+    markSyncing(changedKeys);
     syncToServer();
-  }, [syncToServer]);
+  }, [syncToServer, markSyncing]);
+
+  /**
+   * Save one key now, awaitable. Bypasses the 500 ms debounce so the Save
+   * button can show real "Saving…" → "Saved" / "Save failed" status, and
+   * cancels any debounced sync for the same key so we don't double-PUT.
+   */
+  const saveKeyNow = useCallback(
+    async (key: string, value: any): Promise<boolean> => {
+      // Don't let a pending debounced sync also fire for this key.
+      pendingSyncRef.current.delete(key);
+      markSyncing([key]);
+      let ok = false;
+      try {
+        ok = await saveStateKey(key, value);
+      } catch {
+        ok = false;
+      }
+      markDoneSyncing(key);
+      if (ok) {
+        toast.dismiss(`save-failed-${key}`);
+        toast.dismiss("server-offline");
+      } else {
+        toast.error("Couldn't save to the server", {
+          description: `Field "${key}" is only stored locally. Try again once the connection is back — refreshing now will lose this change.`,
+          duration: Infinity,
+          id: `save-failed-${key}`,
+        });
+      }
+      return ok;
+    },
+    [markSyncing, markDoneSyncing]
+  );
 
   const ctx: AppContextType = {
     ...state,
     isLoading,
+    syncingKeys,
+    saveKeyNow,
     setHomeArticle: (html) => update({ homeArticle: html }, "homeArticle"),
     addChangeLog: (entry) =>
       update({ changeLogs: [{ ...entry, id: uid() }, ...state.changeLogs] }, "changeLogs"),
@@ -1006,6 +1102,8 @@ export function useAppData() {
     // Return a safe loading stub so HMR / error-boundary renders don't crash
     return {
       isLoading: true,
+      syncingKeys: new Set<string>() as ReadonlySet<string>,
+      saveKeyNow: async () => false,
       homeArticle: "",
       changeLogs: [],
       typographyArticle: "",

@@ -1,7 +1,7 @@
 import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
-import * as kv from "./kv_store.tsx";
+import * as kv from "./kv_store.ts";
 
 const app = new Hono();
 
@@ -30,13 +30,18 @@ app.onError((err, c) => {
 // KV key prefix for this app
 const PREFIX = "ds:";
 
-// All state keys stored in KV
+// All state keys stored in KV. MUST stay in sync with the keys the client
+// reads/writes in src/app/store/data-store.tsx — any key missing here causes
+// PUT /state/:key to return HTTP 400, which the client silently swallowed
+// before this fix.
 const STATE_KEYS = [
   "homeArticle",
   "changeLogs",
   "typographyArticle",
   "colorTokens",
+  "sizeTokens",
   "colorArticle",
+  "sizeArticle",
   "iconologyArticle",
   "icons",
   "patterns",

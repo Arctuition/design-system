@@ -13,6 +13,7 @@ export function ColorArticleEditor() {
       backTo="/cms/color-editor"
       backLabel="Back"
       articleKey="color"
+      serverStateKey="colorArticle"
       initialValue={colorArticle}
       onSave={setColorArticle}
     />
