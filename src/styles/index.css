@@ -384,3 +384,47 @@
     grid-template-columns: 1fr !important;
   }
 }
+
+/* ─── Shiki code block overrides ─────────────────────────────────────────
+   Shiki dual-theme mode emits CSS variables for both themes:
+     --shiki-light, --shiki-light-bg  (default)
+     --shiki-dark,  --shiki-dark-bg   (when .dark ancestor)
+   We override the background to match our design tokens, but keep shiki's
+   per-token foreground colors via CSS vars.
+*/
+.shiki-block {
+  overflow-x: auto;
+}
+
+.shiki-block pre.shiki {
+  margin: 0;
+  padding: 1.25rem;
+  background-color: var(--secondary) !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  white-space: pre;
+  overflow-x: auto;
+  color: var(--shiki-light);
+}
+
+.shiki-block pre.shiki code {
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+}
+
+.shiki-block pre.shiki span {
+  color: var(--shiki-light);
+}
+
+/* Dark mode — switch to shiki dark theme tokens. */
+.dark .shiki-block pre.shiki,
+.dark .shiki-block pre.shiki span {
+  color: var(--shiki-dark);
+}
+.dark .shiki-block pre.shiki {
+  background-color: var(--secondary) !important;
+}

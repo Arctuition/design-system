@@ -5,23 +5,24 @@ import { Button } from "../components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs";
 import { CssSyntaxBlock } from "../components/shared/CssSyntaxBlock";
 import {
-  getSizeTokens,
-  exportSizeCSSAsZip,
-  buildGroupedSizeCss,
-  buildGlobalSizeCss,
-  SIZE_MODES,
-  type SizeMode,
-} from "../components/shared/size-json-token-utils";
+  getFontTokens,
+  exportFontCSSAsZip,
+  FONT_MODES,
+  type FontMode,
+} from "../components/shared/font-token-utils";
 
-type SizeTab = SizeMode | "global";
+function buildCss(mode: FontMode): string {
+  const lines = getFontTokens(mode).map(t => `  ${t.cssVar}: ${t.value};`);
+  return `:root {\n${lines.join("\n")}\n}`;
+}
 
-export function SizeTokensPage() {
-  const [activeTab, setActiveTab] = useState<SizeTab>("web-desktop");
+export function TypographyTokensPage() {
+  const [activeMode, setActiveMode] = useState<FontMode>("web-desktop");
 
   const handleExport = async () => {
     try {
-      await exportSizeCSSAsZip();
-      toast.success("Exported size-tokens.zip (5 CSS files)");
+      await exportFontCSSAsZip();
+      toast.success("Exported font-tokens.zip (4 CSS files)");
     } catch {
       toast.error("Failed to export CSS files.");
     }
@@ -31,7 +32,7 @@ export function SizeTokensPage() {
     <div className="max-w-[900px] mx-auto px-8 py-10">
       <div className="flex items-center justify-between mb-1 flex-wrap gap-3">
         <h1 style={{ fontSize: "var(--text-h2)", fontWeight: "var(--font-weight-normal)" }}>
-          Size & Space Tokens
+          Typography Tokens
         </h1>
         <Button variant="outline" onClick={handleExport}>
           <Download className="size-4 mr-1.5" /> Export CSS VAR (.zip)
@@ -39,21 +40,17 @@ export function SizeTokensPage() {
       </div>
       <div className="h-px bg-border mt-3 mb-6" />
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SizeTab)}>
+      <Tabs value={activeMode} onValueChange={(v) => setActiveMode(v as FontMode)}>
         <TabsList className="mb-6">
-          {SIZE_MODES.map(({ key, label }) => (
+          {FONT_MODES.map(({ key, label }) => (
             <TabsTrigger key={key} value={key}>{label}</TabsTrigger>
           ))}
-          <TabsTrigger value="global">Global</TabsTrigger>
         </TabsList>
-        {SIZE_MODES.map(({ key }) => (
+        {FONT_MODES.map(({ key }) => (
           <TabsContent key={key} value={key} className="mt-0">
-            <CssSyntaxBlock code={buildGroupedSizeCss(getSizeTokens(key))} maxHeight="70vh" />
+            <CssSyntaxBlock code={buildCss(key)} />
           </TabsContent>
         ))}
-        <TabsContent value="global" className="mt-0">
-          <CssSyntaxBlock code={buildGlobalSizeCss()} maxHeight="70vh" />
-        </TabsContent>
       </Tabs>
     </div>
   );
