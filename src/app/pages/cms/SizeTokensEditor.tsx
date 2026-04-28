@@ -2,8 +2,9 @@ import React, { useRef, useState, useMemo } from "react";
 import { Navigate, Link } from "react-router";
 import { useAppData } from "../../store/data-store";
 import { Button } from "../../components/ui/button";
-import { ArrowLeft, Upload, Download, Info, CheckCircle2, AlertTriangle, XCircle, Package } from "lucide-react";
+import { ArrowLeft, Upload, Download, Info, CheckCircle2, AlertTriangle, XCircle, Package, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -154,6 +155,27 @@ export function SizeTokensEditor() {
       </h1>
       <div className="h-px bg-border mt-3 mb-6" />
 
+      <Tabs defaultValue="tokens">
+        <TabsList>
+          <TabsTrigger value="tokens">Token Management</TabsTrigger>
+          <TabsTrigger value="article">Article</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="article" className="mt-6">
+          <div className="border border-border rounded-[var(--radius-card)] p-5 bg-secondary/10">
+            <p className="text-card-foreground mb-3" style={{ fontSize: "var(--text-p)" }}>
+              Edit the Size &amp; Space Tokens article content in the full-page editor.
+            </p>
+            <Link to="/cms/size-editor/article">
+              <Button type="button">
+                <Pencil className="size-4 mr-1.5" /> Open Article Editor
+              </Button>
+            </Link>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="tokens" className="mt-6">
+
       {/* Info banner */}
       <div className="flex items-start gap-3 p-4 mb-6 border border-primary/20 rounded-[var(--radius-card)] bg-primary/5">
         <Info className="size-4 text-primary mt-0.5 shrink-0" />
@@ -241,6 +263,8 @@ export function SizeTokensEditor() {
 
       {/* Preview */}
       <PreviewSection sizeTokens={sizeTokens} />
+        </TabsContent>
+      </Tabs>
 
       {/* Confirmation modal */}
       <BulkConfirmDialog

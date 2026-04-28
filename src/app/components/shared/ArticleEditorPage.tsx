@@ -33,9 +33,22 @@ export function ArticleEditorPage({
   // Track what was last saved so we can compare against it for dirty detection
   const savedContentRef = useRef(initialValue);
 
-  // Normalize HTML to plain text for meaningful dirty comparison
+  // Normalize HTML for meaningful dirty comparison.
+  // We translate block boundaries and <br> into "\n" before stripping tags so
+  // that adding/removing line breaks counts as a change (otherwise collapsing
+  // all whitespace would hide pure-line-break edits and leave Save disabled).
+  // Inline-tag churn (e.g. selection-driven span attributes) still normalizes
+  // away because non-newline whitespace is collapsed.
   const normalizeForComparison = useCallback((html: string) => {
-    return html.replace(/<[^>]*>/g, "").replace(/&nbsp;/gi, " ").replace(/\s+/g, "").trim();
+    return html
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|h[1-6]|li|tr|hr|blockquote|pre|figure|figcaption|table)>/gi, "\n")
+      .replace(/<hr\s*\/?>/gi, "\n")
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
   }, []);
 
   const handleChange = useCallback((html: string) => {
