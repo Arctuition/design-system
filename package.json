@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "predev": "node scripts/generate-llms-txt.mjs",
+    "prebuild": "node scripts/generate-llms-txt.mjs",
+    "generate:llms": "node scripts/generate-llms-txt.mjs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
