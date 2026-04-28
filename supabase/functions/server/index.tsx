@@ -30,13 +30,18 @@ app.onError((err, c) => {
 // KV key prefix for this app
 const PREFIX = "ds:";
 
-// All state keys stored in KV
+// All state keys stored in KV. MUST stay in sync with the keys the client
+// reads/writes in src/app/store/data-store.tsx — any key missing here causes
+// PUT /state/:key to return HTTP 400, which the client silently swallowed
+// before this fix.
 const STATE_KEYS = [
   "homeArticle",
   "changeLogs",
   "typographyArticle",
   "colorTokens",
+  "sizeTokens",
   "colorArticle",
+  "sizeArticle",
   "iconologyArticle",
   "icons",
   "patterns",

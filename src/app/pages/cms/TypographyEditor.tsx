@@ -43,6 +43,7 @@ export function TypographyArticleEditor() {
       backTo="/cms/typography-editor"
       backLabel="Back"
       articleKey="typography"
+      serverStateKey="typographyArticle"
       initialValue={typographyArticle}
       onSave={setTypographyArticle}
     />

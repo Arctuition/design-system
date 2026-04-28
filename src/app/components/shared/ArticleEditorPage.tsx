@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router";
 import { RichTextEditor } from "./RichTextEditor";
 import { Button } from "../ui/button";
-import { ArrowLeft, Save, X, History, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, X, History, RotateCcw, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppData, type ArticleVersion } from "../../store/data-store";
 
@@ -10,7 +10,15 @@ interface ArticleEditorPageProps {
   title: string;
   backTo: string;
   backLabel?: string;
+  /** Identifier used for version history. Caller-defined (e.g. "size", "color"). */
   articleKey: string;
+  /**
+   * The data-store key the server actually persists this article under
+   * (e.g. "sizeArticle", "colorArticle"). Required so we can show real
+   * "Saving…" state and confirm the server actually accepted the write
+   * before telling the user "Saved".
+   */
+  serverStateKey: string;
   initialValue: string;
   onSave: (html: string) => void;
 }
@@ -20,10 +28,19 @@ export function ArticleEditorPage({
   backTo,
   backLabel = "Back to CMS",
   articleKey,
+  serverStateKey,
   initialValue,
   onSave,
 }: ArticleEditorPageProps) {
-  const { saveArticleWithVersion, getArticleVersions, restoreArticleVersion, deleteArticleVersion } = useAppData();
+  const {
+    saveArticleWithVersion,
+    getArticleVersions,
+    restoreArticleVersion,
+    deleteArticleVersion,
+    syncingKeys,
+    saveKeyNow,
+  } = useAppData();
+  const isSaving = syncingKeys.has(serverStateKey);
   const navigate = useNavigate();
   const [draft, setDraft] = useState(initialValue);
   const [dirty, setDirty] = useState(false);
@@ -59,12 +76,28 @@ export function ArticleEditorPage({
     setDirty(currentNorm !== savedNorm);
   }, [normalizeForComparison]);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
+    // Snapshot version + push the new content into local state via the
+    // existing flow (this also writes localStorage and queues a debounced
+    // sync — but we'll override that with an immediate awaitable PUT below).
     saveArticleWithVersion(articleKey, draft, onSave);
-    savedContentRef.current = draft;
+    // Optimistically clear the dirty flag so the editor doesn't double-fire
+    // on rapid Ctrl+S; if the save fails we restore it below.
     setDirty(false);
-    toast.success(`${title} saved`);
-  }, [articleKey, draft, onSave, saveArticleWithVersion, title]);
+    const previousSaved = savedContentRef.current;
+    savedContentRef.current = draft;
+
+    const ok = await saveKeyNow(serverStateKey, draft);
+    if (ok) {
+      toast.success(`${title} saved`);
+    } else {
+      // Roll the dirty flag back so the user can retry — and restore the
+      // baseline so dirty detection compares against the right reference.
+      savedContentRef.current = previousSaved;
+      setDirty(true);
+      // The persistent failure toast is already raised by saveKeyNow.
+    }
+  }, [articleKey, draft, onSave, saveArticleWithVersion, saveKeyNow, serverStateKey, title]);
 
   const handleCancel = useCallback(() => {
     setDraft(initialValue);
@@ -155,25 +188,31 @@ export function ArticleEditorPage({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            {dirty && (
+            {isSaving ? (
+              <span className="text-muted-foreground mr-2 flex items-center gap-1.5" style={{ fontSize: "var(--text-label)" }}>
+                <Loader2 className="size-3.5 animate-spin" /> Saving…
+              </span>
+            ) : dirty ? (
               <span className="text-muted-foreground mr-2" style={{ fontSize: "var(--text-label)" }}>
                 Unsaved changes
               </span>
-            )}
+            ) : null}
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowVersions(!showVersions)}
               className={showVersions ? "bg-primary/10 text-primary" : ""}
               type="button"
+              disabled={isSaving}
             >
               <History className="size-4 mr-1" /> Versions ({versions.length})
             </Button>
-            <Button variant="ghost" onClick={handleCancel} disabled={!dirty} type="button">
+            <Button variant="ghost" onClick={handleCancel} disabled={!dirty || isSaving} type="button">
               <X className="size-4 mr-1.5" /> Cancel
             </Button>
-            <Button onClick={handleSave} disabled={!dirty} type="button">
-              <Save className="size-4 mr-1.5" /> Save
+            <Button onClick={handleSave} disabled={!dirty || isSaving} type="button">
+              {isSaving ? <Loader2 className="size-4 mr-1.5 animate-spin" /> : <Save className="size-4 mr-1.5" />}
+              {isSaving ? "Saving…" : "Save"}
             </Button>
           </div>
         </div>

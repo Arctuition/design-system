@@ -43,6 +43,7 @@ export function HomeArticleEditor() {
       backTo="/cms/home-editor"
       backLabel="Back"
       articleKey="home"
+      serverStateKey="homeArticle"
       initialValue={homeArticle}
       onSave={setHomeArticle}
     />

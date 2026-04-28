@@ -655,6 +655,7 @@ export function IconArticleEditor() {
       backTo="/cms/icon-editor"
       backLabel="Back"
       articleKey="iconology"
+      serverStateKey="iconologyArticle"
       initialValue={iconologyArticle}
       onSave={setIconologyArticle}
     />
