@@ -2,17 +2,17 @@ import React from "react";
 import { Link } from "react-router";
 import { MarkdownRenderer } from "../components/shared/MarkdownRenderer";
 import { ArrowRight, Layers } from "lucide-react";
-import typographyMd from "../../../tokens/tokens-typography.md?raw";
+import sizeMd from "../../../tokens/tokens-size-space.md?raw";
 
-export function TypographyPage() {
+export function SizePage() {
   return (
     <div className="max-w-[800px] mx-auto px-8 py-10">
-      <MarkdownRenderer content={typographyMd} />
+      <MarkdownRenderer content={sizeMd} />
 
       {/* Entry point */}
       <div className="mt-12">
         <Link
-          to="/typography/tokens"
+          to="/size/tokens"
           className="inline-flex items-center justify-between w-full max-w-sm p-5 border border-border rounded-[var(--radius-card)] hover:border-primary hover:bg-secondary/30 transition-colors group"
         >
           <div className="flex items-center gap-3">
