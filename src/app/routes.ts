@@ -19,6 +19,9 @@ import { CMSDashboard } from "./pages/cms/CMSDashboard";
 import { HomeEditor, HomeArticleEditor } from "./pages/cms/HomeEditor";
 import { ChangeLogEditor } from "./pages/cms/ChangeLogEditor";
 import { ColorTokensEditor } from "./pages/cms/ColorTokensEditor";
+import { ColorArticleEditor } from "./pages/cms/ColorArticleEditor";
+import { SizeTokensEditor } from "./pages/cms/SizeTokensEditor";
+import { SizeArticleEditor } from "./pages/cms/SizeArticleEditor";
 import { IconEditor, IconArticleEditor } from "./pages/cms/IconEditor";
 import { PatternsEditor } from "./pages/cms/PatternsEditor";
 import { PatternArticleEditor } from "./pages/cms/PatternArticleEditor";
@@ -65,6 +68,9 @@ export const router = createBrowserRouter([
           { path: "cms/home-editor/edit", Component: HomeArticleEditor },
           { path: "cms/changelog-editor", Component: ChangeLogEditor },
           { path: "cms/color-editor", Component: ColorTokensEditor },
+          { path: "cms/color-editor/article", Component: ColorArticleEditor },
+          { path: "cms/size-editor", Component: SizeTokensEditor },
+          { path: "cms/size-editor/article", Component: SizeArticleEditor },
           { path: "cms/icon-editor", Component: IconEditor },
           { path: "cms/icon-editor/article", Component: IconArticleEditor },
           { path: "cms/patterns-editor", Component: PatternsEditor },

@@ -3,19 +3,19 @@ import { Navigate } from "react-router";
 import { useAppData } from "../../store/data-store";
 import { ArticleEditorPage } from "../../components/shared/ArticleEditorPage";
 
-export function ColorArticleEditor() {
-  const { isAuthenticated, colorArticle, setColorArticle } = useAppData();
+export function SizeArticleEditor() {
+  const { isAuthenticated, sizeArticle, setSizeArticle } = useAppData();
   if (!isAuthenticated) return <Navigate to="/cms/login" replace />;
 
   return (
     <ArticleEditorPage
-      title="Edit Color Tokens Article"
-      backTo="/cms/color-editor"
+      title="Edit Size & Space Tokens Article"
+      backTo="/cms/size-editor"
       backLabel="Back"
-      articleKey="color"
-      serverStateKey="colorArticle"
-      initialValue={colorArticle}
-      onSave={setColorArticle}
+      articleKey="size"
+      serverStateKey="sizeArticle"
+      initialValue={sizeArticle}
+      onSave={setSizeArticle}
     />
   );
 }

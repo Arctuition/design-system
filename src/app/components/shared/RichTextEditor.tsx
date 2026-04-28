@@ -6,9 +6,13 @@ import {
   Image, Table, Minus, Undo, Redo, AlignLeft, AlignCenter, AlignRight,
   Trash2, ArrowDown, ArrowRight, TableCellsMerge, TableCellsSplit,
   X, Upload, ChevronDown, LayoutTemplate, AlertCircle, Copy, Scissors,
-  ClipboardPaste, Quote, Code, SquareCode,
+  ClipboardPaste, Quote, Code, SquareCode, FileUp,
 } from "lucide-react";
 import { ColorPickerDropdown, parseColorToHex } from "./RteColorPicker";
+import { highlightCodeIn, loadHljs } from "./syntax-highlight";
+// Theme CSS for highlighted code spans (used in the MD upload preview and the
+// in-editor code-block highlighting).
+import "highlight.js/styles/github.css";
 
 // ─── Module-level clipboard ───────────────────────────────────────────────────
 // Stores the last cut/copied rich element for reliable paste within the session.
@@ -103,7 +107,8 @@ function parseMarkdownToHTML(text: string): string {
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;');
-        result.push(`<pre><code>${escapedCode}</code></pre>`);
+        const langClass = codeBlockLang ? ` class="language-${codeBlockLang.replace(/[^a-zA-Z0-9_+-]/g, '')}"` : '';
+        result.push(`<pre><code${langClass}>${escapedCode}</code></pre>`);
         codeBlockContent = [];
         inCodeBlock = false;
         codeBlockLang = '';
@@ -142,6 +147,72 @@ function parseMarkdownToHTML(text: string): string {
       flushList();
       result.push('<hr>');
       continue;
+    }
+
+    // GFM Tables
+    //   | h1 | h2 |
+    //   |----|----|
+    //   | c1 | c2 |
+    if (trimmed.includes('|') && i + 1 < lines.length) {
+      const sep = lines[i + 1].trim();
+      const isSeparator = /^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/.test(sep);
+      if (isSeparator) {
+        flushBlockquote();
+        flushList();
+        const splitRow = (s: string): string[] => {
+          let t = s.trim();
+          if (t.startsWith('|')) t = t.slice(1);
+          if (t.endsWith('|')) t = t.slice(0, -1);
+          // Split on unescaped | (treat \| as literal)
+          const cells: string[] = [];
+          let buf = '';
+          for (let k = 0; k < t.length; k++) {
+            const ch = t[k];
+            if (ch === '\\' && t[k + 1] === '|') { buf += '|'; k++; continue; }
+            if (ch === '|') { cells.push(buf.trim()); buf = ''; continue; }
+            buf += ch;
+          }
+          cells.push(buf.trim());
+          return cells;
+        };
+        const aligns = splitRow(sep).map((c) => {
+          const left = c.startsWith(':');
+          const right = c.endsWith(':');
+          if (left && right) return 'center';
+          if (right) return 'right';
+          if (left) return 'left';
+          return '';
+        });
+        const headers = splitRow(trimmed);
+        const colCount = headers.length;
+        let html = '<table class="rte-table"><thead><tr>';
+        headers.forEach((h, ci) => {
+          const a = aligns[ci];
+          const styleAttr = a ? ` style="text-align:${a};"` : '';
+          html += `<th${styleAttr}>${processInlineMarkdown(h)}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+        let r = i + 2;
+        for (; r < lines.length; r++) {
+          const rowLine = lines[r].trim();
+          if (rowLine === '' || !rowLine.includes('|')) break;
+          const cells = splitRow(rowLine);
+          // Pad / trim to header width
+          while (cells.length < colCount) cells.push('');
+          if (cells.length > colCount) cells.length = colCount;
+          html += '<tr>';
+          cells.forEach((c, ci) => {
+            const a = aligns[ci];
+            const styleAttr = a ? ` style="text-align:${a};"` : '';
+            html += `<td${styleAttr}>${processInlineMarkdown(c)}</td>`;
+          });
+          html += '</tr>';
+        }
+        html += '</tbody></table>';
+        result.push(html);
+        i = r - 1; // outer loop will ++ to r
+        continue;
+      }
     }
 
     // Headings: # H1 through ###### H6
@@ -209,11 +280,15 @@ function parseMarkdownToHTML(text: string): string {
       flushList();
     }
 
-    // Empty line
+    // Empty line — don't emit a spacer paragraph. Block elements
+    // (h1-6, p, hr, pre, blockquote, table, ul/ol) already get adequate
+    // vertical spacing from the article-content CSS, so injecting
+    // <p><br></p> for every blank line in the source MD just doubles
+    // that gap. We still flush any open blockquote/list so the empty
+    // line acts as a context terminator.
     if (trimmed === '') {
       flushBlockquote();
       flushList();
-      result.push('<p><br></p>');
       continue;
     }
 
@@ -235,10 +310,118 @@ function parseMarkdownToHTML(text: string): string {
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
-    result.push(`<pre><code>${escapedCode}</code></pre>`);
+    const langClass = codeBlockLang ? ` class="language-${codeBlockLang.replace(/[^a-zA-Z0-9_+-]/g, '')}"` : '';
+    result.push(`<pre><code${langClass}>${escapedCode}</code></pre>`);
   }
 
   return result.join('');
+}
+
+// ─── Markdown integrity report ────────────────────────────────────────────────
+
+interface MarkdownIssue {
+  level: "warning" | "info";
+  message: string;
+  line?: number;
+}
+
+/**
+ * Scan markdown text for content the editor can't render natively.
+ * Returns a list of issues (no parsing — purely diagnostic).
+ */
+function analyzeMarkdown(text: string): MarkdownIssue[] {
+  const issues: MarkdownIssue[] = [];
+  const lines = text.split(/\r?\n/);
+  let inFence = false;
+  let fenceLang = "";
+  const seenLangs = new Set<string>();
+  let sawFootnoteDef = false;
+  let sawFootnoteRef = false;
+  let sawRefLinkDef = false;
+  let sawRawHtmlBlock = false;
+  let sawNestedList = false;
+  let sawRemoteImage = false;
+  let sawTable = false;
+  let unbalancedBacktick = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // Fenced code blocks — skip content
+    if (trimmed.startsWith("```")) {
+      if (inFence) { inFence = false; fenceLang = ""; }
+      else { inFence = true; fenceLang = trimmed.slice(3).trim(); if (fenceLang) seenLangs.add(fenceLang); }
+      continue;
+    }
+    if (inFence) continue;
+
+    // Footnote reference / definition: [^id]
+    if (/\[\^[^\]]+\]:/.test(line)) sawFootnoteDef = true;
+    else if (/\[\^[^\]]+\]/.test(line)) sawFootnoteRef = true;
+
+    // Reference-style link definition:  [label]: url
+    if (/^\s*\[[^\]]+\]:\s*\S+/.test(line)) sawRefLinkDef = true;
+
+    // Raw HTML block (line starts with a tag that's not the parser's known passthroughs)
+    if (/^<(?!img|hr|br)\w+[\s>]/.test(trimmed) && !trimmed.startsWith("<!--")) {
+      sawRawHtmlBlock = true;
+    }
+
+    // Nested list (indented bullet/numbered after non-empty leading whitespace)
+    if (/^\s{2,}([-*]|\d+\.)\s+/.test(line) && line.trimStart().length > 0) {
+      sawNestedList = true;
+    }
+
+    // Image with remote URL — editor's image system uses figure wrappers; the
+    // parser inserts a bare <img>, which displays but lacks caption controls.
+    const imgMatches = line.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g);
+    for (const m of imgMatches) {
+      const url = m[1];
+      if (!/^data:/.test(url)) sawRemoteImage = true;
+    }
+
+    // Table detection (header line + separator on next line)
+    if (trimmed.includes("|") && i + 1 < lines.length) {
+      const sep = lines[i + 1].trim();
+      if (/^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/.test(sep)) {
+        sawTable = true;
+      }
+    }
+
+    // Unbalanced inline backticks on a single non-code line
+    const tickCount = (line.match(/`/g) || []).length;
+    if (tickCount % 2 === 1) unbalancedBacktick = true;
+  }
+
+  if (inFence) {
+    issues.push({ level: "warning", message: "Unclosed fenced code block (```). Content after the opening fence will be inserted as a single code block." });
+  }
+  if (sawFootnoteDef || sawFootnoteRef) {
+    issues.push({ level: "warning", message: "Footnotes ([^id]) are not supported and will be inserted as plain text." });
+  }
+  if (sawRefLinkDef) {
+    issues.push({ level: "warning", message: "Reference-style link definitions ([label]: url) are not supported. Use inline links [text](url) instead." });
+  }
+  if (sawRawHtmlBlock) {
+    issues.push({ level: "warning", message: "Raw HTML blocks were detected. They will be inserted as-is — make sure the HTML is trusted." });
+  }
+  if (sawNestedList) {
+    issues.push({ level: "warning", message: "Nested (indented) lists are flattened — sub-items will appear at the top level." });
+  }
+  if (sawRemoteImage) {
+    issues.push({ level: "info", message: "Images with remote URLs will be inserted as plain images (no caption / description fields)." });
+  }
+  if (seenLangs.size > 0) {
+    issues.push({ level: "info", message: `Code-block language hints detected (${[...seenLangs].join(", ")}) — syntax highlighting will be applied on the published page.` });
+  }
+  if (sawTable) {
+    issues.push({ level: "info", message: "Tables will be converted to editable HTML tables." });
+  }
+  if (unbalancedBacktick) {
+    issues.push({ level: "warning", message: "Unbalanced backticks (`) detected on at least one line — inline code may render incorrectly." });
+  }
+  return issues;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -616,6 +799,16 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
   const [imageUrl, setImageUrl] = useState("");
   const [imageCaption, setImageCaption] = useState("");
   const savedSelectionRef = useRef<Range | null>(null);
+
+  // ── Markdown upload dialog state ──
+  const mdFileInputRef = useRef<HTMLInputElement>(null);
+  const mdPreviewRef = useRef<HTMLDivElement>(null);
+  const [showMdDialog, setShowMdDialog] = useState(false);
+  const [mdFileName, setMdFileName] = useState("");
+  const [mdSourceText, setMdSourceText] = useState("");
+  const [mdParsedHtml, setMdParsedHtml] = useState("");
+  const [mdIssues, setMdIssues] = useState<MarkdownIssue[]>([]);
+  const [mdError, setMdError] = useState<string | null>(null);
 
   // ─── Restriction helper ────────────────────────────────────────────────────
 
@@ -1274,6 +1467,102 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
     setShowImageDialog(false);
     savedSelectionRef.current = null;
   }, [imageUrl, imageCaption, onChange]);
+
+  // ─── Markdown upload helpers ───────────────────────────────────────────────
+
+  /** Trigger the hidden file picker. Saves caret so we can restore it on confirm. */
+  const openMdUpload = useCallback(() => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.anchorNode)) {
+      savedSelectionRef.current = sel.getRangeAt(0).cloneRange();
+    } else {
+      savedSelectionRef.current = null;
+    }
+    mdFileInputRef.current?.click();
+  }, []);
+
+  const handleMdFileSelected = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (mdFileInputRef.current) mdFileInputRef.current.value = ""; // allow re-pick same file
+    if (!file) return;
+
+    // Integrity checks
+    setMdError(null);
+    setMdFileName(file.name);
+
+    const nameOk = /\.(md|markdown|mdown|mkd)$/i.test(file.name);
+    const typeOk = !file.type || /^text\//.test(file.type) || file.type === "application/octet-stream";
+    if (!nameOk && !typeOk) {
+      setMdError(`"${file.name}" doesn't look like a Markdown file. Expected .md or .markdown.`);
+      setMdSourceText(""); setMdParsedHtml(""); setMdIssues([]);
+      setShowMdDialog(true);
+      return;
+    }
+    // 5 MB cap — keeps the modal preview snappy.
+    if (file.size > 5 * 1024 * 1024) {
+      setMdError(`"${file.name}" is ${(file.size / 1024 / 1024).toFixed(1)} MB — limit is 5 MB.`);
+      setMdSourceText(""); setMdParsedHtml(""); setMdIssues([]);
+      setShowMdDialog(true);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => {
+      setMdError("Failed to read the file.");
+      setMdSourceText(""); setMdParsedHtml(""); setMdIssues([]);
+      setShowMdDialog(true);
+    };
+    reader.onload = (ev) => {
+      const text = String(ev.target?.result || "");
+      // Strip BOM
+      const clean = text.replace(/^\uFEFF/, "");
+      const issues = analyzeMarkdown(clean);
+      let html = "";
+      try {
+        html = parseMarkdownToHTML(clean);
+      } catch (err) {
+        setMdError("The file couldn't be parsed as Markdown.");
+        setMdSourceText(clean); setMdParsedHtml(""); setMdIssues(issues);
+        setShowMdDialog(true);
+        return;
+      }
+      if (!clean.trim()) {
+        setMdError("The file is empty.");
+      }
+      setMdSourceText(clean);
+      setMdParsedHtml(html);
+      setMdIssues(issues);
+      setShowMdDialog(true);
+    };
+    reader.readAsText(file);
+  }, []);
+
+  const confirmMdInsert = useCallback(() => {
+    if (!mdParsedHtml) { setShowMdDialog(false); return; }
+    // Restore caret first so insertHTML lands at the original location.
+    editorRef.current?.focus();
+    const sel = window.getSelection();
+    if (savedSelectionRef.current && editorRef.current?.contains(savedSelectionRef.current.startContainer)) {
+      sel?.removeAllRanges();
+      sel?.addRange(savedSelectionRef.current);
+    }
+    // Insert at caret without replacing existing content. If selection is a range,
+    // execCommand("insertHTML") will replace just that range — matching paste behaviour.
+    document.execCommand("insertHTML", false, mdParsedHtml);
+    if (editorRef.current) {
+      isInternalChange.current = true;
+      onChange(editorRef.current.innerHTML);
+    }
+    setShowMdDialog(false);
+    savedSelectionRef.current = null;
+    setMdSourceText(""); setMdParsedHtml(""); setMdIssues([]); setMdError(null); setMdFileName("");
+  }, [mdParsedHtml, onChange]);
+
+  const cancelMdInsert = useCallback(() => {
+    setShowMdDialog(false);
+    savedSelectionRef.current = null;
+    setMdSourceText(""); setMdParsedHtml(""); setMdIssues([]); setMdError(null); setMdFileName("");
+  }, []);
 
   const handleImageFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -2530,6 +2819,23 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
 
   const handleInput = useCallback(() => {
     if (editorRef.current) {
+      // If the user is editing inside a highlighted code block, invalidate its
+      // highlight so the next idle pass re-runs hljs on the up-to-date text.
+      // We don't strip the existing spans now — that would jump the caret.
+      const isel = window.getSelection();
+      if (isel && isel.anchorNode) {
+        let n: Node | null = isel.anchorNode;
+        while (n && n !== editorRef.current) {
+          if (n.nodeType === 1) {
+            const el = n as HTMLElement;
+            if (el.tagName === "CODE" && el.parentElement?.tagName === "PRE") {
+              el.removeAttribute("data-highlighted");
+              break;
+            }
+          }
+          n = n.parentNode;
+        }
+      }
       // Sync the data-empty attribute on the active caption/description field.
       const sel = window.getSelection();
       if (sel && sel.rangeCount > 0) {
@@ -2584,6 +2890,61 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
       if (restrictionTimerRef.current) clearTimeout(restrictionTimerRef.current);
     };
   }, []);
+
+  // ─── Code-block syntax highlighting (in-editor) ───────────────────────────
+  // Strategy: re-highlight code blocks whenever the value settles, but skip the
+  // block that currently contains the caret so we don't blow up the user's
+  // selection mid-edit. handleInput clears `data-highlighted` on the focused
+  // block; this effect re-runs hljs on it once the user moves the caret away
+  // (or the editor blurs).
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const root = editorRef.current;
+      if (!root) return;
+      // Find the pre code (if any) currently holding the caret — leave that
+      // one alone until the user moves on.
+      const sel = window.getSelection();
+      let activeCode: HTMLElement | null = null;
+      if (sel && sel.anchorNode && root.contains(sel.anchorNode)) {
+        let n: Node | null = sel.anchorNode;
+        while (n && n !== root) {
+          if (n.nodeType === 1) {
+            const el = n as HTMLElement;
+            if (el.tagName === "CODE" && el.parentElement?.tagName === "PRE") {
+              activeCode = el;
+              break;
+            }
+          }
+          n = n.parentNode;
+        }
+      }
+      const targets = Array.from(root.querySelectorAll<HTMLElement>("pre code"))
+        .filter((el) => el !== activeCode && el.dataset.highlighted !== "yes");
+      if (targets.length === 0) return;
+      loadHljs().then((hljs) => {
+        for (const el of targets) {
+          if (!el.isConnected) continue;
+          if (el === activeCode) continue;
+          if (el.dataset.highlighted === "yes") continue;
+          try { hljs.highlightElement(el); } catch {}
+        }
+        // After hljs writes new spans the contenteditable's onChange isn't
+        // triggered (no input event), so flush the new innerHTML to the parent
+        // so the highlighted markup persists across saves.
+        if (editorRef.current) {
+          isInternalChange.current = true;
+          onChange(editorRef.current.innerHTML);
+        }
+      });
+    }, 400);
+    return () => clearTimeout(id);
+  }, [value, onChange]);
+
+  // ─── Code-block highlighting in the MD upload preview dialog ─────────────
+  useEffect(() => {
+    if (!showMdDialog || !mdParsedHtml) return;
+    return highlightCodeIn(mdPreviewRef.current);
+  }, [showMdDialog, mdParsedHtml]);
 
   // ─── Derived state ────────────────────────────────────────────────────────
 
@@ -2685,6 +3046,7 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
     { icon: <Minus className="size-4" />, action: () => exec("insertHorizontalRule"), title: "Horizontal Rule", group: 5 },
     { icon: <Image className="size-4" />, action: openImageDialog, title: "Insert Image", group: 5 },
     { icon: <Table className="size-4" />, action: insertTable, title: "Insert Table", group: 5 },
+    { icon: <FileUp className="size-4" />, action: openMdUpload, title: "Upload Markdown File", group: 5 },
   ];
 
   const groups: Array<ToolItem[]> = [];
@@ -3146,6 +3508,124 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
             <div className="flex gap-2 mt-5 justify-end">
               <Button variant="ghost" onClick={() => setShowImageDialog(false)} type="button">Cancel</Button>
               <Button onClick={insertImageFromUrl} disabled={!imageUrl.trim()} type="button">Insert Image</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Hidden Markdown file input (always rendered so the toolbar button can trigger it) ── */}
+      <input
+        ref={mdFileInputRef}
+        type="file"
+        accept=".md,.markdown,.mdown,.mkd,text/markdown"
+        className="hidden"
+        onChange={handleMdFileSelected}
+      />
+
+      {/* ── Markdown upload confirmation dialog ── */}
+      {showMdDialog && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50"
+          onClick={cancelMdInsert}
+        >
+          <div
+            className="bg-card border border-border rounded-[var(--radius-card)] p-6 w-full mx-4 flex flex-col"
+            style={{ boxShadow: "0px 10px 30px rgba(0,0,0,0.2)", maxWidth: 720, maxHeight: "85vh" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3 shrink-0">
+              <div>
+                <h3 className="text-foreground" style={{ fontSize: "var(--text-h4)", fontWeight: "var(--font-weight-medium)" }}>
+                  Upload Markdown File
+                </h3>
+                {mdFileName && (
+                  <p className="text-muted-foreground mt-0.5" style={{ fontSize: "var(--text-label)" }}>
+                    {mdFileName}
+                  </p>
+                )}
+              </div>
+              <Button variant="ghost" size="icon" className="size-7" onClick={cancelMdInsert} type="button">
+                <X className="size-4" />
+              </Button>
+            </div>
+
+            {/* Error state */}
+            {mdError && (
+              <div
+                className="flex items-start gap-2 p-3 mb-3 rounded-[var(--radius)] border shrink-0"
+                style={{ background: "rgba(220, 38, 38, 0.08)", borderColor: "rgba(220, 38, 38, 0.35)" }}
+              >
+                <AlertCircle className="size-4 mt-0.5 shrink-0" style={{ color: "rgb(220,38,38)" }} />
+                <span className="text-foreground" style={{ fontSize: "var(--text-label)" }}>{mdError}</span>
+              </div>
+            )}
+
+            {/* Issues list */}
+            {!mdError && mdIssues.length > 0 && (
+              <div className="mb-3 shrink-0">
+                <div
+                  className="text-muted-foreground mb-1.5"
+                  style={{ fontSize: "var(--text-label)", fontWeight: "var(--font-weight-medium)" }}
+                >
+                  Format check ({mdIssues.length} {mdIssues.length === 1 ? "note" : "notes"})
+                </div>
+                <ul className="space-y-1.5 border border-border rounded-[var(--radius)] p-2.5 bg-secondary/30 max-h-[140px] overflow-auto">
+                  {mdIssues.map((iss, idx) => (
+                    <li key={idx} className="flex items-start gap-2" style={{ fontSize: "var(--text-label)" }}>
+                      <AlertCircle
+                        className="size-3.5 mt-0.5 shrink-0"
+                        style={{ color: iss.level === "warning" ? "rgb(217, 119, 6)" : "var(--color-label-secondary)" }}
+                      />
+                      <span className="text-foreground">{iss.message}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Clean state — no issues */}
+            {!mdError && mdIssues.length === 0 && mdParsedHtml && (
+              <div
+                className="mb-3 p-2.5 rounded-[var(--radius)] border shrink-0"
+                style={{ background: "rgba(34, 197, 94, 0.08)", borderColor: "rgba(34, 197, 94, 0.35)", fontSize: "var(--text-label)" }}
+              >
+                <span className="text-foreground">No format issues detected — content is fully supported.</span>
+              </div>
+            )}
+
+            {/* Preview */}
+            {!mdError && mdParsedHtml && (
+              <>
+                <div
+                  className="text-muted-foreground mb-1.5 shrink-0"
+                  style={{ fontSize: "var(--text-label)", fontWeight: "var(--font-weight-medium)" }}
+                >
+                  Preview
+                </div>
+                <div
+                  ref={mdPreviewRef}
+                  className="rte-editor article-content border border-border rounded-[var(--radius)] p-3 overflow-auto bg-background flex-1 min-h-[120px]"
+                  style={{ maxHeight: "40vh" }}
+                  dangerouslySetInnerHTML={{ __html: mdParsedHtml }}
+                />
+                <p
+                  className="text-muted-foreground mt-2 shrink-0"
+                  style={{ fontSize: "var(--text-label)" }}
+                >
+                  The content above will be inserted at the caret. Existing text will not be deleted.
+                </p>
+              </>
+            )}
+
+            <div className="flex gap-2 mt-4 justify-end shrink-0">
+              <Button variant="ghost" onClick={cancelMdInsert} type="button">Cancel</Button>
+              <Button
+                onClick={confirmMdInsert}
+                disabled={!!mdError || !mdParsedHtml}
+                type="button"
+              >
+                Insert at caret
+              </Button>
             </div>
           </div>
         </div>

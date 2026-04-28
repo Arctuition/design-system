@@ -27,19 +27,45 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout 
   }
 }
 
-/** Load full app state from the server */
-export async function loadStateFromServer(): Promise<Record<string, any> | null> {
+/**
+ * Result of attempting to load state from the server.
+ *
+ * - `ok`    : the server responded successfully and returned non-empty data.
+ * - `empty` : the server responded successfully but has no data yet
+ *             (genuine fresh-install signal — safe to seed defaults).
+ * - `error` : the request failed (network down, non-OK HTTP, timeout, paused
+ *             Supabase project, etc). The caller MUST NOT seed defaults in
+ *             this case, because we don't actually know whether the server
+ *             is empty — seeding would overwrite real data on next sync
+ *             with new uid() rows once the server comes back.
+ */
+export type LoadStateResult =
+  | { status: "ok"; data: Record<string, any> }
+  | { status: "empty" }
+  | { status: "error"; reason: string };
+
+/** Load full app state from the server. */
+export async function loadStateFromServer(): Promise<LoadStateResult> {
+  let res: Response;
   try {
-    const res = await fetchWithTimeout(`${BASE}/state`, { headers: headers() }, 8000);
-    if (!res.ok) {
-      return null;
-    }
-    const json = await res.json();
-    return json.data ?? null;
+    res = await fetchWithTimeout(`${BASE}/state`, { headers: headers() }, 8000);
   } catch (err) {
-    // Silently fail and use localStorage fallback
-    return null;
+    return { status: "error", reason: `network: ${(err as Error)?.message ?? "unknown"}` };
   }
+  if (!res.ok) {
+    return { status: "error", reason: `http ${res.status}` };
+  }
+  let json: any;
+  try {
+    json = await res.json();
+  } catch (err) {
+    return { status: "error", reason: `parse: ${(err as Error)?.message ?? "unknown"}` };
+  }
+  const data = json?.data;
+  if (!data || (typeof data === "object" && Object.keys(data).length === 0)) {
+    return { status: "empty" };
+  }
+  return { status: "ok", data };
 }
 
 /** Save a single state key to the server */

@@ -1,4 +1,8 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect, useRef } from "react";
+// Theme CSS — small (~2 KB gzip), kept eager so highlighted spans always have
+// colors even before the lazy hljs chunk finishes loading.
+import "highlight.js/styles/github.css";
+import { highlightCodeIn } from "./syntax-highlight";
 
 interface ArticleRendererProps {
   html: string;
@@ -49,9 +53,13 @@ function sanitizeArticleHtml(raw: string): string {
 
 export function ArticleRenderer({ html, className }: ArticleRendererProps) {
   const cleanHtml = useMemo(() => sanitizeArticleHtml(html), [html]);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => highlightCodeIn(containerRef.current), [cleanHtml]);
 
   return (
     <div
+      ref={containerRef}
       className={`article-content ${className || ""}`}
       dangerouslySetInnerHTML={{ __html: cleanHtml }}
     />
