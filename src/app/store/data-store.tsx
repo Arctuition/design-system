@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { loadStateFromServer, saveStateKey, bulkSaveState } from "./api";
 import { projectId, publicAnonKey } from "/utils/supabase/info";
 import { buildIconTagsFromName, enrichAllIconTags, rebuildIconTags } from "./icon-tag-enrichment";
@@ -502,43 +503,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     (async () => {
       try {
-        const serverData = await loadStateFromServer();
-        if (serverData) {
-          // Check if server has any non-null data
-          const hasData = Object.values(serverData).some((v) => v !== null);
-          if (hasData) {
-            const newState = buildStateFromServer(serverData);
-            const enriched = enrichAllIconTags(newState.icons);
-            const nextIcons = enriched ?? newState.icons;
-            setState((prev) => ({
-              ...newState,
-              icons: nextIcons,
-              isAuthenticated: prev.isAuthenticated,
-              currentUser: prev.currentUser,
-              authExpiry: prev.authExpiry,
-            }));
-            if (enriched) {
-              persistKey("ds:icons", enriched);
-              pendingSyncRef.current.add("icons");
-              saveStateKey("icons", enriched).catch(() => {
-                // Silently fail - localStorage is the primary storage
-              });
-            }
+        const result = await loadStateFromServer();
 
-            console.log("✅ Loaded state from server");
-            setIsLoading(false);
-            return;
-          }
-        }
-        
-        // If server has no data or failed to load, fall back to localStorage
-        console.log("⚠️ Server has no data, using localStorage");
-        const localState = loadFromLocalStorage();
-        if (localState && Object.keys(localState).length > 0) {
-          const enriched = enrichAllIconTags(localState.icons);
-          const nextIcons = enriched ?? localState.icons;
+        if (result.status === "ok") {
+          const newState = buildStateFromServer(result.data);
+          const enriched = enrichAllIconTags(newState.icons);
+          const nextIcons = enriched ?? newState.icons;
           setState((prev) => ({
-            ...localState,
+            ...newState,
             icons: nextIcons,
             isAuthenticated: prev.isAuthenticated,
             currentUser: prev.currentUser,
@@ -551,13 +523,50 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               // Silently fail - localStorage is the primary storage
             });
           }
-          console.log("✅ Loaded state from localStorage");
+          console.log("✅ Loaded state from server");
           setIsLoading(false);
           return;
         }
 
-        // Otherwise seed defaults
-        console.log("📦 Seeding default state");
+        if (result.status === "error") {
+          // Server unreachable / paused / errored. We do NOT know whether the
+          // KV store is empty, so we MUST NOT seed defaults — doing so would
+          // generate fresh uid() rows that would later overwrite the real
+          // data once the server comes back. Use whatever localStorage has
+          // and leave the server alone.
+          console.warn(`📡 Server load failed (${result.reason}); using localStorage, not seeding`);
+          // Surface the failure in the UI so editors don't accidentally make
+          // changes against a stale local snapshot. Common cause: the
+          // Supabase project is paused. Persistent (no auto-dismiss).
+          toast.error("Can't reach the content server", {
+            description: `Showing the last cached copy. Edits won't sync until the server is back. (${result.reason})`,
+            duration: Infinity,
+            id: "server-offline",
+          });
+          const localState = loadFromLocalStorage();
+          if (localState && Object.keys(localState).length > 0) {
+            const enriched = enrichAllIconTags(localState.icons);
+            const nextIcons = enriched ?? localState.icons;
+            setState((prev) => ({
+              ...localState,
+              icons: nextIcons,
+              isAuthenticated: prev.isAuthenticated,
+              currentUser: prev.currentUser,
+              authExpiry: prev.authExpiry,
+            }));
+            // Note: intentionally do NOT push back to the server here — the
+            // server is unreachable, and once it returns we want its data to
+            // win, not ours.
+            console.log("✅ Loaded state from localStorage (server offline)");
+          } else {
+            console.log("📦 Using in-memory default state (server offline, no localStorage)");
+          }
+          setIsLoading(false);
+          return;
+        }
+
+        // result.status === "empty" — confirmed fresh install. Safe to seed.
+        console.log("📦 Server confirmed empty; seeding default state");
         seedDefaults();
         setIsLoading(false);
       } catch (err) {
