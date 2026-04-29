@@ -85,8 +85,13 @@ export function CssSyntaxBlock({ code, lang = "css", maxHeight }: CssSyntaxBlock
 
   const codeFontStyle: React.CSSProperties = {
     fontSize: "var(--text-label)",
+    // System monospace stack. JetBrains Mono via Google Fonts was previously
+    // first, but Safari's per-glyph fallback for that webfont broke ASCII-art
+    // alignment in code blocks (some box-drawing glyphs and the middle-dot
+    // rendered with non-monospace metrics). System fonts (SF Mono on macOS,
+    // Cascadia Mono on Windows) are guaranteed monospace and render fast.
     fontFamily:
-      "'JetBrains Mono', ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace",
+      "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
     lineHeight: "1.75",
     fontVariantLigatures: "none",
     letterSpacing: 0,

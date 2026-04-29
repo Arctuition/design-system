@@ -81,7 +81,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
                   padding: "0.125rem 0.375rem",
                   borderRadius: "var(--radius)",
                   fontSize: "var(--text-label)",
-                  fontFamily: "'JetBrains Mono', ui-monospace, 'Source Code Pro', Menlo, Consolas, monospace",
+                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
                   color: "var(--foreground)",
                 }}
               >
