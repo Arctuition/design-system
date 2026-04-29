@@ -31,8 +31,9 @@ them directly inside the design system itself, never in product UI.
 1. **Working on the Arcsite user site** (`arcsite_web` repo)?
    Always pull icons from the project's bundled library:
    ```
-   /Users/hongyuduan/Desktop/Arcsite/arcsite_web/packages/arcsite-icons/icon
+   packages/arcsite-icons/icon
    ```
+   (path relative to the `arcsite_web` repo root)
    You may still use this design system website as a *visual reference* to
    decide which icon to use, but the actual import must come from the
    `arcsite-icons` package — not from this design system.
