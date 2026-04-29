@@ -7,13 +7,11 @@ import sizeMd from "../../../tokens/tokens-size-space.md?raw";
 export function SizePage() {
   return (
     <div className="max-w-[800px] mx-auto px-8 py-10">
-      <MarkdownRenderer content={sizeMd} />
-
       {/* Entry point */}
-      <div className="mt-12">
+      <div className="mb-12">
         <Link
           to="/size/tokens"
-          className="inline-flex items-center justify-between w-full max-w-sm p-5 border border-border rounded-[var(--radius-card)] hover:border-primary hover:bg-secondary/30 transition-colors group"
+          className="flex items-center justify-between w-full p-5 border border-border rounded-[var(--radius-card)] hover:border-primary hover:bg-secondary/30 transition-colors group"
         >
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center size-9 rounded-[var(--radius-card)] bg-secondary">
@@ -31,6 +29,8 @@ export function SizePage() {
           <ArrowRight className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
         </Link>
       </div>
+
+      <MarkdownRenderer content={sizeMd} />
     </div>
   );
 }
