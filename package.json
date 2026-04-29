@@ -6,9 +6,10 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "predev": "node scripts/generate-llms-txt.mjs",
-    "prebuild": "node scripts/generate-llms-txt.mjs",
-    "generate:llms": "node scripts/generate-llms-txt.mjs"
+    "predev": "node scripts/generate-llms-txt.mjs && node scripts/generate-icons-json.mjs",
+    "prebuild": "node scripts/generate-llms-txt.mjs && node scripts/generate-icons-json.mjs",
+    "generate:llms": "node scripts/generate-llms-txt.mjs",
+    "generate:icons": "node scripts/generate-icons-json.mjs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

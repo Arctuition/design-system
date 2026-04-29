@@ -126,6 +126,35 @@ them directly inside the design system itself, never in product UI.
 
 ---
 
+## Icons — which library to use
+
+**Rule of thumb: prefer the project's own icon library when one exists.**
+
+1. **Working on the Arcsite user site** (\`arcsite_web\` repo)?
+   Always pull icons from the project's bundled library:
+   \`\`\`
+   /Users/hongyuduan/Desktop/Arcsite/arcsite_web/packages/arcsite-icons/icon
+   \`\`\`
+   You may still use this design system website as a *visual reference* to
+   decide which icon to use, but the actual import must come from the
+   \`arcsite-icons\` package — not from this design system.
+
+2. **Working on a prototype or any project that does not have its own
+   icon library**? Use the design system's icon library:
+   - Visual browser:  /iconology
+   - JSON manifest:   /icons.json   (machine-readable, includes inline SVG + tags)
+
+   Each entry in \`/icons.json\` has:
+   - \`name\`        — kebab-case identifier
+   - \`fileName\`    — original upload filename
+   - \`tags\`        — search keywords (intent + visual descriptors)
+   - \`svgContent\`  — full inline SVG, ready to drop into a component
+
+   Search the manifest by tag (e.g. \`tags.includes("arrow")\`) or name to
+   pick an icon, then inline the \`svgContent\` directly.
+
+---
+
 ## Color — light mode (semantic)
 :root {
 ${fmt(lightTokens)}
