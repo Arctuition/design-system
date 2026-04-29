@@ -23,31 +23,9 @@ interface NavSection {
 
 const NAV_SECTIONS: NavSection[] = [
   { path: "/", label: "Home", icon: Home },
-  {
-    path: "/typography",
-    label: "Typography",
-    icon: Type,
-    children: [
-      { path: "/typography/tokens", label: "Design Tokens" },
-    ],
-  },
-  {
-    path: "/color",
-    label: "Color",
-    icon: Palette,
-    children: [
-      { path: "/color/tokens",    label: "Design Tokens" },
-      { path: "/color/swatches",  label: "Swatches" },
-    ],
-  },
-  {
-    path: "/size",
-    label: "Size & Space",
-    icon: Ruler,
-    children: [
-      { path: "/size/tokens", label: "Design Tokens" },
-    ],
-  },
+  { path: "/typography", label: "Typography", icon: Type },
+  { path: "/color", label: "Color", icon: Palette },
+  { path: "/size", label: "Size & Space", icon: Ruler },
   { path: "/iconology", label: "Iconology", icon: ImageIcon },
 ];
 

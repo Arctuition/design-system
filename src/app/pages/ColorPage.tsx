@@ -7,10 +7,8 @@ import colorMd from "../../../tokens/tokens-color.md?raw";
 export function ColorPage() {
   return (
     <div className="max-w-[800px] mx-auto px-8 py-10">
-      <MarkdownRenderer content={colorMd} />
-
       {/* Entry points */}
-      <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="mb-12 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link
           to="/color/tokens"
           className="flex items-center justify-between p-5 border border-border rounded-[var(--radius-card)] hover:border-primary hover:bg-secondary/30 transition-colors group"
@@ -51,6 +49,8 @@ export function ColorPage() {
           <ArrowRight className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
         </Link>
       </div>
+
+      <MarkdownRenderer content={colorMd} />
     </div>
   );
 }
