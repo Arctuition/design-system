@@ -28,6 +28,11 @@ import { PatternArticleEditor } from "./pages/cms/PatternArticleEditor";
 import { AccountManager } from "./pages/cms/AccountManager";
 import { DataCleanup } from "./components/admin/DataCleanup";
 
+// Strip trailing slash so react-router accepts it as a basename. When the app
+// is hosted at the root (custom domain / user-site repo), BASE_URL is "/" and
+// basename becomes "" which react-router treats as no basename.
+const basename = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -81,4 +86,4 @@ export const router = createBrowserRouter([
       },
     ],
   },
-]);
+], { basename });
