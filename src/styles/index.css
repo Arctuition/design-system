@@ -2,6 +2,33 @@
 @import './tailwind.css';
 @import './theme.css';
 
+/*
+ * Shiki code blocks
+ *
+ * Shiki emits <pre class="shiki"><code>...</code></pre>. The wrapping
+ * <div class="shiki-block"> sets font-family on itself, but browser UA
+ * stylesheets give <pre> and <code> their own font-family: monospace,
+ * which beats inheritance from the parent div. Safari and Chrome resolve
+ * the generic `monospace` keyword to different physical fonts (Courier vs
+ * Menlo), and when those fonts lack glyphs for · or | (box-drawing), the
+ * font-fallback paths differ and ASCII alignment breaks in Safari.
+ *
+ * Force the inner pre/code to inherit the explicit font stack from
+ * .shiki-block, and use white-space: pre so ASCII art never wraps.
+ */
+.shiki-block pre,
+.shiki-block code {
+  font-family: inherit;
+  font-variant-ligatures: inherit;
+  letter-spacing: inherit;
+  white-space: pre;
+  tab-size: 2;
+}
+
+.shiki-block pre {
+  overflow-x: auto;
+}
+
 /* Article content styles */
 .article-content {
   font-family: 'Roboto', sans-serif;
