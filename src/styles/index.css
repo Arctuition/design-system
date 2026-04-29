@@ -16,16 +16,27 @@
  * Force the inner pre/code to inherit the explicit font stack from
  * .shiki-block, and use white-space: pre so ASCII art never wraps.
  */
-.shiki-block pre,
-.shiki-block code {
+/*
+ * Specificity guard: .article-content pre below sets white-space: pre-wrap
+ * and word-break: break-word, which Safari applies more aggressively than
+ * Chrome and breaks ASCII-art alignment. We use a doubled .shiki-block
+ * selector (0,2,0 + 1 element) so these rules outrank .article-content pre
+ * regardless of source order.
+ */
+.shiki-block.shiki-block pre,
+.shiki-block.shiki-block code,
+.shiki-block.shiki-block pre span,
+.shiki-block.shiki-block code span {
   font-family: inherit;
   font-variant-ligatures: inherit;
   letter-spacing: inherit;
   white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
   tab-size: 2;
 }
 
-.shiki-block pre {
+.shiki-block.shiki-block pre {
   overflow-x: auto;
 }
 
