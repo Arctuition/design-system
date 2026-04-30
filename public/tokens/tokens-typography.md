@@ -4,8 +4,8 @@ Source: Figma Design Library (`QH0keaNSAxGwUxwUV3unEi`) — `font` variable coll
 
 There are two parallel font systems in the library:
 
-- `**font/***` — the current, tokenized system. Multi-mode (web-desktop / web-mobile / device-tablet / device-mobile) and composed entirely from primitives (`font/typeface/*`, `font/size/*`, `font/font-weight/*`, `font/letter-spacing/*`).
-- `**app/***` — legacy text styles with raw values. Kept for backwards compatibility with existing app screens; new work should reference `font/*`.
+- **`font/*`** — the current, tokenized system. Multi-mode (web-desktop / web-mobile / device-tablet / device-mobile) and composed entirely from primitives (`font/typeface/*`, `font/size/*`, `font/font-weight/*`, `font/letter-spacing/*`).
+- **`app/*`** — legacy text styles with raw values. Kept for backwards compatibility with existing app screens; new work should reference `font/*`.
 
 ## Modes in the `font` collection
 
@@ -112,7 +112,7 @@ All weights are mode-invariant.
 
 ## 2. Semantic styles — `font/*`
 
-Use these in components. Every property is bound to a primitive — switch modes and they cascade. Listed values are the `**web-desktop` mode** for quick reference.
+Use these in components. Every property is bound to a primitive — switch modes and they cascade. Listed values are the **`web-desktop` mode** for quick reference.
 
 ### Body — regular
 
@@ -181,9 +181,9 @@ These use `font/typeface/display` and bind a negative letter-spacing on web mode
 
 ---
 
-## 3. Legacy styles — `app/`*
+## 3. Legacy styles — `app/*`
 
-Raw-value styles still referenced by existing app screens. Roboto, no variable bindings. Prefer `font/`* for new work.
+Raw-value styles still referenced by existing app screens. Roboto, no variable bindings. Prefer `font/*` for new work.
 
 ### Body — regular
 
@@ -232,7 +232,7 @@ Raw-value styles still referenced by existing app screens. Roboto, no variable b
 
 ---
 
-## 4. `font/`* ↔ `app/`* mapping
+## 4. `font/*` ↔ `app/*` mapping
 
 Use this for migration. Sizes are now close enough that the `device-tablet` mode of `font/*` matches the legacy `app/*` values almost exactly (13/15/17 body, 17 small title, 34 large title) — switch to `device-tablet` mode in Figma when checking parity.
 

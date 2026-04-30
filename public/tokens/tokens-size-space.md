@@ -51,7 +51,7 @@ Hard-coded numbers like `gap: 16px` drift. The same value gets typed independent
 
 ## Semantic token groups
 
-### Spacing — inline (`size/spacing-inline-`*)
+### Spacing — inline (`size/spacing-inline-*`)
 
 **Use for: horizontal gaps between sibling elements.**
 Icon ↔ label in a button, chips in a row, nav tab items, action button groups, form fields side by side.
@@ -70,7 +70,7 @@ xs and sm are universal — icon-to-text gaps and chip spacing don't change betw
 
 ---
 
-### Spacing — stack (`size/spacing-stack-`*)
+### Spacing — stack (`size/spacing-stack-*`)
 
 **Use for: vertical gaps between stacked elements.**
 List items, stacked form fields, cards in a feed, space between content sections on a page.
@@ -89,7 +89,7 @@ xs/sm match inline for tight micro-spacing. md–xl diverge: Device Tablet's xl 
 
 ---
 
-### Padding (`size/padding-`*)
+### Padding (`size/padding-*`)
 
 **Use for: inset padding inside container surfaces.**
 Page content areas, modal bodies, drawers, side panels, sheets. Values are intentionally larger than component padding to give surfaces breathing room. Device values respect iOS HIG (10pt compact, 20pt regular); web values follow common 8-grid multiples.
@@ -106,7 +106,7 @@ Page content areas, modal bodies, drawers, side panels, sheets. Values are inten
 
 ---
 
-### Padding — component (`size/padding-component-`*)
+### Padding — component (`size/padding-component-*`)
 
 **Use for: inset padding inside interactive controls.**
 Button horizontal padding, input field padding, tag/chip padding. Device sizes use a 6pt base to ensure legible tap targets per iOS HIG.
@@ -191,7 +191,7 @@ Component tokens are a thin alias layer. They keep component-specific decisions 
 | `size/comp/dialog/padding-xl` | `size/padding-xl` | 48 px       |
 
 
-`dialog/padding-md` is the default for confirmation dialogs. Use `lg` for information-dense drawers and `xl` for full-panel workflows. All dialog padding aliases the `size/padding-`* scale directly.
+`dialog/padding-md` is the default for confirmation dialogs. Use `lg` for information-dense drawers and `xl` for full-panel workflows. All dialog padding aliases the `size/padding-*` scale directly.
 
 ### Tag / Badge
 
@@ -224,7 +224,7 @@ Select a layer, click the variable binding icon next to any numeric property (pa
 | Horizontal gap between nav tabs                  | `size/spacing-inline-lg`                |
 | Vertical gap between list items                  | `size/spacing-stack-sm`                 |
 | Vertical gap between page sections               | `size/spacing-stack-xl`                 |
-| Padding inside a button                          | `size/comp/button/padding-horizontal-`* |
+| Padding inside a button                          | `size/comp/button/padding-horizontal-*` |
 | Padding inside an input                          | `size/comp/input/padding-horizontal`    |
 | Padding inside a modal body                      | `size/comp/dialog/padding-md`           |
 | Padding of a page content area                   | `size/padding-md` or `lg`               |

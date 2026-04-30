@@ -1,6 +1,6 @@
 # Color Tokens
 
-ArcSite's color system is split into two Figma variable collections: `**color-global**` (raw color primitives) and `**color**` (semantic tokens that alias the globals and switch between light and dark mode). Designers, developers, and AI agents should almost always reach for a `color/*` semantic token — never bind a raw global directly.
+ArcSite's color system is split into two Figma variable collections: **`color-global`** (raw color primitives) and **`color`** (semantic tokens that alias the globals and switch between light and dark mode). Designers, developers, and AI agents should almost always reach for a `color/*` semantic token — never bind a raw global directly.
 
 ---
 
@@ -121,7 +121,7 @@ color/label/action/primary-on-dark-increased-contrast
 
 The `color` collection has five top-level categories. Each has a clear, non-overlapping responsibility.
 
-### `color/label/`* — text and icons
+### `color/label/*` — text and icons
 
 **Use for:** all text colors and most icon colors.
 
@@ -134,14 +134,14 @@ The `color` collection has five top-level categories. Each has a clear, non-over
 | `color/label/secondary`                             | `gray/55` `#737373`        | `gray/40` `#999999`       |
 | `color/label/tertiary`                              | `gray/25` `#bfbfbf`        | `gray/70` `#4d4d4d`       |
 | `color/label/quaternary`                            | `gray/15` `#d9d9d9`        | `gray/80` `#333333`       |
-| `color/label/primary-increased-contrast`            | trans-light/85 `#000000d9` | trans-dark/100 `#ffffff`  |
-| `color/label/secondary-increased-contrast`          | trans-light/55 `#0000008c` | trans-dark/60 `#ffffff99` |
-| `color/label/tertiary-increased-contrast`           | trans-light/25 `#00000040` | trans-dark/30 `#ffffff4d` |
-| `color/label/quaternary-increased-contrast`         | trans-light/15 `#00000026` | trans-dark/20 `#ffffff33` |
-| `color/label/primary-on-dark-increased-contrast`    | trans-dark/100 `#ffffff`   | trans-dark/100 `#ffffff`  |
-| `color/label/secondary-on-dark-increased-contrast`  | trans-dark/60 `#ffffff99`  | trans-dark/60 `#ffffff99` |
-| `color/label/tertiary-on-dark-increased-contrast`   | trans-dark/30 `#ffffff4d`  | trans-dark/30 `#ffffff4d` |
-| `color/label/quaternary-on-dark-increased-contrast` | trans-dark/20 `#ffffff33`  | trans-dark/20 `#ffffff33` |
+| `color/label/primary-increased-contrast`            | `gray/transparency-on-light/85` `#000000d9` | `gray/transparency-on-dark/100` `#ffffff`  |
+| `color/label/secondary-increased-contrast`          | `gray/transparency-on-light/55` `#0000008c` | `gray/transparency-on-dark/60` `#ffffff99` |
+| `color/label/tertiary-increased-contrast`           | `gray/transparency-on-light/25` `#00000040` | `gray/transparency-on-dark/30` `#ffffff4d` |
+| `color/label/quaternary-increased-contrast`         | `gray/transparency-on-light/15` `#00000026` | `gray/transparency-on-dark/20` `#ffffff33` |
+| `color/label/primary-on-dark-increased-contrast`    | `gray/transparency-on-dark/100` `#ffffff`   | `gray/transparency-on-dark/100` `#ffffff`  |
+| `color/label/secondary-on-dark-increased-contrast`  | `gray/transparency-on-dark/60` `#ffffff99`  | `gray/transparency-on-dark/60` `#ffffff99` |
+| `color/label/tertiary-on-dark-increased-contrast`   | `gray/transparency-on-dark/30` `#ffffff4d`  | `gray/transparency-on-dark/30` `#ffffff4d` |
+| `color/label/quaternary-on-dark-increased-contrast` | `gray/transparency-on-dark/20` `#ffffff33`  | `gray/transparency-on-dark/20` `#ffffff33` |
 
 
 #### Intent labels
@@ -189,9 +189,9 @@ Note: intent labels skip `primary-increased-contrast` (the regular `primary` is 
 | `color/surface/container/default`                    | `gray/00` `#ffffff`        | `gray/90` `#1a1a1a`       |
 | `color/surface/container/high`                       | `gray/06` `#f0f0f0`        | `gray/80` `#333333`       |
 | `color/surface/container/higher`                     | `gray/10` `#e6e6e6`        | `gray/75` `#404040`       |
-| `color/surface/container/default-increased-contrast` | `gray/00` `#ffffff`        | trans-dark/10 `#ffffff1a` |
-| `color/surface/container/high-increased-contrast`    | trans-light/06 `#0000000f` | trans-dark/20 `#ffffff33` |
-| `color/surface/container/higher-increased-contrast`  | trans-light/10 `#0000001a` | trans-dark/25 `#ffffff40` |
+| `color/surface/container/default-increased-contrast` | `gray/00` `#ffffff`                         | `gray/transparency-on-dark/10` `#ffffff1a` |
+| `color/surface/container/high-increased-contrast`    | `gray/transparency-on-light/06` `#0000000f` | `gray/transparency-on-dark/20` `#ffffff33` |
+| `color/surface/container/higher-increased-contrast`  | `gray/transparency-on-light/10` `#0000001a` | `gray/transparency-on-dark/25` `#ffffff40` |
 | `color/surface/container/action`                     | `blue/10` `#ebf4ff`        | `blue/95` `#1e252b`       |
 | `color/surface/container/action-hover`               | `blue/20` `#d1e7ff`        | `blue/100` `#1f252c`      |
 | `color/surface/container/brand`                      | `brand-orange/10`          | `brand-orange/95`         |
@@ -201,9 +201,9 @@ Note: intent labels skip `primary-increased-contrast` (the regular `primary` is 
 | `color/surface/container/danger`                     | `red/10` `#ffebeb`         | `red/95` `#382e2e`        |
 
 
-`**default` vs. `dim`**: `default` is the canonical app background. `dim` is one shade further from white in light mode (and further from black in dark mode) — use it as the "outermost" background when a `default`-colored container needs to sit on top and visually separate.
+**`default` vs. `dim`**: `default` is the canonical app background. `dim` is one shade further from white in light mode (and further from black in dark mode) — use it as the "outermost" background when a `default`-colored container needs to sit on top and visually separate.
 
-`**container/default` → `high` → `higher**`: the elevation ramp. As surfaces stack (page → card → modal → popover), step up the ramp so each layer is visually distinct from the one below. `higher` is for the topmost floating element.
+**`container/default` → `high` → `higher`**: the elevation ramp. As surfaces stack (page → card → modal → popover), step up the ramp so each layer is visually distinct from the one below. `higher` is for the topmost floating element.
 
 **Intent-tinted containers** (`container/action`, `container/brand`, `container/success`, etc.) are subtle tinted backgrounds for callouts, alerts, and feature highlights. Always pair their text with the matching `-increased-contrast` label tokens, since the surface itself is no longer neutral.
 
@@ -236,9 +236,9 @@ Note: intent labels skip `primary-increased-contrast` (the regular `primary` is 
 | `color/fill/danger/secondary`         | `red/20` `#fccaca`          | `red/90` `#440c0c`          |
 
 
-`**primary` vs. `secondary`**: `primary` is the saturated, prominent fill (a CTA button body, a danger badge). `secondary` is the muted/tinted version (a hover background under a label, a subtle status pill).
+**`primary` vs. `secondary`**: `primary` is the saturated, prominent fill (a CTA button body, a danger badge). `secondary` is the muted/tinted version (a hover background under a label, a subtle status pill).
 
-`**-hover` variants** appear only on `action/primary` and `action/secondary` because those are the only fills explicitly designed for the interactive press path. Other intents handle hover by stepping the global tier up or down at the component level.
+**`-hover` variants** appear only on `action/primary` and `action/secondary` because those are the only fills explicitly designed for the interactive press path. Other intents handle hover by stepping the global tier up or down at the component level.
 
 ---
 
@@ -251,8 +251,8 @@ Note: intent labels skip `primary-increased-contrast` (the regular `primary` is 
 | ----------------------------------------- | -------------------------- | ------------------------- |
 | `color/border/default`                    | `gray/15` `#d9d9d9`        | `gray/75` `#404040`       |
 | `color/border/extra`                      | `gray/25` `#bfbfbf`        | `gray/65` `#595959`       |
-| `color/border/default-increased-contrast` | trans-light/15 `#00000026` | trans-dark/15 `#ffffff26` |
-| `color/border/extra-increased-contrast`   | trans-light/25 `#00000040` | trans-dark/25 `#ffffff40` |
+| `color/border/default-increased-contrast` | `gray/transparency-on-light/15` `#00000026` | `gray/transparency-on-dark/15` `#ffffff26` |
+| `color/border/extra-increased-contrast`   | `gray/transparency-on-light/25` `#00000040` | `gray/transparency-on-dark/25` `#ffffff40` |
 | `color/border/brand/primary`              | `brand-orange/60`          | `brand-orange/50`         |
 | `color/border/brand/secondary`            | `brand-orange/30`          | `brand-orange/80`         |
 | `color/border/action/primary`             | `blue/60` `#398ae7`        | `blue/50` `#479eff`       |
@@ -267,7 +267,7 @@ Note: intent labels skip `primary-increased-contrast` (the regular `primary` is 
 | `color/border/danger/secondary`           | `red/30` `#f5a9a9`         | `red/80` `#661414`        |
 
 
-`**default` vs. `extra`**: `default` is the standard border weight visually — input outlines, card borders. `extra` is a stronger border for cases where you need more separation (a card whose body color matches the page background, for example).
+**`default` vs. `extra`**: `default` is the standard border weight visually — input outlines, card borders. `extra` is a stronger border for cases where you need more separation (a card whose body color matches the page background, for example).
 
 **Intent borders**: `primary` is for active/focused/error states (a focus ring, a danger input). `secondary` is for the default resting state of an intent component (a tinted notification card's outline).
 
@@ -282,11 +282,11 @@ Note: intent labels skip `primary-increased-contrast` (the regular `primary` is 
 | ------------------------------------------ | -------------------------- | ------------------------- |
 | `color/divider/default`                    | `gray/10` `#e6e6e6`        | `gray/80` `#333333`       |
 | `color/divider/extra`                      | `gray/20` `#cccccc`        | `gray/70` `#4d4d4d`       |
-| `color/divider/default-increased-contrast` | trans-light/10 `#0000001a` | trans-dark/20 `#ffffff33` |
-| `color/divider/extra-increased-contrast`   | trans-light/20 `#00000033` | trans-dark/30 `#ffffff4d` |
+| `color/divider/default-increased-contrast` | `gray/transparency-on-light/10` `#0000001a` | `gray/transparency-on-dark/20` `#ffffff33` |
+| `color/divider/extra-increased-contrast`   | `gray/transparency-on-light/20` `#00000033` | `gray/transparency-on-dark/30` `#ffffff4d` |
 
 
-`**divider` vs. `border`**: a divider is decorative — a hair line between two pieces of content that already belong together. A border *contains* — it's the edge of a region. If removing the line would visually merge two distinct regions, it's a `border`. If removing it would just remove visual rhythm, it's a `divider`.
+**`divider` vs. `border`**: a divider is decorative — a hair line between two pieces of content that already belong together. A border *contains* — it's the edge of a region. If removing the line would visually merge two distinct regions, it's a `border`. If removing it would just remove visual rhythm, it's a `divider`.
 
 ---
 
@@ -334,7 +334,7 @@ Each family additionally exposes transparency variants used by `-increased-contr
 
 | Subgroup                           | Composition             | Use case                                      |
 | ---------------------------------- | ----------------------- | --------------------------------------------- |
-| `{family}/transparency-on-light/`* | source color with alpha | Foregrounds on light or tinted-light surfaces |
+| `{family}/transparency-on-light/*` | source color with alpha | Foregrounds on light or tinted-light surfaces |
 | `{family}/transparency-on-dark/*`  | source color with alpha | Foregrounds on dark or tinted-dark surfaces   |
 | `gray/transparency-on-light/*`     | black with alpha        | Increased-contrast neutrals on light          |
 | `gray/transparency-on-dark/*`      | white with alpha        | Increased-contrast neutrals on dark           |
@@ -350,7 +350,7 @@ A decision sequence to follow before binding any color. AI agents should walk th
 
 **1. What category of element are you coloring?**
 
-- Text or icon → `color/label/`*
+- Text or icon → `color/label/*`
 - A page/card/modal background → `color/surface/*`
 - The body of a button, badge, or tag → `color/fill/*`
 - A border or outline → `color/border/*`
@@ -459,8 +459,8 @@ Button(
 
 Variables live in the Figma library `QH0keaNSAxGwUxwUV3unEi`. The two collections:
 
-- `**color-global**` — single mode (`global-value`), 151 raw color primitives
-- `**color**` — two modes (`light`, `dark`), 131 semantic tokens, all aliases pointing to `color-global`
+- **`color-global`** — single mode (`global-value`), 151 raw color primitives
+- **`color`** — two modes (`light`, `dark`), 131 semantic tokens, all aliases pointing to `color-global`
 
 When this doc and Figma disagree, Figma wins. Update this doc when:
 
