@@ -7,7 +7,7 @@
  * (no JS execution required).
  */
 
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { copyFileSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -204,3 +204,19 @@ writeFileSync(outPath, content, "utf-8");
 console.log(
   `[llms.txt] wrote ${outPath} — ${content.length} chars, ${content.split("\n").length} lines`
 );
+
+// Mirror the canonical token markdown into public/tokens/ so the URLs listed
+// in llms.txt (and consumed by AI agents) serve the same content the React
+// pages import via `?raw`. The source-of-truth lives in /tokens — this is
+// just a build-time copy.
+const TOKEN_DOCS = [
+  "tokens-color.md",
+  "tokens-typography.md",
+  "tokens-size-space.md",
+];
+const publicTokensDir = resolve(ROOT, "public/tokens");
+mkdirSync(publicTokensDir, { recursive: true });
+for (const name of TOKEN_DOCS) {
+  copyFileSync(resolve(ROOT, "tokens", name), resolve(publicTokensDir, name));
+}
+console.log(`[llms.txt] mirrored ${TOKEN_DOCS.length} token docs to public/tokens/`);
