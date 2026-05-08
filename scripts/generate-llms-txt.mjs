@@ -205,12 +205,13 @@ phrased as **Rule / Why / How to apply** — apply them in order before falling
 back to your own judgment.
 
 ### 1. Component namespace must not cross scopes
-- **Rule** — Library components are scoped by prefix:
+- **Rule** — Library components are scoped by **name prefix** (primary truth). The Figma section is only a fallback when a component has no prefix.
   - \`app/*\` → ArcSite webapp only (in-product drawing / proposal UI)
   - \`web/*\` → user-site / marketing web only
-  - Unprefixed primitives (icons, \`color/*\`, \`size/*\`, \`font/*\`, \`navigation-item/*\`, \`table/cell\`) → shared
-- **Why** — The two products have different visual density and language; mixing breaks system intent and produces designs that need rework.
-- **How to apply** — Before instantiating, check the prefix. When \`search_design_system\` returns multiple variants of the same name (e.g. \`app/table list item\` vs \`web/table/cell\`), pick the one matching the project; if no match exists, flag to the user — never force a wrong-namespace component.
+  - **Unprefixed → shared primitive.** Includes design tokens (\`color/*\`, \`size/*\`, \`font/*\`), the main icon library (the \`Icons\` and \`Icons-Source\` pages, plus shared icon families like \`icon 48/*\`, \`icon 30/*\`), navigation primitives (\`navigation-item/*\`), shared media (\`image/*\`, \`logo-arcsite/*\`, \`cursor/*\`, \`ar-icons\`, placeholder variants like \`default img\`, \`default video\`, \`low-fi/img\`), and illustrations on the \`Image\` page.
+  - When prefix is absent, fall back to the enclosing Figma section: \`app\` section → app-only, \`web\` section → web-only, no scoped section → shared.
+- **Why** — The two products have different visual density and language; mixing breaks system intent and produces designs that need rework. Prefix-as-truth makes scope decidable from the component name alone — no need to inspect Figma section context at consumption time.
+- **How to apply** — Before instantiating, read the prefix. When \`search_design_system\` returns multiple variants of the same logical component (e.g. \`app/table/row\` vs \`web/table/row\`), pick the one matching the current project. If no match exists for your project's namespace, flag to the user — never force a wrong-namespace component.
 
 ### 2. Default interaction color is action blue; onboarding is the only exception
 - **Rule** — Primary interactive color (primary buttons, active nav, links, chart emphasis, focus ring):
