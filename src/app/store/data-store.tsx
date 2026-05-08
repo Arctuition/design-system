@@ -475,8 +475,11 @@ function seedDefaults(): void {
 const AppContext = createContext<AppContextType | null>(null);
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
+  // Detect cache hit once so we can render immediately if localStorage has
+  // data — server fetch still runs in the background and merges later.
+  const cachedLocal = useRef(loadFromLocalStorage()).current;
   const [state, setState] = useState<AppState>(() => {
-    const initialState = loadStateFromLocalStorage();
+    const initialState = cachedLocal ?? getDefaults();
     const initialIcons = enrichAllIconTags(initialState.icons) ?? initialState.icons;
     const hydratedInitialState = { ...initialState, icons: initialIcons };
     // Restore auth session from localStorage if available and not expired
@@ -499,7 +502,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
     return hydratedInitialState;
   });
-  const [isLoading, setIsLoading] = useState(true);
+  // Only show the full-screen spinner when there is no cached data to render.
+  // With a cache hit, paint immediately and let the server response merge in.
+  const [isLoading, setIsLoading] = useState(cachedLocal === null);
   const initializedRef = useRef(false);
   // Track which keys changed for granular server sync
   const pendingSyncRef = useRef<Set<string>>(new Set());

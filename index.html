@@ -1,15 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Design System Website</title>
+    <style>
+      /* Initial loader shown before the JS bundle parses. React replaces
+         #root's contents on first render, so this is automatically removed. */
+      html, body { margin: 0; padding: 0; background: #fff; }
+      @media (prefers-color-scheme: dark) {
+        html, body { background: #262626; }
+      }
+      .initial-loader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .initial-loader__spinner {
+        width: 32px;
+        height: 32px;
+        border: 2px solid rgba(57, 138, 231, 1);
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: initial-loader-spin 0.8s linear infinite;
+      }
+      @keyframes initial-loader-spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
 
-  <!DOCTYPE html>
-  <html lang="en">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Design System Website</title>
-    </head>
-
-    <body>
-      <div id="root"></div>
-      <script type="module" src="/src/main.tsx"></script> <!-- here is the entry point of the application -->
-    </body>
-  </html>
-  
+  <body>
+    <div id="root">
+      <div class="initial-loader" aria-label="Loading">
+        <div class="initial-loader__spinner"></div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
