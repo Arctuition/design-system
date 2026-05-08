@@ -105,6 +105,20 @@ Single source of truth for Arcsite product UI.
 All tokens are CSS custom properties — reference as \`var(--token-name)\`.
 Tailwind 4 arbitrary value syntax: \`bg-(--color-label-primary)\`, \`text-(--color-label-primary)\`, etc.
 
+## Bootstrap (non-optional for new prototypes / standalone UI)
+
+Any new ArcSite UI being built from scratch (prototype, demo, marketing page, internal tool) **must** start by importing the canonical token + font bootstrap stylesheet. This loads Inter, defines every CSS variable referenced below, and sets up dark-mode swap automatically. Copy these two lines into the \`<head>\`:
+
+\`\`\`html
+<link rel="stylesheet" href="https://arctuition.github.io/design-system/tokens/bootstrap.css">
+\`\`\`
+
+After importing, reference tokens by name only (\`color: var(--color-label-primary);\`). Do not hand-copy values from the sections below into your CSS — those sections are reference, not source. Dark mode: add \`class="dark"\` or \`data-theme="dark"\` to \`<html>\` (or any subtree).
+
+If you are editing inside an established codebase that already wires tokens through its own build (\`arcsite_web\`, \`proposalv3\`, etc.), follow that codebase's existing import pattern instead — do not import bootstrap.css alongside it.
+
+---
+
 Token resolution rule: bind layers and components to **semantic** tokens
 (\`--color-label-*\`, \`--color-fill-*\`, \`--color-surface-*\`, \`--color-border-*\`,
 \`--size-spacing-*\`, \`--size-padding-*\`, \`--size-radius-*\`, \`--text-*\`).
@@ -304,3 +318,60 @@ for (const name of TOKEN_DOCS) {
   copyFileSync(resolve(ROOT, "tokens", name), resolve(publicTokensDir, name));
 }
 console.log(`[llms.txt] mirrored ${TOKEN_DOCS.length} token docs to public/tokens/`);
+
+// Generate bootstrap.css — the paste-ready stylesheet that loads Inter and
+// defines every token referenced in llms.txt. Standalone UI (prototypes,
+// demos, marketing pages) imports this once and gets all tokens + dark-mode
+// for free. Same source data as llms.txt — there is no risk of drift.
+const bootstrapCss = `/*
+ * Arcsite Design System — token bootstrap
+ * Generated from /tokens/*.json by scripts/generate-llms-txt.mjs.
+ * Do not edit by hand — changes will be overwritten on next build.
+ *
+ * Usage: import once at the root of any new prototype or standalone UI.
+ *   <link rel="stylesheet"
+ *         href="https://arctuition.github.io/design-system/tokens/bootstrap.css">
+ *
+ * Then reference tokens via CSS custom properties:
+ *   color: var(--color-label-primary);
+ *   padding: var(--size-spacing-md);
+ *   font: var(--text-body-medium);
+ *
+ * Dark mode: add class="dark" or data-theme="dark" to <html> (or any subtree).
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap');
+
+/* ── Color: global primitives ────────────────────────────────────────────── */
+:root {
+${fmt(globalColor)}
+}
+
+/* ── Color: semantic, light mode ─────────────────────────────────────────── */
+:root {
+${fmt(lightTokens)}
+}
+
+/* ── Color: semantic, dark mode ──────────────────────────────────────────── */
+:root.dark, [data-theme='dark'] {
+${fmt(darkTokens)}
+}
+
+/* ── Size & space: global primitives ─────────────────────────────────────── */
+:root {
+${fmt(sizeGlobal)}
+}
+
+/* ── Size & space: semantic (web desktop) ────────────────────────────────── */
+:root {
+${fmt(sizeDesktop)}
+}
+
+/* ── Typography (web desktop) ────────────────────────────────────────────── */
+:root {
+${fmt(fontDesktop, "value")}
+}
+`;
+const bootstrapPath = resolve(publicTokensDir, "bootstrap.css");
+writeFileSync(bootstrapPath, bootstrapCss, "utf-8");
+console.log(`[bootstrap.css] wrote ${bootstrapPath} — ${bootstrapCss.length} chars`);
