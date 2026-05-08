@@ -659,6 +659,60 @@ them directly inside the design system itself, never in product UI.
 
 ---
 
+## Design Principles (LLM-applicable)
+
+When generating ArcSite designs or UI code, follow these rules. Each is
+phrased as **Rule / Why / How to apply** — apply them in order before falling
+back to your own judgment.
+
+### 1. Component namespace must not cross scopes
+- **Rule** — Library components are scoped by prefix:
+  - `app/*` → ArcSite webapp only (in-product drawing / proposal UI)
+  - `web/*` → user-site / marketing web only
+  - Unprefixed primitives (icons, `color/*`, `size/*`, `font/*`, `navigation-item/*`, `table/cell`) → shared
+- **Why** — The two products have different visual density and language; mixing breaks system intent and produces designs that need rework.
+- **How to apply** — Before instantiating, check the prefix. When `search_design_system` returns multiple variants of the same name (e.g. `app/table list item` vs `web/table/cell`), pick the one matching the project; if no match exists, flag to the user — never force a wrong-namespace component.
+
+### 2. Default interaction color is action blue; onboarding is the only exception
+- **Rule** — Primary interactive color (primary buttons, active nav, links, chart emphasis, focus ring):
+  - All products (user-site, marketing web, webapp interior) → `action` token family (blue)
+  - **Onboarding flows** (regardless of which product they live in) → `brand` token family (orange)
+  - Logo / brand-identity surfaces (splash, brand storytelling, empty-state illustrations) → `brand` token family
+- **Why** — The product's default interactive language is cool/blue (matches the `action` token semantic). Brand orange reads as warm/promotional and is reserved for moments where brand identity is the message — most importantly the user's first encounter via onboarding.
+- **How to apply** —
+  - Onboarding: primary CTA, active step, focus ring all bind to `brand/primary`; container uses `surface/container/brand`. Do not mix in `action` tokens.
+  - Everywhere else: active nav row = `surface/container/action` + `label/action/primary`; chart series primary/secondary = `label/action/primary` / `…/secondary`.
+  - Logo SVGs: reference `https://arctuition.github.io/design-system/logos/glyph*.svg` directly — they bake in brand orange.
+
+### 3. Empty input placeholders bind to tertiary
+- **Rule** — When an input is empty, the placeholder text binds to `color/label/tertiary` (or `…/tertiary-increased-contrast`). Never `primary` or `secondary`.
+- **Why** — Tertiary is the system's "low-emphasis hint" semantic. Primary makes empty inputs look pre-filled (misleading); secondary is for sub-labels, not placeholders.
+- **How to apply** — All input components default placeholder = tertiary. Filled state = `label/primary` / `…/primary-increased-contrast`. The placeholder ↔ filled toggle is exactly tertiary ↔ primary.
+
+### 4. Active / selected states use intent surface + intent label
+- **Rule** — For "currently selected" / "highlighted" states, compose `surface/container/{intent}` as background and `label/{intent}/primary` as foreground. Do not roll your own tinted colors or fade the brand color manually.
+- **Why** — Container tokens are pre-tuned so foreground text remains legible; ad-hoc tints break the brightness system and don't follow dark-mode swaps.
+- **How to apply** —
+  - User-site, webapp default → `intent=action`
+  - Onboarding → `intent=brand` (see principle 2)
+  - Status states → `intent=caution / danger / success`
+  - Brand-tinted promo / splash cards → `intent=brand`
+
+### 5. Ghost / chrome-less inputs only when external chrome already frames them
+- **Rule** — Input `style=ghost` (no border, no trailing button) is allowed only when an external container already provides the visual edge — header global search, inline edit, quick-input embedded in a card title row. Do not default to ghost.
+- **Why** — Ghost removes the affordance (border / button). Without external context, users can't see "where to type."
+- **How to apply** —
+  - Use only inside header / card title row / modal inset where an outer frame supplies the boundary.
+  - All form inputs → `style=default`, always.
+  - Dropdown / date-picker / number-stepper variants → never ghost; the trailing icon is the core interaction and removing it breaks the control.
+
+### 6. Do not translate tokens across sources
+- **Rule** — The code-side `llms.txt` and Figma-side variables should hold the same values, but each side must read from its own source. Don't translate hex from `llms.txt` into Figma fills; don't treat a Figma variable's resolved value as the canonical code value.
+- **Why** — The two sides can drift at any moment. Letting code read `llms.txt` and design read the Figma library is the only way both sides stay current.
+- **How to apply** — Writing code: fetch `llms.txt`, reference tokens by name. Designing in Figma: `search_design_system` + `importVariableByKeyAsync` to bind variables.
+
+---
+
 ## Logos
 
 Brand logo assets for ArcSite. Use these when a design needs the product or
