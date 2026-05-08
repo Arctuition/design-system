@@ -198,6 +198,25 @@ ${fmt(sizeGlobal)}
 
 ---
 
+## Logos
+
+Brand logo assets for ArcSite. Use these when a design needs the product or
+company mark — never re-trace, redraw, or recolor; reference the SVG directly.
+
+Variants:
+- **glyph** — icon-only mark, transparent background. Use on dark/colored surfaces or when space is tight.
+  \`https://arctuition.github.io/design-system/logos/glyph.svg\`
+- **glyph on white** — icon-only mark, white background lockup. Use when placing on photography or busy backgrounds.
+  \`https://arctuition.github.io/design-system/logos/glyph-on-white.svg\`
+- **glyph and text** — full wordmark + glyph, transparent background. Default choice for headers, marketing, and most product surfaces.
+  \`https://arctuition.github.io/design-system/logos/glyph-and-text.svg\`
+- **glyph and text on white** — full wordmark + glyph, white background lockup. Use on dark or photographic backgrounds where contrast is needed.
+  \`https://arctuition.github.io/design-system/logos/glyph-and-text-on-white.svg\`
+
+Repo path: \`public/logos/\` (served at \`/logos/*.svg\`).
+
+---
+
 ## Skills
 
 LLM application guides for the ArcSite design system:
