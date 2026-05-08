@@ -195,6 +195,16 @@ ${fmt(sizeDesktop)}
 :root {
 ${fmt(sizeGlobal)}
 }
+
+---
+
+## Skills
+
+LLM application guides for the ArcSite design system:
+
+- [Prototype mode guide](https://arctuition.github.io/design-system/skills/arcsite-ds-apply/prototype.md)
+- [AntD conflict handling](https://arctuition.github.io/design-system/skills/arcsite-ds-apply/antd-conflict.md)
+- [Figma MCP flow](https://arctuition.github.io/design-system/skills/arcsite-ds-apply/figma-flow.md)
 `;
 
 const outPath = resolve(ROOT, "public/llms.txt");
