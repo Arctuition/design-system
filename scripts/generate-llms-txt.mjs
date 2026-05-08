@@ -259,14 +259,14 @@ Brand logo assets for ArcSite. Use these when a design needs the product or
 company mark — never re-trace, redraw, or recolor; reference the SVG directly.
 
 Variants:
-- **glyph** — icon-only mark, transparent background. Use on dark/colored surfaces or when space is tight.
+- **glyph** — icon-only mark for **light backgrounds**. Brand-orange glyph on transparent. Default for most product UI, headers, and marketing surfaces with light/white backgrounds.
   \`https://arctuition.github.io/design-system/logos/glyph.svg\`
-- **glyph on white** — icon-only mark, white background lockup. Use when placing on photography or busy backgrounds.
-  \`https://arctuition.github.io/design-system/logos/glyph-on-white.svg\`
-- **glyph and text** — full wordmark + glyph, transparent background. Default choice for headers, marketing, and most product surfaces.
+- **glyph on dark** — icon-only mark for **dark backgrounds**. Light-treated glyph designed to remain legible on dark surfaces, photography, or busy backgrounds.
+  \`https://arctuition.github.io/design-system/logos/glyph-on-dark.svg\`
+- **glyph and text** — full wordmark + glyph for **light backgrounds**. Default lockup for headers, marketing pages, and product surfaces with light/white backgrounds.
   \`https://arctuition.github.io/design-system/logos/glyph-and-text.svg\`
-- **glyph and text on white** — full wordmark + glyph, white background lockup. Use on dark or photographic backgrounds where contrast is needed.
-  \`https://arctuition.github.io/design-system/logos/glyph-and-text-on-white.svg\`
+- **glyph and text on dark** — full wordmark + glyph for **dark backgrounds**. Light-treated lockup; use on dark or photographic backgrounds where the default would lose contrast.
+  \`https://arctuition.github.io/design-system/logos/glyph-and-text-on-dark.svg\`
 
 Repo path: \`public/logos/\` (served at \`/logos/*.svg\`).
 
