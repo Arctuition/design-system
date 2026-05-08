@@ -657,6 +657,8 @@ them directly inside the design system itself, never in product UI.
   --size-global-9999: 9999px;
 }
 
+---
+
 ## Skills
 
 LLM application guides for the ArcSite design system:
