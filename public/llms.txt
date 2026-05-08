@@ -656,3 +656,11 @@ them directly inside the design system itself, never in product UI.
   --size-global-1280: 1280px;
   --size-global-9999: 9999px;
 }
+
+## Skills
+
+LLM application guides for the ArcSite design system:
+
+- [Prototype mode guide](https://arctuition.github.io/design-system/skills/arcsite-ds-apply/prototype.md)
+- [AntD conflict handling](https://arctuition.github.io/design-system/skills/arcsite-ds-apply/antd-conflict.md)
+- [Figma MCP flow](https://arctuition.github.io/design-system/skills/arcsite-ds-apply/figma-flow.md)
