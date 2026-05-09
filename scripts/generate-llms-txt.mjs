@@ -27,6 +27,18 @@ function toVarRef(alias) {
   return `var(--${alias.replace(/\//g, "-")})`;
 }
 
+// The Figma export ships the RGB hex separately from the alpha. Stitch them
+// into an 8-digit `#RRGGBBAA` so transparency tokens survive the trip into
+// CSS — without this, every transparency-on-* token collapsed to its solid
+// base color in the generated bootstrap.css.
+function colorHex(raw) {
+  const base = (raw.hex || "").toUpperCase();
+  const alpha = typeof raw.alpha === "number" ? raw.alpha : 1;
+  if (alpha >= 1 || !/^#[0-9A-F]{6}$/.test(base)) return base;
+  const aa = Math.round(alpha * 255).toString(16).padStart(2, "0").toUpperCase();
+  return `${base}${aa}`;
+}
+
 function flattenColor(obj, prefix = "") {
   const out = [];
   for (const [k, v] of Object.entries(obj)) {
@@ -34,7 +46,7 @@ function flattenColor(obj, prefix = "") {
     const path = prefix ? `${prefix}-${k}` : k;
     if (v && typeof v === "object" && "$value" in v) {
       const raw = v.$value;
-      const hex = raw && typeof raw === "object" && "hex" in raw ? raw.hex : String(raw);
+      const hex = raw && typeof raw === "object" && "hex" in raw ? colorHex(raw) : String(raw);
       const aliasName = v.$extensions?.["com.figma.aliasData"]?.targetVariableName;
       const display = aliasName ? `var(--${aliasName.replace(/\//g, "-")})` : hex;
       out.push({ cssVar: `--${path}`, displayValue: display });

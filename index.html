@@ -3,11 +3,29 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Design System Website</title>
+    <link rel="icon" type="image/svg+xml" href="/logos/glyph.svg" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/svg+xml" href="/logos/glyph-on-dark.svg" media="(prefers-color-scheme: dark)" />
+    <title>Arctuition Design System</title>
+    <script>
+      // Apply persisted theme before the React bundle boots — prevents a
+      // flash of the wrong palette while the JS is parsing. Mirrors
+      // `themeInitScript` in src/app/store/theme.ts; keep the storage key
+      // in sync if either side changes.
+      (function () {
+        try {
+          var v = localStorage.getItem('ds-theme-mode');
+          var mode = (v === 'light' || v === 'dark' || v === 'system') ? v : 'system';
+          var dark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (_) {}
+      })();
+    </script>
     <style>
       /* Initial loader shown before the JS bundle parses. React replaces
-         #root's contents on first render, so this is automatically removed. */
-      html, body { margin: 0; padding: 0; background: #fff; }
+         #root's contents on first render, so this is automatically removed.
+         Hex values mirror tokens-color.md global primitives — the bundle
+         hasn't loaded yet, so CSS variables aren't available here. */
+      html, body { margin: 0; padding: 0; background: #FFFFFF; }
       @media (prefers-color-scheme: dark) {
         html, body { background: #262626; }
       }
@@ -21,7 +39,7 @@
       .initial-loader__spinner {
         width: 32px;
         height: 32px;
-        border: 2px solid rgba(57, 138, 231, 1);
+        border: 2px solid #E3571C;
         border-top-color: transparent;
         border-radius: 50%;
         animation: initial-loader-spin 0.8s linear infinite;

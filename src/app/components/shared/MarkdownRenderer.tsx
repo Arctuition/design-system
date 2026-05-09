@@ -73,14 +73,17 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
               // Inside a <pre> — pass through, already rendered by `pre`
               return <code className={codeClass}>{children}</code>;
             }
-            // Inline code
+            // Inline code — `fontSize: 0.9em` so the chip scales with whatever
+            // parent it lands in (h1, h2, body, …). A fixed `var(--text-label)`
+            // collapses code to 13px even inside a 34px h1, which is what we
+            // had before and looked broken on the Typography page.
             return (
               <code
                 style={{
                   backgroundColor: "var(--secondary)",
                   padding: "0.125rem 0.375rem",
                   borderRadius: "var(--radius)",
-                  fontSize: "var(--text-label)",
+                  fontSize: "0.9em",
                   fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
                   color: "var(--foreground)",
                 }}

@@ -42,7 +42,7 @@
 
 /* Article content styles */
 .article-content {
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
   color: var(--foreground);
   line-height: 1.5;
 }
@@ -50,7 +50,7 @@
 .article-content h1 {
   font-size: var(--text-h1);
   font-weight: var(--font-weight-normal);
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
   line-height: 1.5;
   margin-top: 48px;
   margin-bottom: 16px;
@@ -64,7 +64,7 @@
 .article-content h2 {
   font-size: var(--text-h2);
   font-weight: var(--font-weight-normal);
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
   line-height: 1.5;
   margin-top: 40px;
   margin-bottom: 12px;
@@ -76,7 +76,7 @@
 .article-content h3 {
   font-size: var(--text-h3);
   font-weight: var(--font-weight-normal);
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
   line-height: 1.5;
   margin-top: 32px;
   margin-bottom: 8px;
@@ -86,7 +86,7 @@
 .article-content h4 {
   font-size: var(--text-h4);
   font-weight: var(--font-weight-medium);
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
   line-height: 1.5;
   margin-top: 24px;
   margin-bottom: 8px;
@@ -104,7 +104,7 @@
 .article-content h6 {
   font-size: var(--text-h4);
   font-weight: var(--font-weight-medium);
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
   line-height: 1.5;
   margin-top: 20px;
   margin-bottom: 8px;
@@ -114,7 +114,7 @@
 .article-content p {
   font-size: var(--text-p);
   font-weight: var(--font-weight-normal);
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
   line-height: 1.7;
   margin-bottom: 12px;
   color: var(--card-foreground);
@@ -136,7 +136,7 @@
 
 .article-content li {
   font-size: var(--text-p);
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
   line-height: 1.7;
   margin-bottom: 6px;
   color: var(--card-foreground);
@@ -204,7 +204,7 @@
   line-height: 1.4;
   font-style: italic;
   font-weight: var(--font-weight-medium);
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
 }
 
 /* Ensure italic is preserved even with nested tags */
@@ -230,7 +230,7 @@
   line-height: 1.4;
   font-style: italic;
   font-weight: var(--font-weight-normal);
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
 }
 
 /* Ensure italic is preserved even with nested tags */
@@ -250,7 +250,7 @@
   width: 100%;
   border-collapse: collapse;
   margin: 16px 0;
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
 }
 
 .article-content th {
@@ -259,7 +259,7 @@
   background: var(--secondary);
   font-size: var(--text-table-header);
   font-weight: var(--font-weight-medium);
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
   text-align: left;
 }
 
@@ -274,7 +274,7 @@
   border: 1px solid var(--border);
   padding: 8px 12px;
   font-size: var(--text-p);
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
 }
 
 .article-content hr {
@@ -351,7 +351,7 @@
   width: 100%;
   border-collapse: collapse;
   margin: 16px 0;
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
 }
 
 .rte-editor table th,
@@ -361,7 +361,7 @@
   background: var(--secondary);
   font-size: var(--text-table-header);
   font-weight: var(--font-weight-medium);
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
   text-align: left;
 }
 
@@ -370,7 +370,7 @@
   border: 1px solid var(--border);
   padding: 8px 12px;
   font-size: var(--text-p);
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
 }
 
 .rte-editor table td[colspan]:not([colspan="1"]),
