@@ -3,7 +3,9 @@ import { Navigate, Link } from "react-router";
 import { useAppData } from "../../store/data-store";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { Textarea } from "../../components/ui/textarea";
 import { ArrowLeft, Plus, Pencil, Trash2, Save, X } from "lucide-react";
+import { MarkdownRenderer } from "../../components/shared/MarkdownRenderer";
 import { toast } from "sonner";
 import type { ChangeLogEntry } from "../../store/data-store";
 
@@ -69,7 +71,14 @@ export function ChangeLogEditor() {
             <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
             <Input placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           </div>
-          <Input placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="mb-3" />
+          <Textarea
+            placeholder="Description (Markdown supported — bullets, **bold**, [links](https://…), `code`, etc.)"
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            rows={8}
+            className="mb-3 font-mono"
+            style={{ fontSize: "var(--text-label)" }}
+          />
           <div className="flex gap-2">
             <Button onClick={saveNew}><Save className="size-4 mr-1" /> Save</Button>
             <Button variant="ghost" onClick={() => setAdding(false)}><X className="size-4 mr-1" /> Cancel</Button>
@@ -88,7 +97,13 @@ export function ChangeLogEditor() {
                   <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
                   <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
                 </div>
-                <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="mb-3" />
+                <Textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  rows={8}
+                  className="mb-3 font-mono"
+                  style={{ fontSize: "var(--text-label)" }}
+                />
                 <div className="flex gap-2">
                   <Button size="sm" onClick={saveEdit}><Save className="size-3.5 mr-1" /> Save</Button>
                   <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
@@ -108,9 +123,10 @@ export function ChangeLogEditor() {
                   <p className="mt-1 text-foreground" style={{ fontSize: "var(--text-p)", fontWeight: "var(--font-weight-medium)" }}>
                     {entry.title}
                   </p>
-                  <p className="mt-0.5 text-card-foreground" style={{ fontSize: "var(--text-label)" }}>
-                    {entry.description}
-                  </p>
+                  <MarkdownRenderer
+                    className="mt-0.5 text-card-foreground"
+                    content={entry.description || ""}
+                  />
                 </div>
                 <div className="flex gap-1 shrink-0 ml-4">
                   <Button variant="ghost" size="icon" className="size-8" onClick={() => startEdit(entry)}>

@@ -1,6 +1,7 @@
 import React from "react";
 import { useAppData } from "../store/data-store";
 import { ArticleRenderer } from "../components/shared/ArticleRenderer";
+import { MarkdownRenderer } from "../components/shared/MarkdownRenderer";
 import { Badge } from "../components/ui/badge";
 import { Calendar } from "lucide-react";
 
@@ -42,9 +43,10 @@ export function HomePage() {
                 <p className="mt-2 text-foreground" style={{ fontSize: "var(--text-p)", fontWeight: "var(--font-weight-medium)" }}>
                   {entry.title}
                 </p>
-                <p className="mt-1 text-card-foreground" style={{ fontSize: "var(--text-p)" }}>
-                  {entry.description}
-                </p>
+                <MarkdownRenderer
+                  className="mt-1 text-card-foreground changelog-description"
+                  content={entry.description || ""}
+                />
               </div>
             </div>
           ))}

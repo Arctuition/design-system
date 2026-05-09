@@ -20,8 +20,8 @@ export interface ColorToken {
 }
 
 export interface ColorTokenGroup {
-  globalLight: ColorToken[];
-  globalDark: ColorToken[];
+  // Globals are mode-independent — single source of truth shared by both modes.
+  global: ColorToken[];
   semanticLight: ColorToken[];
   semanticDark: ColorToken[];
 }
@@ -207,7 +207,7 @@ const defaultColorTokens: ColorTokenGroup = {
     { name: "--popover", value: "rgba(38, 38, 38, 1.00)", description: "Popover background" },
     { name: "--popover-foreground", value: "rgba(255, 255, 255, 0.85)", description: "Text on popover" },
   ],
-  globalLight: [
+  global: [
     { name: "--color-white", value: "#FFFFFF", description: "Pure white" },
     { name: "--color-black", value: "#000000", description: "Pure black" },
     { name: "--color-gray-50", value: "#F5F5F5", description: "Gray 50" },
@@ -222,22 +222,6 @@ const defaultColorTokens: ColorTokenGroup = {
     { name: "--color-red-500", value: "rgba(227, 28, 28, 1.00)", description: "Red 500" },
     { name: "--color-green-500", value: "rgba(4, 181, 11, 1.00)", description: "Green 500" },
     { name: "--color-orange-500", value: "rgba(227, 118, 18, 1.00)", description: "Orange 500" },
-  ],
-  globalDark: [
-    { name: "--color-white", value: "#FFFFFF", description: "Pure white" },
-    { name: "--color-black", value: "#000000", description: "Pure black" },
-    { name: "--color-gray-50", value: "#3C3C3C", description: "Gray 50 (dark)" },
-    { name: "--color-gray-100", value: "#505050", description: "Gray 100 (dark)" },
-    { name: "--color-gray-200", value: "#606060", description: "Gray 200 (dark)" },
-    { name: "--color-gray-300", value: "#808080", description: "Gray 300 (dark)" },
-    { name: "--color-gray-500", value: "#A0A0A0", description: "Gray 500 (dark)" },
-    { name: "--color-gray-700", value: "#D0D0D0", description: "Gray 700 (dark)" },
-    { name: "--color-gray-900", value: "#F5F5F5", description: "Gray 900 (dark)" },
-    { name: "--color-blue-500", value: "rgba(68, 143, 248, 1.00)", description: "Blue 500 (dark)" },
-    { name: "--color-blue-600", value: "rgba(100, 165, 255, 1.00)", description: "Blue 600 (dark)" },
-    { name: "--color-red-500", value: "rgba(255, 80, 80, 1.00)", description: "Red 500 (dark)" },
-    { name: "--color-green-500", value: "rgba(50, 210, 60, 1.00)", description: "Green 500 (dark)" },
-    { name: "--color-orange-500", value: "rgba(255, 150, 50, 1.00)", description: "Orange 500 (dark)" },
   ],
 };
 
@@ -259,6 +243,28 @@ const defaultSizeArticle = `<h1>Size &amp; Space Tokens</h1><p>ArcSite's size an
 .page-content { padding: var(--size-padding-md); }</code></pre><h2>Exported files</h2><p>The CSS VAR export produces a ZIP containing five files: <code>size-global.css</code>, <code>size-device-mobile.css</code>, <code>size-device-tablet.css</code>, <code>size-web-mobile.css</code>, and <code>size-web-desktop.css</code>. Load the global file plus whichever mode file matches your target platform.</p>`;
 
 const defaultChangeLogs: ChangeLogEntry[] = [
+  {
+    id: uid(),
+    date: "2026-05-09",
+    version: "1.1.0",
+    title: "Color tokens v2 — gold family + caution remap",
+    description: `Pulled the latest color tokens from Figma and reworked the CMS upload flow to match the new three-file export.
+
+**Tokens**
+- New \`gold\` global color family (10 → 95, plus transparency-on-light / transparency-on-dark variants)
+- All \`caution\` semantic tokens (\`label\`, \`fill\`, \`border\`, \`surface\`) re-aliased from \`orange\` → \`gold\`
+- The standalone \`orange\` family is preserved in the palette but is no longer wired into any default semantic intent
+
+**CMS**
+- Color Tokens Manager: three independent uploads (Global / Semantic — Light / Semantic — Dark) plus a Bulk Upload that auto-routes by filename, mirroring the Size & Space tokens UX
+- CSS export now ships three files: \`color-light.css\`, \`color-dark.css\`, \`color-global.css\`
+- \`ColorTokenGroup\` data shape collapsed \`globalLight\` + \`globalDark\` into a single \`global\` (mode-independent), with backward-compat migration for legacy payloads
+- ChangeLog editor: description field upgraded to a multi-line Markdown textarea — bullets, bold, code spans, and links now render on the home timeline
+
+**Where to look**
+- Doc: [/tokens/tokens-color.md](https://arctuition.github.io/design-system/tokens/tokens-color.md)
+- Bootstrap: [/tokens/bootstrap.css](https://arctuition.github.io/design-system/tokens/bootstrap.css)`,
+  },
   { id: uid(), date: "2026-03-11", version: "1.0.0", title: "Initial Release", description: "Launched the design system with core components including Typography, Color Tokens, Iconology, and Patterns documentation." },
   { id: uid(), date: "2026-03-05", version: "0.9.0", title: "Beta Release", description: "Added semantic and global color token documentation. Introduced dark mode token support." },
   { id: uid(), date: "2026-02-20", version: "0.8.0", title: "Icon Library", description: "Added the icon library with search, download, and tagging capabilities for designers and developers." },
@@ -362,8 +368,16 @@ function buildStateFromServer(serverData: Record<string, any>): AppState {
     changeLogs: Array.isArray(serverData.changeLogs) ? serverData.changeLogs : defaults.changeLogs,
     typographyArticle: serverData.typographyArticle ?? defaults.typographyArticle,
     colorTokens: {
-      globalLight: ct.globalLight || defaults.colorTokens.globalLight,
-      globalDark: ct.globalDark || defaults.colorTokens.globalDark,
+      // Migrate legacy schema: old payloads stored `globalLight` (and a duplicate
+      // `globalDark`). Globals are mode-independent, so collapse to a single
+      // `global` array — preferring an explicit new-shape `global` if present.
+      global: Array.isArray(ct.global)
+        ? ct.global
+        : Array.isArray(ct.globalLight)
+          ? ct.globalLight
+          : Array.isArray(ct.globalDark)
+            ? ct.globalDark
+            : defaults.colorTokens.global,
       semanticLight: ct.semanticLight || defaults.colorTokens.semanticLight,
       semanticDark: ct.semanticDark || defaults.colorTokens.semanticDark,
     },
@@ -893,8 +907,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setState((prev) => ({
         ...prev,
         colorTokens: {
-          globalLight: tokens.globalLight || [],
-          globalDark: tokens.globalDark || [],
+          global: tokens.global || [],
           semanticLight: tokens.semanticLight || [],
           semanticDark: tokens.semanticDark || [],
         },
@@ -1112,7 +1125,7 @@ export function useAppData() {
       homeArticle: "",
       changeLogs: [],
       typographyArticle: "",
-      colorTokens: { globalLight: [], globalDark: [], semanticLight: [], semanticDark: [] },
+      colorTokens: { global: [], semanticLight: [], semanticDark: [] },
       sizeTokens: { global: [], deviceMobile: [], deviceTablet: [], webMobile: [], webDesktop: [] },
       colorArticle: "",
       sizeArticle: "",
