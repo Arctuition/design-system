@@ -60,12 +60,14 @@ Semantic tokens are organized by *intent* — what the color is communicating, n
 | `brand`          | `brand-orange`        | ArcSite brand expression — logo, hero CTAs, brand surfaces |
 | `action`         | `blue`                | Interactive elements — primary buttons, links, focus rings |
 | `success`        | `green`               | Positive confirmation — success messages, completed states |
-| `caution`        | `orange`              | Warning, attention required — non-blocking alerts          |
+| `caution`        | `gold`                | Warning, attention required — non-blocking alerts          |
 | `caution-yellow` | `yellow`              | High-visibility caution — flags, advisory states           |
 | `danger`         | `red`                 | Destructive intent, errors — delete, validation errors     |
 
 
-`caution` and `caution-yellow` are both warnings but visually distinct. Pick `caution` (orange) for the default warning lane. Reach for `caution-yellow` when something needs to stand out alongside an existing `caution` element, or when the warning is advisory rather than action-required.
+`caution` and `caution-yellow` are both warnings but visually distinct. Pick `caution` (gold) for the default warning lane. Reach for `caution-yellow` when something needs to stand out alongside an existing `caution` element, or when the warning is advisory rather than action-required.
+
+The standalone `orange` family still exists in the global palette and is reserved for cases where a non-warning warm-orange tone is needed (illustrations, specific marketing surfaces); it is **not** wired into any default semantic intent.
 
 ---
 
@@ -170,7 +172,7 @@ Note: intent labels skip `primary-increased-contrast` (the regular `primary` is 
 | `brand`          | `brand-orange/60` `#e3571c` → `brand-orange/50` `#f06326` |
 | `action`         | `blue/60` `#398ae7` → `blue/50` `#479eff`                 |
 | `success`        | `green/60` `#04b50b` → `green/50` `#04c20c`               |
-| `caution`        | `orange/60` `#e37612` → `orange/50` `#f07d13`             |
+| `caution`        | `gold/60` `#d88000` → `gold/50` `#e48800`                 |
 | `caution-yellow` | `yellow/65` `#d6bc0f` → `yellow/50` `#f0d213`             |
 | `danger`         | `red/60` `#e31c1c` → `red/50` `#fc3f3f`                   |
 
@@ -196,7 +198,7 @@ Note: intent labels skip `primary-increased-contrast` (the regular `primary` is 
 | `color/surface/container/action-hover`               | `blue/20` `#d1e7ff`        | `blue/100` `#1f252c`      |
 | `color/surface/container/brand`                      | `brand-orange/10`          | `brand-orange/95`         |
 | `color/surface/container/success`                    | `green/10` `#ebffec`       | `green/95` `#2e322f`      |
-| `color/surface/container/caution`                    | `orange/10` `#fff4eb`      | `orange/95` `#352d27`     |
+| `color/surface/container/caution`                    | `gold/10` `#fef4ea`        | `gold/95` `#342d26`       |
 | `color/surface/container/caution-yellow`             | `yellow/10` `#fffceb`      | `yellow/95` `#353327`     |
 | `color/surface/container/danger`                     | `red/10` `#ffebeb`         | `red/95` `#382e2e`        |
 
@@ -228,8 +230,8 @@ Note: intent labels skip `primary-increased-contrast` (the regular `primary` is 
 | `color/fill/action/tertiary`          | `blue/10` `#ebf4ff`         | `blue/95` `#1e252b`         |
 | `color/fill/success/primary`          | `green/60` `#04b50b`        | `green/50` `#04c20c`        |
 | `color/fill/success/secondary`        | `green/20` `#d0f5d1`        | `green/90` `#223622`        |
-| `color/fill/caution/primary`          | `orange/60` `#e37612`       | `orange/50` `#f07d13`       |
-| `color/fill/caution/secondary`        | `orange/20` `#fae2cc`       | `orange/90` `#42250a`       |
+| `color/fill/caution/primary`          | `gold/60` `#d88000`         | `gold/50` `#e48800`         |
+| `color/fill/caution/secondary`        | `gold/20` `#f9e3cb`         | `gold/90` `#402706`         |
 | `color/fill/caution-yellow/primary`   | `yellow/60` `#e3c712`       | `yellow/50` `#f0d213`       |
 | `color/fill/caution-yellow/secondary` | `yellow/20` `#faf4cc`       | `yellow/90` `#423b0a`       |
 | `color/fill/danger/primary`           | `red/60` `#e31c1c`          | `red/50` `#fc3f3f`          |
@@ -259,8 +261,8 @@ Note: intent labels skip `primary-increased-contrast` (the regular `primary` is 
 | `color/border/action/secondary`           | `blue/30` `#b7d9ff`        | `blue/80` `#356aa6`       |
 | `color/border/success/primary`            | `green/60` `#04b50b`       | `green/50` `#04c20c`      |
 | `color/border/success/secondary`          | `green/30` `#a4eba7`       | `green/80` `#274a28`      |
-| `color/border/caution/primary`            | `orange/60` `#e37612`      | `orange/50` `#f07d13`     |
-| `color/border/caution/secondary`          | `orange/30` `#f3caa5`      | `orange/80` `#5d3109`     |
+| `color/border/caution/primary`            | `gold/60` `#d88000`        | `gold/50` `#e48800`       |
+| `color/border/caution/secondary`          | `gold/30` `#f1cba3`        | `gold/80` `#593400`       |
 | `color/border/caution-yellow/primary`     | `yellow/60` `#e3c712`      | `yellow/50` `#f0d213`     |
 | `color/border/caution-yellow/secondary`   | `yellow/30` `#f3e9a5`      | `yellow/80` `#5d5209`     |
 | `color/border/danger/primary`             | `red/60` `#e31c1c`         | `red/50` `#fc3f3f`        |
@@ -314,17 +316,18 @@ The full primitive palette. All values single-mode (`global-value`), all scopes 
 
 ### Color families
 
-Each color family — `blue`, `green`, `red`, `yellow`, `orange`, `brand-orange` — exposes a 10–12 step ramp. The numeric value indicates lightness: lower numbers are darker, higher numbers are lighter. `60` is typically the saturated mid-tone used for `primary` intent on light mode; `50` is the equivalent on dark mode.
+Each color family — `blue`, `green`, `red`, `yellow`, `gold`, `orange`, `brand-orange` — exposes a 10–12 step ramp. The numeric value indicates lightness: lower numbers are darker, higher numbers are lighter. `60` is typically the saturated mid-tone used for `primary` intent on light mode; `50` is the equivalent on dark mode.
 
 
-| Family         | Range        | Notes                                       |
-| -------------- | ------------ | ------------------------------------------- |
-| `blue`         | `05` → `100` | Action/interactive — links, primary buttons |
-| `green`        | `10` → `95`  | Success — confirmation, completed states    |
-| `red`          | `10` → `95`  | Danger — destructive, errors                |
-| `yellow`       | `10` → `95`  | Caution-yellow — high-visibility advisory   |
-| `orange`       | `10` → `95`  | Caution — standard warning                  |
-| `brand-orange` | `10` → `95`  | ArcSite brand                               |
+| Family         | Range        | Notes                                                |
+| -------------- | ------------ | ---------------------------------------------------- |
+| `blue`         | `05` → `100` | Action/interactive — links, primary buttons          |
+| `green`        | `10` → `95`  | Success — confirmation, completed states             |
+| `red`          | `10` → `95`  | Danger — destructive, errors                         |
+| `yellow`       | `10` → `95`  | Caution-yellow — high-visibility advisory            |
+| `gold`         | `10` → `95`  | Caution — standard warning (default `caution` lane)  |
+| `orange`       | `10` → `95`  | Reserved palette — not bound to any default intent   |
+| `brand-orange` | `10` → `95`  | ArcSite brand                                        |
 
 
 ### Transparency families
@@ -459,7 +462,7 @@ Button(
 
 Variables live in the Figma library `QH0keaNSAxGwUxwUV3unEi`. The two collections:
 
-- **`color-global`** — single mode (`global-value`), 151 raw color primitives
+- **`color-global`** — single mode (`global-value`), 167 raw color primitives (includes the `gold` family)
 - **`color`** — two modes (`light`, `dark`), 131 semantic tokens, all aliases pointing to `color-global`
 
 When this doc and Figma disagree, Figma wins. Update this doc when:

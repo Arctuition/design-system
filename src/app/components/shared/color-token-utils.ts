@@ -206,6 +206,7 @@ const LABEL_SUBCATEGORIES: Array<[string, (rest: string) => boolean]> = [
 const GLOBAL_FAMILY_ORDER: Array<[string, string]> = [
   ["Blue", "blue"],
   ["Brand Orange", "brandorange"],
+  ["Gold", "gold"],
   ["Gray", "gray"],
   ["Green", "green"],
   ["Orange", "orange"],
@@ -418,20 +419,69 @@ export function buildCSSOutput(
   return out.join("\n");
 }
 
+// Globals are mode-independent — emit them once as their own file rather than
+// duplicating into both light and dark stylesheets.
+function buildGlobalCSSOutput(globalTokens: ColorToken[]): string {
+  const groups = groupGlobalTokensStable(globalTokens);
+  const out: string[] = [];
+  out.push(":root {");
+  out.push("");
+  out.push("/* =========================");
+  out.push("   Global tokens");
+  out.push("   ========================= */");
+  out.push("");
+  for (const group of groups) {
+    const items = group.tokens.map((t) => ({
+      cssName: tokenNameToCSSVar(t.name),
+      cssValue: tokenValueToCSS(t.value),
+    }));
+    out.push(formatBlock(group.groupName, items));
+    out.push("");
+    out.push("");
+  }
+  out.push("}");
+  out.push("");
+  return out.join("\n");
+}
+
+function buildSemanticCSSOutput(
+  mode: "light" | "dark",
+  semanticTokens: ColorToken[]
+): string {
+  const modeUpper = mode === "light" ? "LIGHT MODE" : "DARK MODE";
+  const semanticGroups = groupSemanticTokensStable(semanticTokens);
+  const out: string[] = [];
+  out.push(":root {");
+  out.push("");
+  out.push("/* =========================================");
+  out.push(`   SEMANTIC TOKENS FOR ${modeUpper}`);
+  out.push("   ========================================= */");
+  out.push("");
+  for (const group of semanticGroups) {
+    const items = group.tokens.map((t) => ({
+      cssName: tokenNameToCSSVar(t.name),
+      cssValue: tokenValueToCSS(t.value),
+    }));
+    out.push(formatBlock(group.groupName, items));
+    out.push("");
+    out.push("");
+  }
+  out.push("}");
+  out.push("");
+  return out.join("\n");
+}
+
 // ─── ZIP Export ───
 
 export async function exportCSSAsZip(
   semanticLight: ColorToken[],
-  globalLight: ColorToken[],
   semanticDark: ColorToken[],
-  globalDark: ColorToken[]
+  global: ColorToken[]
 ): Promise<void> {
-  const lightCSS = buildCSSOutput("light", semanticLight, globalLight);
-  const darkCSS = buildCSSOutput("dark", semanticDark, globalDark);
-
   const zip = new JSZip();
-  zip.file("color-light.css", lightCSS);
-  zip.file("color-dark.css", darkCSS);
+  zip.file("color-light.css", buildSemanticCSSOutput("light", semanticLight));
+  zip.file("color-dark.css", buildSemanticCSSOutput("dark", semanticDark));
+  zip.file("color-global.css", buildGlobalCSSOutput(global));
 
   const blob = await zip.generateAsync({ type: "blob" });
   const url = URL.createObjectURL(blob);
@@ -440,4 +490,99 @@ export async function exportCSSAsZip(
   a.download = "color-tokens.zip";
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// ─── Bulk upload matching ───
+//
+// Mirrors the size-token bulk-upload UX: a single multi-select picker that
+// auto-routes each file to its slot based on filename. Confirmation modal
+// shows matches/duplicates/missing/unmatched before anything is written.
+
+export type ColorMatchSlot = "global" | "semanticLight" | "semanticDark";
+
+export const COLOR_EXPECTED_FILES: Record<ColorMatchSlot, string> = {
+  global: "color-global-value.tokens.json",
+  semanticLight: "light.tokens.json",
+  semanticDark: "dark.tokens.json",
+};
+
+export const COLOR_SLOT_LABELS: Record<ColorMatchSlot, string> = {
+  global: "Global",
+  semanticLight: "Semantic — Light",
+  semanticDark: "Semantic — Dark",
+};
+
+function classifyColorFileToSlot(fileName: string): ColorMatchSlot | null {
+  const n = fileName.toLowerCase();
+  // Most specific first: "color-global-value.tokens.json" or anything with "global"
+  if (n.includes("global")) return "global";
+  if (n.includes("dark")) return "semanticDark";
+  if (n.includes("light")) return "semanticLight";
+  return null;
+}
+
+export function analyzeColorBulkFiles(files: File[]): {
+  matched: Array<{ slot: ColorMatchSlot; file: File; expected: string }>;
+  duplicates: Array<{ slot: ColorMatchSlot; files: File[] }>;
+  unmatched: File[];
+  missing: ColorMatchSlot[];
+} {
+  const slotMap = new Map<ColorMatchSlot, File[]>();
+  const unmatched: File[] = [];
+
+  for (const f of files) {
+    const slot = classifyColorFileToSlot(f.name);
+    if (!slot) {
+      unmatched.push(f);
+      continue;
+    }
+    const arr = slotMap.get(slot) ?? [];
+    arr.push(f);
+    slotMap.set(slot, arr);
+  }
+
+  const matched: Array<{ slot: ColorMatchSlot; file: File; expected: string }> = [];
+  const duplicates: Array<{ slot: ColorMatchSlot; files: File[] }> = [];
+  for (const [slot, arr] of slotMap) {
+    matched.push({ slot, file: arr[0], expected: COLOR_EXPECTED_FILES[slot] });
+    if (arr.length > 1) duplicates.push({ slot, files: arr.slice(1) });
+  }
+
+  const allSlots: ColorMatchSlot[] = ["global", "semanticLight", "semanticDark"];
+  const missing = allSlots.filter((s) => !slotMap.has(s));
+
+  return { matched, duplicates, unmatched, missing };
+}
+
+// ─── Single-file slot parsing ───
+//
+// Each of the three new Figma exports contains exactly one slot's tokens —
+// no need to classify by name. The CMS uses these helpers per upload slot.
+
+export function parseGlobalTokenFile(data: any): ColorToken[] {
+  const tokens = parseTokensRaw(data);
+  // Defensive: filter to anything under color.global.* (or starting with global)
+  return tokens.filter((t) => /(^|\.)global(\.|$)/i.test(t.name));
+}
+
+export function parseSemanticTokenFile(data: any): ColorToken[] {
+  const tokens = parseTokensRaw(data);
+  // Defensive: drop any global entries that may have snuck in.
+  return tokens.filter((t) => !/(^|\.)global(\.|$)/i.test(t.name));
+}
+
+function parseTokensRaw(data: any): ColorToken[] {
+  if (Array.isArray(data)) {
+    return data
+      .filter((t: any) => t && (t.name || t.key || t.variable))
+      .map((t: any) => ({
+        name: t.name || t.key || t.variable || "",
+        value: t.value || t.color || t.hex || t["$value"] || "",
+        description: t.description || t.desc || t.comment || t["$description"] || "",
+      }));
+  }
+  if (typeof data === "object" && data !== null) {
+    return flattenTokens(data);
+  }
+  return [];
 }

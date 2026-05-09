@@ -2,20 +2,47 @@ import React, { useRef, useState, useMemo } from "react";
 import { Navigate, Link } from "react-router";
 import { useAppData } from "../../store/data-store";
 import { Button } from "../../components/ui/button";
-import { ArrowLeft, Upload, Download, Sun, Moon, Pencil, Info, Copy } from "lucide-react";
+import {
+  ArrowLeft,
+  Upload,
+  Download,
+  Sun,
+  Moon,
+  Pencil,
+  Info,
+  Copy,
+  Package,
+  Globe,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "../../components/ui/dialog";
 import type { ColorTokenGroup, ColorToken } from "../../store/data-store";
 import {
   isDirectColorValue,
   parseHexAlpha,
   resolveTokenReference,
   normalizeTokenValue,
-  parseAndClassifyTokens,
+  parseGlobalTokenFile,
+  parseSemanticTokenFile,
   groupSemanticTokensStable,
   groupGlobalTokensStable,
   exportCSSAsZip,
+  analyzeColorBulkFiles,
+  COLOR_EXPECTED_FILES,
+  COLOR_SLOT_LABELS,
   type GroupedTokens,
+  type ColorMatchSlot,
 } from "../../components/shared/color-token-utils";
 import {
   TokenOutlineSidebar,
@@ -24,126 +51,205 @@ import {
 } from "../../components/shared/TokenOutlineSidebar";
 import { copyToClipboard } from "../../utils/clipboard";
 
+// ─── Slot config ───
+
+const SLOTS: Array<{
+  key: ColorMatchSlot;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+}> = [
+  {
+    key: "global",
+    label: "Global",
+    icon: Globe,
+    description:
+      "Raw color primitives — the full palette (gray, blue, gold, etc.). Mode-independent.",
+  },
+  {
+    key: "semanticLight",
+    label: "Semantic — Light",
+    icon: Sun,
+    description:
+      "Semantic tokens (label, surface, fill, border, divider) for light mode.",
+  },
+  {
+    key: "semanticDark",
+    label: "Semantic — Dark",
+    icon: Moon,
+    description:
+      "Semantic tokens (label, surface, fill, border, divider) for dark mode.",
+  },
+];
+
+function parseFileForSlot(slot: ColorMatchSlot, data: any): ColorToken[] {
+  return slot === "global" ? parseGlobalTokenFile(data) : parseSemanticTokenFile(data);
+}
+
+function applySlotUpdate(
+  prev: ColorTokenGroup,
+  slot: ColorMatchSlot,
+  tokens: ColorToken[]
+): ColorTokenGroup {
+  switch (slot) {
+    case "global":
+      return { ...prev, global: tokens };
+    case "semanticLight":
+      return { ...prev, semanticLight: tokens };
+    case "semanticDark":
+      return { ...prev, semanticDark: tokens };
+  }
+}
+
+function slotCount(tokens: ColorTokenGroup, slot: ColorMatchSlot): number {
+  switch (slot) {
+    case "global":
+      return tokens.global.length;
+    case "semanticLight":
+      return tokens.semanticLight.length;
+    case "semanticDark":
+      return tokens.semanticDark.length;
+  }
+}
+
 // ─── Component ───
 
 export function ColorTokensEditor() {
   const { isAuthenticated, colorTokens, setColorTokens } = useAppData();
-  const lightInputRef = useRef<HTMLInputElement>(null);
-  const darkInputRef = useRef<HTMLInputElement>(null);
+  const bulkInputRef = useRef<HTMLInputElement>(null);
+  const individualRefs = useRef<Record<ColorMatchSlot, HTMLInputElement | null>>({
+    global: null,
+    semanticLight: null,
+    semanticDark: null,
+  });
   const [activeTab, setActiveTab] = useState("tokens");
   const [tokenDisplayTab, setTokenDisplayTab] = useState("light");
-  const [lastLightFile, setLastLightFile] = useState<string | null>(null);
-  const [lastDarkFile, setLastDarkFile] = useState<string | null>(null);
+  const [bulkPending, setBulkPending] = useState<
+    | {
+        matched: Array<{ slot: ColorMatchSlot; file: File; expected: string }>;
+        duplicates: Array<{ slot: ColorMatchSlot; files: File[] }>;
+        unmatched: File[];
+        missing: ColorMatchSlot[];
+      }
+    | null
+  >(null);
 
-  // Build lookup maps for resolving semantic token references
-  const globalLightMap = useMemo(() => {
+  // Globals are mode-independent so a single map serves both display tabs.
+  const globalMap = useMemo(() => {
     const map = new Map<string, string>();
-    for (const t of colorTokens.globalLight) {
+    for (const t of colorTokens.global) {
       map.set(t.name, t.value);
       map.set(t.name.replace(/\./g, "-"), t.value);
     }
     return map;
-  }, [colorTokens.globalLight]);
-
-  const globalDarkMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const t of colorTokens.globalDark) {
-      map.set(t.name, t.value);
-      map.set(t.name.replace(/\./g, "-"), t.value);
-    }
-    return map;
-  }, [colorTokens.globalDark]);
+  }, [colorTokens.global]);
 
   if (!isAuthenticated) return <Navigate to="/cms/login" replace />;
 
-  const handleImportLight = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const fileName = file.name;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const data = JSON.parse(ev.target?.result as string);
-        const { global, semantic } = parseAndClassifyTokens(data);
-        if (global.length === 0 && semantic.length === 0) {
-          toast.error("No color tokens found in the uploaded file.");
-          return;
+  const handleIndividualUpload =
+    (slot: ColorMatchSlot) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const fileName = file.name;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = JSON.parse(ev.target?.result as string);
+          const tokens = parseFileForSlot(slot, data);
+          if (tokens.length === 0) {
+            toast.error(`No tokens found in ${fileName} for slot "${COLOR_SLOT_LABELS[slot]}".`);
+            return;
+          }
+          setColorTokens(applySlotUpdate(colorTokens, slot, tokens));
+          if (slot === "semanticDark") setTokenDisplayTab("dark");
+          else if (slot === "semanticLight") setTokenDisplayTab("light");
+          toast.success(
+            `${COLOR_SLOT_LABELS[slot]}: imported ${tokens.length} tokens from "${fileName}"`
+          );
+        } catch {
+          toast.error(`Failed to parse ${fileName}. Check that it's valid JSON.`);
         }
-        const updated: ColorTokenGroup = {
-          ...colorTokens,
-          globalLight: global,
-          semanticLight: semantic,
-        };
-        setColorTokens(updated);
-        setLastLightFile(fileName);
-        setTokenDisplayTab("light");
-        toast.success(
-          `Light tokens imported: ${global.length} global, ${semantic.length} semantic tokens from "${fileName}"`
-        );
-      } catch {
-        toast.error("Failed to parse JSON file. Please check the format.");
-      }
+      };
+      reader.readAsText(file);
+      const inputEl = individualRefs.current[slot];
+      if (inputEl) inputEl.value = "";
     };
-    reader.readAsText(file);
-    if (lightInputRef.current) lightInputRef.current.value = "";
+
+  const handleBulkUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) {
+      if (bulkInputRef.current) bulkInputRef.current.value = "";
+      return;
+    }
+    const analysis = analyzeColorBulkFiles(Array.from(files));
+    setBulkPending(analysis);
+    if (bulkInputRef.current) bulkInputRef.current.value = "";
   };
 
-  const handleImportDark = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const fileName = file.name;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
+  const confirmBulkUpload = async () => {
+    if (!bulkPending) return;
+    const { matched } = bulkPending;
+    if (matched.length === 0) {
+      toast.error("No matching files to import.");
+      setBulkPending(null);
+      return;
+    }
+
+    let next: ColorTokenGroup = colorTokens;
+    const errors: string[] = [];
+    let totalTokens = 0;
+
+    for (const { slot, file } of matched) {
       try {
-        const data = JSON.parse(ev.target?.result as string);
-        const { global, semantic } = parseAndClassifyTokens(data);
-        if (global.length === 0 && semantic.length === 0) {
-          toast.error("No color tokens found in the uploaded file.");
-          return;
+        const text = await file.text();
+        const data = JSON.parse(text);
+        const tokens = parseFileForSlot(slot, data);
+        if (tokens.length === 0) {
+          errors.push(`${file.name}: no tokens parsed`);
+          continue;
         }
-        const updated: ColorTokenGroup = {
-          ...colorTokens,
-          globalDark: global,
-          semanticDark: semantic,
-        };
-        setColorTokens(updated);
-        setLastDarkFile(fileName);
-        setTokenDisplayTab("dark");
-        toast.success(
-          `Dark tokens imported: ${global.length} global, ${semantic.length} semantic tokens from "${fileName}"`
-        );
+        next = applySlotUpdate(next, slot, tokens);
+        totalTokens += tokens.length;
       } catch {
-        toast.error("Failed to parse JSON file. Please check the format.");
+        errors.push(`${file.name}: parse error`);
       }
-    };
-    reader.readAsText(file);
-    if (darkInputRef.current) darkInputRef.current.value = "";
+    }
+
+    setColorTokens(next);
+    setBulkPending(null);
+
+    if (errors.length > 0) {
+      toast.error(`Imported with errors: ${errors.join("; ")}`);
+    } else {
+      toast.success(
+        `Imported ${totalTokens} tokens from ${matched.length} file${matched.length === 1 ? "" : "s"}`
+      );
+    }
   };
 
   const handleExportCSS = async () => {
     try {
       await exportCSSAsZip(
         colorTokens.semanticLight,
-        colorTokens.globalLight,
         colorTokens.semanticDark,
-        colorTokens.globalDark
+        colorTokens.global
       );
-      toast.success("Exported color-tokens.zip (color-light.css + color-dark.css)");
+      toast.success("Exported color-tokens.zip (color-light.css + color-dark.css + color-global.css)");
     } catch {
       toast.error("Failed to export CSS files.");
     }
   };
 
-  const totalLight = colorTokens.globalLight.length + colorTokens.semanticLight.length;
-  const totalDark = colorTokens.globalDark.length + colorTokens.semanticDark.length;
+  const totalLight = colorTokens.semanticLight.length;
+  const totalDark = colorTokens.semanticDark.length;
+  const totalGlobal = colorTokens.global.length;
 
   // Build outline for current token display tab
-  const semanticGroups = tokenDisplayTab === "light"
-    ? groupSemanticTokensStable(colorTokens.semanticLight)
-    : groupSemanticTokensStable(colorTokens.semanticDark);
-  const globalGroups = tokenDisplayTab === "light"
-    ? groupGlobalTokensStable(colorTokens.globalLight)
-    : groupGlobalTokensStable(colorTokens.globalDark);
+  const semanticGroups =
+    tokenDisplayTab === "light"
+      ? groupSemanticTokensStable(colorTokens.semanticLight)
+      : groupSemanticTokensStable(colorTokens.semanticDark);
+  const globalGroups = groupGlobalTokensStable(colorTokens.global);
 
   const outlineSections = useMemo(
     () =>
@@ -193,95 +299,135 @@ export function ColorTokensEditor() {
 
           <TabsContent value="tokens" className="mt-6">
             {/* Info banner */}
-            <div
-              className="flex items-start gap-3 p-4 mb-6 border border-primary/20 rounded-[var(--radius-card)] bg-primary/5"
-            >
+            <div className="flex items-start gap-3 p-4 mb-6 border border-primary/20 rounded-[var(--radius-card)] bg-primary/5">
               <Info className="size-4 text-primary mt-0.5 shrink-0" />
               <p className="text-card-foreground" style={{ fontSize: "var(--text-label)" }}>
-                Upload a Figma/Tokens Studio JSON file. Tokens named
-                <code className="bg-secondary px-1 rounded-[var(--radius)]">color.global.***</code> are classified as
-                <strong> Global</strong> tokens. Tokens named
-                <code className="bg-secondary px-1 rounded-[var(--radius)]">color.***</code> (excluding global) are classified as
-                <strong> Semantic</strong> tokens. Other tokens fall back to value-based classification. Each upload completely replaces the corresponding mode's tokens.
+                Upload three Figma color-token JSON exports —
+                <code className="bg-secondary px-1 rounded-[var(--radius)]">color-global-value.tokens.json</code> for the
+                raw palette, plus
+                <code className="bg-secondary px-1 rounded-[var(--radius)]">light.tokens.json</code> and
+                <code className="bg-secondary px-1 rounded-[var(--radius)]">dark.tokens.json</code> for semantic tokens.
+                Each upload completely replaces the corresponding slot's tokens; semantic aliases (e.g.
+                <code className="bg-secondary px-1 rounded-[var(--radius)]">color/global/gold/60</code>) are preserved
+                and emitted as <code className="bg-secondary px-1 rounded-[var(--radius)]">var(--color-global-gold-60)</code> in the CSS export.
               </p>
             </div>
 
-            {/* Import Section */}
-            <div className="space-y-4 mb-8">
-              <h3 style={{ fontSize: "var(--text-h4)", fontWeight: "var(--font-weight-medium)" }}>
-                Import Tokens
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Light Mode Upload */}
-                <div className="p-4 border border-border rounded-[var(--radius-card)] bg-secondary/10">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Sun className="size-4 text-foreground" />
-                    <span style={{ fontSize: "var(--text-p)", fontWeight: "var(--font-weight-medium)" }}>
-                      Light Mode
-                    </span>
-                  </div>
-                  <p className="text-muted-foreground mb-3" style={{ fontSize: "var(--text-label)" }}>
-                    Upload a JSON file with light mode color tokens. Supports Figma exports, Tokens Studio, flat arrays, or key-value maps.
-                  </p>
-                  {lastLightFile && (
-                    <p className="text-primary mb-2" style={{ fontSize: "var(--text-label)" }}>
-                      Last uploaded: <strong>{lastLightFile}</strong>
-                    </p>
-                  )}
-                  <input
-                    ref={lightInputRef}
-                    type="file"
-                    accept=".json"
-                    className="hidden"
-                    onChange={handleImportLight}
-                  />
-                  <Button variant="outline" className="w-full" onClick={() => lightInputRef.current?.click()}>
-                    <Upload className="size-4 mr-1.5" /> Upload Light Tokens
-                  </Button>
-                </div>
-
-                {/* Dark Mode Upload */}
-                <div className="p-4 border border-border rounded-[var(--radius-card)] bg-secondary/10">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Moon className="size-4 text-foreground" />
-                    <span style={{ fontSize: "var(--text-p)", fontWeight: "var(--font-weight-medium)" }}>
-                      Dark Mode
-                    </span>
-                  </div>
-                  <p className="text-muted-foreground mb-3" style={{ fontSize: "var(--text-label)" }}>
-                    Upload a JSON file with dark mode color tokens. Supports Figma exports, Tokens Studio, flat arrays, or key-value maps.
-                  </p>
-                  {lastDarkFile && (
-                    <p className="text-primary mb-2" style={{ fontSize: "var(--text-label)" }}>
-                      Last uploaded: <strong>{lastDarkFile}</strong>
-                    </p>
-                  )}
-                  <input
-                    ref={darkInputRef}
-                    type="file"
-                    accept=".json"
-                    className="hidden"
-                    onChange={handleImportDark}
-                  />
-                  <Button variant="outline" className="w-full" onClick={() => darkInputRef.current?.click()}>
-                    <Upload className="size-4 mr-1.5" /> Upload Dark Tokens
-                  </Button>
-                </div>
-              </div>
-
-              {/* Export */}
-              <div className="flex flex-wrap items-center gap-3 p-4 border border-border rounded-[var(--radius-card)] bg-secondary/10">
-                <span className="text-foreground mr-2" style={{ fontSize: "var(--text-p)", fontWeight: "var(--font-weight-medium)" }}>
-                  Export:
+            {/* Bulk upload */}
+            <div className="mb-6 p-5 border border-border rounded-[var(--radius-card)] bg-secondary/10">
+              <div className="flex items-center gap-2 mb-2">
+                <Package className="size-4 text-foreground" />
+                <span style={{ fontSize: "var(--text-p)", fontWeight: "var(--font-weight-medium)" }}>
+                  Bulk Upload (all 3 files)
                 </span>
-                <Button variant="outline" onClick={handleExportCSS}>
-                  <Download className="size-4 mr-1.5" /> Export CSS VAR (.zip)
-                </Button>
+              </div>
+              <p className="text-muted-foreground mb-4" style={{ fontSize: "var(--text-label)" }}>
+                Select all three files at once. File names are matched against{" "}
+                <code className="bg-secondary px-1 rounded-[var(--radius)]">color-global-value.tokens.json</code>,{" "}
+                <code className="bg-secondary px-1 rounded-[var(--radius)]">light.tokens.json</code>, and{" "}
+                <code className="bg-secondary px-1 rounded-[var(--radius)]">dark.tokens.json</code>. You'll confirm matches before anything is written.
+              </p>
+              <input
+                ref={bulkInputRef}
+                type="file"
+                accept=".json"
+                multiple
+                className="hidden"
+                onChange={handleBulkUpload}
+              />
+              <Button variant="outline" onClick={() => bulkInputRef.current?.click()}>
+                <Upload className="size-4 mr-1.5" /> Select Files
+              </Button>
+            </div>
+
+            {/* Individual upload */}
+            <div className="mb-8">
+              <h3 className="mb-3" style={{ fontSize: "var(--text-h4)", fontWeight: "var(--font-weight-medium)" }}>
+                Individual Upload
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {SLOTS.map((s) => {
+                  const count = slotCount(colorTokens, s.key);
+                  const Icon = s.icon;
+                  return (
+                    <div
+                      key={s.key}
+                      className="p-4 border border-border rounded-[var(--radius-card)] bg-secondary/10"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <Icon className="size-4 text-foreground" />
+                          <span
+                            style={{
+                              fontSize: "var(--text-p)",
+                              fontWeight: "var(--font-weight-medium)",
+                            }}
+                          >
+                            {s.label}
+                          </span>
+                        </div>
+                        <span
+                          className="text-muted-foreground"
+                          style={{ fontSize: "var(--text-label)" }}
+                        >
+                          {count > 0 ? `${count} tokens` : "empty"}
+                        </span>
+                      </div>
+                      <p
+                        className="text-muted-foreground mb-2"
+                        style={{ fontSize: "var(--text-label)" }}
+                      >
+                        {s.description}
+                      </p>
+                      <p
+                        className="text-muted-foreground mb-3"
+                        style={{ fontSize: "var(--text-label)" }}
+                      >
+                        Expects{" "}
+                        <code className="bg-secondary px-1 rounded-[var(--radius)]">
+                          {COLOR_EXPECTED_FILES[s.key]}
+                        </code>
+                      </p>
+                      <input
+                        ref={(el) => {
+                          individualRefs.current[s.key] = el;
+                        }}
+                        type="file"
+                        accept=".json"
+                        className="hidden"
+                        onChange={handleIndividualUpload(s.key)}
+                      />
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => individualRefs.current[s.key]?.click()}
+                      >
+                        <Upload className="size-4 mr-1.5" /> Upload
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
+            {/* Export */}
+            <div className="flex flex-wrap items-center gap-3 p-4 mb-8 border border-border rounded-[var(--radius-card)] bg-secondary/10">
+              <span
+                className="text-foreground mr-2"
+                style={{ fontSize: "var(--text-p)", fontWeight: "var(--font-weight-medium)" }}
+              >
+                Export:
+              </span>
+              <Button variant="outline" onClick={handleExportCSS}>
+                <Download className="size-4 mr-1.5" /> Export CSS VAR (.zip)
+              </Button>
+            </div>
+
             {/* Token Preview */}
-            <h3 className="mb-4" style={{ fontSize: "var(--text-h4)", fontWeight: "var(--font-weight-medium)" }}>
+            <h3
+              className="mb-4"
+              style={{ fontSize: "var(--text-h4)", fontWeight: "var(--font-weight-medium)" }}
+            >
               Token Preview
             </h3>
             <Tabs value={tokenDisplayTab} onValueChange={setTokenDisplayTab}>
@@ -289,7 +435,10 @@ export function ColorTokensEditor() {
                 <TabsTrigger value="light">
                   <Sun className="size-3.5 mr-1.5" /> Light Mode
                   {totalLight > 0 && (
-                    <span className="ml-1.5 text-muted-foreground" style={{ fontSize: "var(--text-label)" }}>
+                    <span
+                      className="ml-1.5 text-muted-foreground"
+                      style={{ fontSize: "var(--text-label)" }}
+                    >
                       ({totalLight})
                     </span>
                   )}
@@ -297,7 +446,10 @@ export function ColorTokensEditor() {
                 <TabsTrigger value="dark">
                   <Moon className="size-3.5 mr-1.5" /> Dark Mode
                   {totalDark > 0 && (
-                    <span className="ml-1.5 text-muted-foreground" style={{ fontSize: "var(--text-label)" }}>
+                    <span
+                      className="ml-1.5 text-muted-foreground"
+                      style={{ fontSize: "var(--text-label)" }}
+                    >
                       ({totalDark})
                     </span>
                   )}
@@ -310,14 +462,14 @@ export function ColorTokensEditor() {
                   sectionSlug={slugify("Semantic Tokens")}
                   groups={groupSemanticTokensStable(colorTokens.semanticLight)}
                   type="semantic"
-                  globalMap={globalLightMap}
+                  globalMap={globalMap}
                 />
                 <GroupedTokenSectionCMS
-                  sectionLabel="Global Tokens"
+                  sectionLabel={`Global Tokens (${totalGlobal})`}
                   sectionSlug={slugify("Global Tokens")}
-                  groups={groupGlobalTokensStable(colorTokens.globalLight)}
+                  groups={groupGlobalTokensStable(colorTokens.global)}
                   type="global"
-                  globalMap={globalLightMap}
+                  globalMap={globalMap}
                 />
               </TabsContent>
 
@@ -327,14 +479,14 @@ export function ColorTokensEditor() {
                   sectionSlug={slugify("Semantic Tokens")}
                   groups={groupSemanticTokensStable(colorTokens.semanticDark)}
                   type="semantic"
-                  globalMap={globalDarkMap}
+                  globalMap={globalMap}
                 />
                 <GroupedTokenSectionCMS
-                  sectionLabel="Global Tokens"
+                  sectionLabel={`Global Tokens (${totalGlobal})`}
                   sectionSlug={slugify("Global Tokens")}
-                  groups={groupGlobalTokensStable(colorTokens.globalDark)}
+                  groups={groupGlobalTokensStable(colorTokens.global)}
                   type="global"
-                  globalMap={globalDarkMap}
+                  globalMap={globalMap}
                 />
               </TabsContent>
             </Tabs>
@@ -343,10 +495,133 @@ export function ColorTokensEditor() {
       </div>
 
       {/* Outline sidebar (right) */}
-      {showOutline && (
-        <TokenOutlineSidebar sections={outlineSections} />
-      )}
+      {showOutline && <TokenOutlineSidebar sections={outlineSections} />}
+
+      {/* Bulk confirmation modal */}
+      <BulkConfirmDialog
+        pending={bulkPending}
+        onConfirm={confirmBulkUpload}
+        onCancel={() => setBulkPending(null)}
+      />
     </div>
+  );
+}
+
+// ─── Bulk confirm dialog ───
+
+function BulkConfirmDialog({
+  pending,
+  onConfirm,
+  onCancel,
+}: {
+  pending: {
+    matched: Array<{ slot: ColorMatchSlot; file: File; expected: string }>;
+    duplicates: Array<{ slot: ColorMatchSlot; files: File[] }>;
+    unmatched: File[];
+    missing: ColorMatchSlot[];
+  } | null;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const open = pending !== null;
+  const matched = pending?.matched ?? [];
+  const duplicates = pending?.duplicates ?? [];
+  const unmatched = pending?.unmatched ?? [];
+  const missing = pending?.missing ?? [];
+
+  const canConfirm = matched.length > 0;
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onCancel(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Confirm Bulk Upload</DialogTitle>
+          <DialogDescription>
+            Review the matches below. Only matched files will be imported — each replaces its corresponding slot's tokens.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3 max-h-[360px] overflow-auto pr-1">
+          {matched.length > 0 && (
+            <section>
+              <p className="mb-1.5" style={{ fontSize: "var(--text-label)", fontWeight: "var(--font-weight-medium)" }}>
+                Matched ({matched.length})
+              </p>
+              <ul className="space-y-1">
+                {matched.map((m) => (
+                  <li key={m.slot} className="flex items-center gap-2" style={{ fontSize: "var(--text-label)" }}>
+                    <CheckCircle2 className="size-4 shrink-0" style={{ color: "var(--color-label-success, green)" }} />
+                    <code className="bg-secondary px-1.5 rounded-[var(--radius)]">{m.file.name}</code>
+                    <span className="text-muted-foreground">→</span>
+                    <span>{COLOR_SLOT_LABELS[m.slot]}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {missing.length > 0 && (
+            <section>
+              <p className="mb-1.5" style={{ fontSize: "var(--text-label)", fontWeight: "var(--font-weight-medium)" }}>
+                Missing ({missing.length}) — will keep existing
+              </p>
+              <ul className="space-y-1">
+                {missing.map((slot) => (
+                  <li key={slot} className="flex items-center gap-2 text-muted-foreground" style={{ fontSize: "var(--text-label)" }}>
+                    <AlertTriangle className="size-4 shrink-0" />
+                    <span>{COLOR_SLOT_LABELS[slot]}</span>
+                    <span>—</span>
+                    <code className="bg-secondary px-1.5 rounded-[var(--radius)]">{COLOR_EXPECTED_FILES[slot]}</code>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {duplicates.length > 0 && (
+            <section>
+              <p className="mb-1.5" style={{ fontSize: "var(--text-label)", fontWeight: "var(--font-weight-medium)" }}>
+                Duplicates (ignored)
+              </p>
+              <ul className="space-y-1">
+                {duplicates.flatMap((d) =>
+                  d.files.map((f) => (
+                    <li key={`${d.slot}-${f.name}`} className="flex items-center gap-2 text-muted-foreground" style={{ fontSize: "var(--text-label)" }}>
+                      <XCircle className="size-4 shrink-0" />
+                      <code className="bg-secondary px-1.5 rounded-[var(--radius)]">{f.name}</code>
+                      <span>— another file already matched {COLOR_SLOT_LABELS[d.slot]}</span>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </section>
+          )}
+
+          {unmatched.length > 0 && (
+            <section>
+              <p className="mb-1.5" style={{ fontSize: "var(--text-label)", fontWeight: "var(--font-weight-medium)" }}>
+                Unrecognized (ignored)
+              </p>
+              <ul className="space-y-1">
+                {unmatched.map((f) => (
+                  <li key={f.name} className="flex items-center gap-2 text-muted-foreground" style={{ fontSize: "var(--text-label)" }}>
+                    <XCircle className="size-4 shrink-0" />
+                    <code className="bg-secondary px-1.5 rounded-[var(--radius)]">{f.name}</code>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button onClick={onConfirm} disabled={!canConfirm}>
+            Import {matched.length} file{matched.length === 1 ? "" : "s"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
