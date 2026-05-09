@@ -1,7 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap');
 /*
- * JetBrains Mono was previously imported here but was dropped from the code
- * font stacks — its Google Fonts build had glyph-fallback issues in Safari
- * that broke ASCII-art alignment. We now use system monospace (SF Mono /
- * Cascadia Mono) everywhere, so no webfont is needed for code blocks.
+ * Inter is the design-system typeface (per tokens-typography.md). Weights
+ * match what bootstrap.css loads so prototypes and this site stay in lockstep.
+ * JetBrains Mono was previously imported but was dropped from the code font
+ * stacks — its Google Fonts build had glyph-fallback issues in Safari that
+ * broke ASCII-art alignment. We now use system monospace (SF Mono / Cascadia
+ * Mono) everywhere, so no webfont is needed for code blocks.
  */

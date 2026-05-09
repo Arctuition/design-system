@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { loadStateFromServer, saveStateKey, bulkSaveState } from "./api";
 import { projectId, publicAnonKey } from "/utils/supabase/info";
 import { buildIconTagsFromName, enrichAllIconTags, rebuildIconTags } from "./icon-tag-enrichment";
+import { chromeIconSeeds } from "./chrome-icon-seeds";
 
 // ---- Types ----
 export interface ChangeLogEntry {
@@ -245,6 +246,47 @@ const defaultSizeArticle = `<h1>Size &amp; Space Tokens</h1><p>ArcSite's size an
 const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
+    date: "2026-05-10",
+    version: "1.2.0",
+    title: "Theme toggle, brand refresh, dark-mode polish",
+    description: `The Design System website now applies the latest tokens, brand assets, and library icons end-to-end — and dark mode actually works.
+
+**Theme toggle**
+- Top-right dropdown with Light Mode (sun), Dark Mode (moon), Follow Computer Setting (computer)
+- Persisted to \`localStorage\`; FOUC-safe inline script in \`index.html\` applies the class before React boots
+- "Follow Computer Setting" reacts live to OS-level changes via \`prefers-color-scheme\`
+
+**Dark mode**
+- Sidebar, title bar, and footer chrome moved off hardcoded \`bg-white\` / \`bg-[#fafafa]\` onto \`bg-sidebar\` / \`bg-secondary\` tokens
+- \`theme.css\` \`.dark\` block now overrides every design-system semantic token (\`--color-label-*\`, \`--color-surface-*\`, \`--color-fill-*\`, \`--color-border-*\`, \`--color-divider-*\`), mirroring \`bootstrap.css\`. Iconology and other token-bound pages are no longer broken in dark mode.
+
+**Library icons in chrome**
+- New \`LibraryIcon\` component looks up icons by name from the data store, recolors fills/strokes to \`currentColor\`
+- All lucide-react icons removed from \`AppLayout\` and \`ThemeToggle\`
+- Tier 1 nav: \`home 24x24\`, \`text 24x24\`, \`color pallette 24x24\`, \`annotation 24x24\`, \`shapes 24x24\`, \`grid 24x24\`
+- Footer + utility: \`setting 24x24\`, \`logout 24x24\`, \`lock 24x24\`, \`menu hamburger 24x24\`, \`user circle 16x16\`, \`chevron down 16x16\`, \`check mark 16x16\`
+- Chrome icons seeded offline-first via \`chrome-icon-seeds.ts\` so the shell renders even when the live icon backend is unreachable; live data still wins on name match
+- LibraryIcon adds a \`lib-icon-size-N\` marker class on its inner \`<svg>\` to opt out of Radix's dropdown-menu \`[&_svg:not([class*='size-'])]:size-4\` rule that was crushing 24px icons to 16px
+
+**Typography**
+- Font loader switched from \`Roboto\` → \`Inter\` (weights 400/500/600/800)
+- All \`.article-content\` headings + body re-pointed to \`'Inter', sans-serif\`
+- Inline \`<code>\` in markdown headings now uses \`0.9em\` (relative) instead of \`var(--text-label)\` (fixed 13px), so a \`font\` chip in an H1 no longer collapses to body size
+
+**Brand**
+- Sidebar + title-bar mark uses [\`/logos/glyph-and-text.svg\`](https://arctuition.github.io/design-system/logos/glyph-and-text.svg); dark variant swaps via \`.dark\`
+- Favicon set to [\`/logos/glyph.svg\`](https://arctuition.github.io/design-system/logos/glyph.svg) + \`glyph-on-dark.svg\` via \`prefers-color-scheme\`
+- Initial loader spinner uses brand orange \`#E3571C\`
+- Browser tab title is \`Arctuition Design System\`
+
+**Home**
+- Change Log entries collapse by default — only version + date + title show until the user expands
+
+**Generator fix**
+- \`scripts/generate-llms-txt.mjs\` now stitches alpha into transparency-token hex codes. Before: \`--color-global-gray-transparency-on-light-85: #000000\` (broken). After: \`#000000D9\`. Affects 167 transparency tokens in [\`/tokens/bootstrap.css\`](https://arctuition.github.io/design-system/tokens/bootstrap.css).`,
+  },
+  {
+    id: uid(),
     date: "2026-05-09",
     version: "1.1.0",
     title: "Color tokens v2 — gold family + caution remap",
@@ -283,7 +325,22 @@ const defaultIcons: IconItem[] = [
   { id: uid(), name: "Menu", tags: ["menu", "hamburger", "navigation", "bars", "list", "lines", "drawer", "sidebar", "toggle", "three lines"], svgContent: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>', fileName: "menu.svg", createdAt: "2026-03-18T12:00:00.000Z" },
   { id: uid(), name: "Star", tags: ["star", "favorite", "rating", "bookmark", "featured", "highlight", "review", "important", "award", "five point"], svgContent: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>', fileName: "star.svg", createdAt: "2026-03-18T12:00:00.000Z" },
   { id: uid(), name: "Download", tags: ["download", "save", "export", "file", "arrow down", "receive", "get", "fetch", "install", "transfer"], svgContent: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>', fileName: "download.svg", createdAt: "2026-03-18T12:00:00.000Z" },
+  // Chrome icons — required by AppLayout / ThemeToggle. Each gets a fresh
+  // `id` here; live data with the same `name` overwrites these once the
+  // server fetch resolves, so CMS uploads continue to win.
+  ...chromeIconSeeds.map((seed) => ({ id: uid(), ...seed })),
 ];
+
+// Ensure every chrome-required icon name exists in `icons`. We match on
+// lowercase name; if the server already provides one (e.g. an updated upload),
+// it stays — only missing names are filled in from the static seed.
+function ensureChromeIcons(icons: IconItem[]): IconItem[] {
+  const lowerNames = new Set(icons.map((i) => i.name.toLowerCase()));
+  const missing = chromeIconSeeds
+    .filter((seed) => !lowerNames.has(seed.name.toLowerCase()))
+    .map((seed) => ({ id: uid(), ...seed }));
+  return missing.length > 0 ? [...icons, ...missing] : icons;
+}
 
 const defaultPatterns: PatternArticle[] = [
   {
@@ -318,7 +375,7 @@ const defaultEditors: EditorAccount[] = [
 
 const defaultHomeArticle = `<h1>Design System</h1><p>Welcome to our Design System. This is a living documentation that provides guidelines, components, and patterns for building consistent user experiences across all our products.</p><p>Our design system helps teams work more efficiently by providing reusable components, clear guidelines, and a shared design language. Explore the sections below to learn about typography, color tokens, iconology, and UI patterns.</p><h2>Getting Started</h2><p>Start by exploring our foundational elements - Typography and Color Tokens. These form the building blocks of every component and pattern in the system. Then dive into our Icon Library and Patterns for more complex implementations.</p>`;
 
-const defaultTypographyArticle = `<h1>Typography</h1><p>Typography is the foundation of our design system's visual language. Consistent use of type helps establish hierarchy, improve readability, and create a cohesive user experience across all platforms.</p><h2>Type Scale</h2><p>Our type scale is based on a modular approach that ensures consistent sizing across all applications. We use Roboto as our primary typeface.</p><h2>Heading Styles</h2><p><strong>H1 - Page Title:</strong> 34px / Normal weight / Line height 1.5</p><p><strong>H2 - Section Title:</strong> 28px / Normal weight / Line height 1.5</p><p><strong>H3 - Subsection Title:</strong> 22px / Normal weight / Line height 1.5</p><p><strong>H4 - Group Title:</strong> 16px / Medium weight / Line height 1.5</p><h2>Body Text</h2><p><strong>Body (P):</strong> 17px / Normal weight / Line height 1.5 - Used for general content and descriptions.</p><p><strong>Label:</strong> 13px / Normal weight / Line height 1.5 - Used for form labels, captions, and metadata.</p><h2>Font Weights</h2><p><strong>Normal (400):</strong> Used for body text, descriptions, and general content.</p><p><strong>Medium (600):</strong> Used for emphasis, headings, and interactive elements that need to stand out.</p>`;
+const defaultTypographyArticle = `<h1>Typography</h1><p>Typography is the foundation of our design system's visual language. Consistent use of type helps establish hierarchy, improve readability, and create a cohesive user experience across all platforms.</p><h2>Type Scale</h2><p>Our type scale is based on a modular approach that ensures consistent sizing across all applications. We use Inter as our primary typeface.</p><h2>Heading Styles</h2><p><strong>H1 - Page Title:</strong> 34px / Normal weight / Line height 1.5</p><p><strong>H2 - Section Title:</strong> 28px / Normal weight / Line height 1.5</p><p><strong>H3 - Subsection Title:</strong> 22px / Normal weight / Line height 1.5</p><p><strong>H4 - Group Title:</strong> 16px / Medium weight / Line height 1.5</p><h2>Body Text</h2><p><strong>Body (P):</strong> 17px / Normal weight / Line height 1.5 - Used for general content and descriptions.</p><p><strong>Label:</strong> 13px / Normal weight / Line height 1.5 - Used for form labels, captions, and metadata.</p><h2>Font Weights</h2><p><strong>Normal (400):</strong> Used for body text, descriptions, and general content.</p><p><strong>Medium (600):</strong> Used for emphasis, headings, and interactive elements that need to stand out.</p>`;
 
 const defaultColorArticle = `<h1>Color Tokens</h1><p>Color tokens are the building blocks of our color system. They provide a consistent and maintainable way to manage colors across all platforms and themes. Our system uses semantic tokens that map to global color values, making theme switching seamless.</p><h2>Token Architecture</h2><p>We use a two-tier token system: <strong>Global Tokens</strong> define the raw color palette, while <strong>Semantic Tokens</strong> assign meaning to those colors based on their usage context. This separation allows us to support multiple themes (light/dark) without changing component code.</p>`;
 
@@ -391,13 +448,15 @@ function buildStateFromServer(serverData: Record<string, any>): AppState {
     colorArticle: serverData.colorArticle ?? defaults.colorArticle,
     sizeArticle: serverData.sizeArticle ?? defaults.sizeArticle,
     iconologyArticle: serverData.iconologyArticle ?? defaults.iconologyArticle,
-    icons: Array.isArray(serverData.icons)
-      ? serverData.icons.map((i: any) => ({
-          ...i,
-          createdAt: i.createdAt || "2026-03-18T12:00:00.000Z",
-          updatedAt: i.updatedAt || i.createdAt || "2026-03-18T12:00:00.000Z",
-        }))
-      : defaults.icons,
+    icons: ensureChromeIcons(
+      Array.isArray(serverData.icons)
+        ? serverData.icons.map((i: any) => ({
+            ...i,
+            createdAt: i.createdAt || "2026-03-18T12:00:00.000Z",
+            updatedAt: i.updatedAt || i.createdAt || "2026-03-18T12:00:00.000Z",
+          }))
+        : defaults.icons,
+    ),
     patterns: Array.isArray(serverData.patterns) ? serverData.patterns : defaults.patterns,
     editors,
     isAuthenticated: false,

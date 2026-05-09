@@ -458,6 +458,109 @@
   --sidebar-accent-foreground: rgba(68, 143, 248, 1.00);
   --sidebar-border: rgba(80, 80, 80, 1.00);
   --sidebar-ring: rgba(68, 143, 248, 1.00);
+
+  /* ───── Design-system semantic tokens — dark overrides ─────
+   * Mirrors the `.dark` block in tokens/bootstrap.css. Without these,
+   * pages that bind to `--color-label-*`, `--color-surface-*`, `--color-fill-*`,
+   * `--color-border-*`, or `--color-divider-*` keep their light-mode values
+   * (e.g. Iconology's headings collapsed to near-black on dark surfaces and
+   * its icon cards rendered as bright-white blocks). Local convention here
+   * is `brandorange` (no hyphen); upstream bootstrap.css uses `brand-orange`. */
+
+  /* Label */
+  --color-label-primary: var(--color-global-gray-00);
+  --color-label-secondary: var(--color-global-gray-40);
+  --color-label-tertiary: var(--color-global-gray-70);
+  --color-label-quaternary: var(--color-global-gray-80);
+  --color-label-primary-increased-contrast: var(--color-global-gray-transparency-on-dark-100);
+  --color-label-secondary-increased-contrast: var(--color-global-gray-transparency-on-dark-60);
+  --color-label-tertiary-increased-contrast: var(--color-global-gray-transparency-on-dark-30);
+  --color-label-quaternary-increased-contrast: var(--color-global-gray-transparency-on-dark-20);
+  --color-label-brand-primary: var(--color-global-brandorange-50);
+  --color-label-brand-secondary: var(--color-global-brandorange-70);
+  --color-label-brand-tertiary: var(--color-global-brandorange-80);
+  --color-label-brand-quaternary: var(--color-global-brandorange-90);
+  --color-label-action-primary: var(--color-global-blue-50);
+  --color-label-action-secondary: var(--color-global-blue-70);
+  --color-label-action-tertiary: var(--color-global-blue-80);
+  --color-label-action-quaternary: var(--color-global-blue-90);
+  --color-label-success-primary: var(--color-global-green-50);
+  --color-label-success-secondary: var(--color-global-green-70);
+  --color-label-success-tertiary: var(--color-global-green-80);
+  --color-label-success-quaternary: var(--color-global-green-90);
+  --color-label-caution-primary: var(--color-global-gold-50);
+  --color-label-caution-secondary: var(--color-global-gold-70);
+  --color-label-caution-tertiary: var(--color-global-gold-80);
+  --color-label-caution-quaternary: var(--color-global-gold-90);
+  --color-label-caution-yellow-primary: var(--color-global-yellow-50);
+  --color-label-caution-yellow-secondary: var(--color-global-yellow-70);
+  --color-label-caution-yellow-tertiary: var(--color-global-yellow-80);
+  --color-label-caution-yellow-quaternary: var(--color-global-yellow-90);
+  --color-label-danger-primary: var(--color-global-red-50);
+  --color-label-danger-secondary: var(--color-global-red-70);
+  --color-label-danger-tertiary: var(--color-global-red-80);
+  --color-label-danger-quaternary: var(--color-global-red-90);
+
+  /* Surface */
+  --color-surface-default: var(--color-global-gray-90);
+  --color-surface-dim: var(--color-global-gray-95);
+  --color-surface-container-default: var(--color-global-gray-90);
+  --color-surface-container-high: var(--color-global-gray-80);
+  --color-surface-container-higher: var(--color-global-gray-75);
+  --color-surface-container-default-increased-contrast: var(--color-global-gray-transparency-on-dark-10);
+  --color-surface-container-high-increased-contrast: var(--color-global-gray-transparency-on-dark-20);
+  --color-surface-container-higher-increased-contrast: var(--color-global-gray-transparency-on-dark-25);
+  --color-surface-container-brand: var(--color-global-brandorange-95);
+  --color-surface-container-action: var(--color-global-blue-95);
+  --color-surface-container-action-hover: var(--color-global-blue-100);
+  --color-surface-container-success: var(--color-global-green-95);
+  --color-surface-container-caution: var(--color-global-gold-95);
+  --color-surface-container-caution-yellow: var(--color-global-yellow-95);
+  --color-surface-container-danger: var(--color-global-red-95);
+
+  /* Fill */
+  --color-fill-secondary: var(--color-global-gray-75);
+  --color-fill-tertiary: var(--color-global-gray-80);
+  --color-fill-bright: var(--color-global-gray-90);
+  --color-fill-brand-primary: var(--color-global-brandorange-50);
+  --color-fill-brand-secondary: var(--color-global-brandorange-90);
+  --color-fill-action-primary: var(--color-global-blue-50);
+  --color-fill-action-secondary: var(--color-global-blue-90);
+  --color-fill-action-tertiary: var(--color-global-blue-95);
+  --color-fill-action-primary-hover: var(--color-global-blue-40);
+  --color-fill-action-secondary-hover: var(--color-global-blue-95);
+  --color-fill-success-primary: var(--color-global-green-50);
+  --color-fill-success-secondary: var(--color-global-green-90);
+  --color-fill-caution-primary: var(--color-global-gold-50);
+  --color-fill-caution-secondary: var(--color-global-gold-90);
+  --color-fill-caution-yellow-primary: var(--color-global-yellow-50);
+  --color-fill-caution-yellow-secondary: var(--color-global-yellow-90);
+  --color-fill-danger-primary: var(--color-global-red-50);
+  --color-fill-danger-secondary: var(--color-global-red-90);
+
+  /* Border */
+  --color-border-default: var(--color-global-gray-75);
+  --color-border-extra: var(--color-global-gray-65);
+  --color-border-default-increased-contrast: var(--color-global-gray-transparency-on-dark-15);
+  --color-border-extra-increased-contrast: var(--color-global-gray-transparency-on-dark-25);
+  --color-border-action-primary: var(--color-global-blue-50);
+  --color-border-action-secondary: var(--color-global-blue-80);
+  --color-border-success-primary: var(--color-global-green-50);
+  --color-border-success-secondary: var(--color-global-green-80);
+  --color-border-danger-primary: var(--color-global-red-50);
+  --color-border-danger-secondary: var(--color-global-red-80);
+  --color-border-caution-primary: var(--color-global-gold-50);
+  --color-border-caution-secondary: var(--color-global-gold-80);
+  --color-border-caution-yellow-primary: var(--color-global-yellow-50);
+  --color-border-caution-yellow-secondary: var(--color-global-yellow-80);
+  --color-border-brand-primary: var(--color-global-brandorange-50);
+  --color-border-brand-secondary: var(--color-global-brandorange-80);
+
+  /* Divider */
+  --color-divider-default: var(--color-global-gray-80);
+  --color-divider-extra: var(--color-global-gray-70);
+  --color-divider-default-increased-contrast: var(--color-global-gray-transparency-on-dark-20);
+  --color-divider-extra-increased-contrast: var(--color-global-gray-transparency-on-dark-30);
 }
 
 @theme inline {
@@ -507,7 +610,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Roboto', sans-serif;
+    font-family: 'Inter', sans-serif;
   }
 
   /* Fix Safari: Tailwind v4 preflight sets cursor:default on interactive elements */
@@ -552,63 +655,63 @@
  * These can be overridden by component-level styles.
  */
 h1 {
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: var(--text-h1);
   font-weight: var(--font-weight-normal);
   line-height: 1.5;
 }
 
 h2 {
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: var(--text-h2);
   font-weight: var(--font-weight-normal);
   line-height: 1.5;
 }
 
 h3 {
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: var(--text-h3);
   font-weight: var(--font-weight-normal);
   line-height: 1.5;
 }
 
 h4 {
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: var(--text-h4);
   font-weight: var(--font-weight-medium);
   line-height: 1.5;
 }
 
 p {
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: var(--text-p);
   font-weight: var(--font-weight-normal);
   line-height: 1.5;
 }
 
 label {
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: var(--text-label);
   font-weight: var(--font-weight-normal);
   line-height: 1.5;
 }
 
 button {
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: var(--text-p);
   font-weight: var(--font-weight-normal);
   line-height: 1.5;
 }
 
 input {
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: var(--text-input);
   font-weight: var(--font-weight-normal);
   line-height: 1.5;
 }
 
 th {
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: var(--text-table-header);
   font-weight: var(--font-weight-medium);
   line-height: 1.5;

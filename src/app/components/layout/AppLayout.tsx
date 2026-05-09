@@ -1,33 +1,67 @@
 import React, { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { useAppData } from "../../store/data-store";
-import {
-  Home, Type, Palette, Image as ImageIcon, LayoutGrid,
-  Settings, LogIn, LogOut, User,
-  PanelLeftClose, PanelLeft,
-  ChevronDown, FileText, Layers, Ruler,
-} from "lucide-react";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
-import svgPaths from "../../../imports/svg-573fdnk0rv";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
+import { LibraryIcon } from "../shared/LibraryIcon";
+import { ThemeToggle } from "./ThemeToggle";
+
+// Arctuition lockup — official brand asset from /public/logos. The dark
+// variant swaps in via the .dark class so the mark stays legible on dark
+// surfaces. See tokens-color.md → Brand assets.
+const LOGO_LIGHT = `${import.meta.env.BASE_URL}logos/glyph-and-text.svg`;
+const LOGO_DARK = `${import.meta.env.BASE_URL}logos/glyph-and-text-on-dark.svg`;
+
+function BrandLockup() {
+  return (
+    <>
+      <img
+        src={LOGO_LIGHT}
+        alt="Arctuition"
+        className="block dark:hidden"
+        style={{ height: 18, width: "auto" }}
+      />
+      <img
+        src={LOGO_DARK}
+        alt="Arctuition"
+        className="hidden dark:block"
+        style={{ height: 18, width: "auto" }}
+      />
+    </>
+  );
+}
 
 // ── Section config ────────────────────────────────────────────────────────
 
 interface NavSection {
   path: string;
   label: string;
-  icon: React.ElementType;
+  // Library-icon name. We resolve loosely (case-insensitive prefix) via
+  // LibraryIcon → useAppData(), so seed-default names like "Home" and
+  // prod names like "home 24x24" both match. Color and Size & Space have
+  // no clean library equivalent today, so the entries pass an empty
+  // string and the icon slot stays blank — better than a wrong icon.
+  libraryIcon: string;
   children?: { path: string; label: string }[];
 }
 
+// Use the explicit `... 24x24` library names so LibraryIcon's exact-match
+// path lands on the design-system icon and bypasses the legacy lucide-style
+// "Home"/"Settings" entries still living in `defaultIcons`.
 const NAV_SECTIONS: NavSection[] = [
-  { path: "/", label: "Home", icon: Home },
-  { path: "/typography", label: "Typography", icon: Type },
-  { path: "/color", label: "Color", icon: Palette },
-  { path: "/size", label: "Size & Space", icon: Ruler },
-  { path: "/iconology", label: "Iconology", icon: ImageIcon },
+  { path: "/", label: "Home", libraryIcon: "home 24x24" },
+  { path: "/typography", label: "Typography", libraryIcon: "text 24x24" },
+  { path: "/color", label: "Color", libraryIcon: "color pallette 24x24" },
+  { path: "/size", label: "Size & Space", libraryIcon: "annotation 24x24" },
+  { path: "/iconology", label: "Iconology", libraryIcon: "shapes 24x24" },
 ];
+
+function NavIcon({ section, size = 24 }: { section: NavSection; size?: number }) {
+  // Library icons named "X 24x24" are designed to render at 24px — using
+  // a smaller size compresses internal padding and stroke weight.
+  return <LibraryIcon name={section.libraryIcon} size={size} />;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -69,7 +103,7 @@ function NavSectionItem({
                 : "text-card-foreground hover:bg-sidebar-accent/50"
             }`}
           >
-            <section.icon className="size-[18px]" />
+            <NavIcon section={section} />
           </Link>
         </TooltipTrigger>
         <TooltipContent side="right">{section.label}</TooltipContent>
@@ -88,7 +122,7 @@ function NavSectionItem({
         }`}
         style={{ fontSize: "var(--text-p)" }}
       >
-        <section.icon className="size-[18px] shrink-0" />
+        <NavIcon section={section} />
         <span>{section.label}</span>
       </Link>
     );
@@ -109,7 +143,7 @@ function NavSectionItem({
           className="flex items-center gap-3 px-3 py-2.5 flex-1 min-w-0"
           style={{ fontSize: "var(--text-p)" }}
         >
-          <section.icon className="size-[18px] shrink-0" />
+          <NavIcon section={section} />
           <span className="truncate">{section.label}</span>
         </Link>
         <button
@@ -117,10 +151,12 @@ function NavSectionItem({
           className="flex items-center justify-center px-2 py-2.5 shrink-0"
           title={expanded ? "Collapse" : "Expand"}
         >
-          <ChevronDown
-            className={`size-4 shrink-0 transition-transform duration-200 ${expanded ? "" : "-rotate-90"}`}
-            style={{ opacity: 0.5 }}
-          />
+          <span
+            className={`transition-transform duration-200 ${expanded ? "" : "-rotate-90"}`}
+            style={{ opacity: 0.5, lineHeight: 0 }}
+          >
+            <LibraryIcon name="chevron down 16x16" size={16} />
+          </span>
         </button>
       </div>
 
@@ -142,7 +178,9 @@ function NavSectionItem({
                 }`}
                 style={{ fontSize: "var(--text-label)" }}
               >
-                <Layers className="size-[14px] shrink-0" style={{ opacity: 0.6 }} />
+                <span style={{ opacity: 0.6, lineHeight: 0 }}>
+                  <LibraryIcon name="layers" size={24} />
+                </span>
                 <span className="truncate">{child.label}</span>
               </Link>
             );
@@ -198,31 +236,14 @@ export function AppLayout() {
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
       <aside
-        className="flex flex-col border-r border-border bg-white transition-all duration-300 shrink-0"
+        className="flex flex-col border-r border-border bg-sidebar transition-all duration-300 shrink-0"
         style={{ width: sidebarOpen ? 240 : 56, minWidth: sidebarOpen ? 240 : 56 }}
       >
         {/* Header */}
         {sidebarOpen ? (
-          <div className="flex items-center justify-between h-[48px] px-4 bg-[#fafafa] border-b border-muted shrink-0">
+          <div className="flex items-center justify-between h-[48px] px-4 bg-secondary border-b border-muted shrink-0">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="h-[14px] relative shrink-0 w-[57px]">
-                <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 57 14">
-                  <g clipPath="url(#clip0_sidebar_logo)">
-                    <path d={svgPaths.p1789e900} fill="var(--foreground)" />
-                    <path d={svgPaths.p1f3a2ef0} fill="var(--foreground)" />
-                    <path d={svgPaths.p3dbda200} fill="var(--foreground)" />
-                    <path d={svgPaths.p3fd86700} fill="var(--foreground)" />
-                    <path d={svgPaths.p9e11f00} fill="var(--foreground)" />
-                    <path d={svgPaths.p1d624600} fill="var(--foreground)" />
-                    <path d={svgPaths.p12113580} fill="var(--foreground)" />
-                  </g>
-                  <defs>
-                    <clipPath id="clip0_sidebar_logo">
-                      <rect fill="white" height="14" width="57" />
-                    </clipPath>
-                  </defs>
-                </svg>
-              </div>
+              <BrandLockup />
               <div className="w-px h-6 bg-foreground/10 shrink-0" />
               <span className="text-foreground opacity-90 truncate" style={{ fontSize: "var(--text-label)" }}>
                 Design System
@@ -235,7 +256,7 @@ export function AppLayout() {
                     className="flex items-center justify-center size-[28px] rounded-[var(--radius)] text-secondary-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
                     onClick={() => setSidebarOpen(false)}
                   >
-                    <PanelLeftClose className="size-[18px]" />
+                    <LibraryIcon name="menu hamburger" size={24} ariaLabel="Collapse sidebar" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right">Collapse</TooltipContent>
@@ -243,7 +264,7 @@ export function AppLayout() {
             </TooltipProvider>
           </div>
         ) : (
-          <div className="flex items-center justify-center h-[48px] bg-[#fafafa] border-b border-muted shrink-0">
+          <div className="flex items-center justify-center h-[48px] bg-secondary border-b border-muted shrink-0">
             <TooltipProvider delayDuration={300}>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -251,7 +272,7 @@ export function AppLayout() {
                     className="flex items-center justify-center size-[28px] rounded-[var(--radius)] text-secondary-foreground hover:text-foreground hover:bg-muted transition-colors"
                     onClick={() => setSidebarOpen(true)}
                   >
-                    <PanelLeft className="size-[18px]" />
+                    <LibraryIcon name="menu hamburger" size={24} ariaLabel="Expand sidebar" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right">Expand</TooltipContent>
@@ -287,12 +308,14 @@ export function AppLayout() {
                     }`}
                     style={{ fontSize: "var(--text-p)" }}
                   >
-                    <LayoutGrid className="size-[18px] shrink-0" />
+                    <LibraryIcon name="grid 24x24" size={24} />
                     <span className="flex-1 text-left">Patterns</span>
-                    <ChevronDown
-                      className={`size-4 shrink-0 transition-transform duration-200 ${patternsExpanded ? "" : "-rotate-90"}`}
-                      style={{ opacity: 0.5 }}
-                    />
+                    <span
+                      className={`transition-transform duration-200 ${patternsExpanded ? "" : "-rotate-90"}`}
+                      style={{ opacity: 0.5, lineHeight: 0 }}
+                    >
+                      <LibraryIcon name="chevron down 16x16" size={16} />
+                    </span>
                   </button>
                   {patternsExpanded && activePatterns.length > 0 && (
                     <div
@@ -312,7 +335,9 @@ export function AppLayout() {
                             }`}
                             style={{ fontSize: "var(--text-label)" }}
                           >
-                            <FileText className="size-[14px] shrink-0" style={{ opacity: 0.6 }} />
+                            <span style={{ opacity: 0.6, lineHeight: 0 }}>
+                              <LibraryIcon name="file" size={24} />
+                            </span>
                             <span className="truncate">{pattern.title}</span>
                           </Link>
                         );
@@ -331,7 +356,7 @@ export function AppLayout() {
                           : "text-card-foreground hover:bg-sidebar-accent/50"
                       }`}
                     >
-                      <LayoutGrid className="size-[18px]" />
+                      <LibraryIcon name="grid 24x24" size={24} />
                     </Link>
                   </TooltipTrigger>
                   <TooltipContent side="right">Patterns</TooltipContent>
@@ -344,21 +369,20 @@ export function AppLayout() {
 
         {/* Footer — CMS entry */}
         <div
-          className={`shrink-0 ${sidebarOpen ? "px-3 pt-[13px] pb-3" : "p-1.5"}`}
-          style={{ backgroundColor: "var(--color-surface-container-high)", borderTop: "1px solid var(--border)" }}
+          className={`shrink-0 border-t border-border bg-secondary ${sidebarOpen ? "px-3 pt-[13px] pb-3" : "p-1.5"}`}
         >
           {isAuthenticated ? (
             sidebarOpen ? (
               <div className="space-y-1">
                 <div
-                  className="flex items-center gap-2 px-3 py-1.5"
-                  style={{ fontSize: "var(--text-label)", color: "var(--color-label-secondary)" }}
+                  className="flex items-center gap-2 px-3 py-1.5 text-muted-foreground"
+                  style={{ fontSize: "var(--text-label)" }}
                 >
-                  <User className="size-4" />
+                  <LibraryIcon name="user circle 16x16" size={16} />
                   <span className="truncate">{currentUser?.username}</span>
                   <span
-                    className="ml-auto px-1.5 py-0.5 rounded-[var(--radius)]"
-                    style={{ fontSize: "11px", backgroundColor: "var(--color-fill-secondary)", color: "var(--color-label-secondary)" }}
+                    className="ml-auto px-1.5 py-0.5 rounded-[var(--radius)] bg-muted text-muted-foreground"
+                    style={{ fontSize: "11px" }}
                   >
                     {currentUser?.role}
                   </span>
@@ -368,14 +392,14 @@ export function AppLayout() {
                   className="flex items-center gap-3 h-[41.5px] px-3 rounded-[var(--radius-card)] text-foreground transition-colors hover:bg-sidebar-accent/50"
                   style={{ fontSize: "var(--text-p)" }}
                 >
-                  <Settings className="size-[18px]" />
+                  <LibraryIcon name="setting" size={24} />
                   <span>CMS Dashboard</span>
                 </Link>
                 <button
                   className="flex items-center gap-3 h-[41.5px] px-3 w-full rounded-[var(--radius-card)] text-foreground transition-colors hover:bg-sidebar-accent/50"
                   onClick={() => { logout(); navigate("/"); }}
                 >
-                  <LogOut className="size-[18px]" />
+                  <LibraryIcon name="logout" size={24} />
                   <span>Sign Out</span>
                 </button>
               </div>
@@ -388,7 +412,7 @@ export function AppLayout() {
                         to="/cms"
                         className="flex items-center justify-center p-2 rounded-[var(--radius-card)] text-foreground transition-colors hover:bg-sidebar-accent/50"
                       >
-                        <Settings className="size-[18px]" />
+                        <LibraryIcon name="setting" size={24} />
                       </Link>
                     </TooltipTrigger>
                     <TooltipContent side="right">CMS Dashboard</TooltipContent>
@@ -399,7 +423,7 @@ export function AppLayout() {
                         className="flex items-center justify-center p-2 w-full rounded-[var(--radius-card)] text-foreground transition-colors hover:bg-sidebar-accent/50"
                         onClick={() => { logout(); navigate("/"); }}
                       >
-                        <LogOut className="size-[18px]" />
+                        <LibraryIcon name="logout" size={24} />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="right">Sign Out</TooltipContent>
@@ -414,7 +438,7 @@ export function AppLayout() {
                 className="flex items-center gap-3 h-[41.5px] px-3 rounded-[var(--radius-card)] text-foreground transition-colors hover:bg-sidebar-accent/50"
                 style={{ fontSize: "var(--text-p)" }}
               >
-                <LogIn className="size-[18px]" />
+                <LibraryIcon name="lock" size={24} />
                 <span>CMS Login</span>
               </Link>
             ) : (
@@ -425,7 +449,7 @@ export function AppLayout() {
                       to="/cms/login"
                       className="flex items-center justify-center p-2 rounded-[var(--radius-card)] text-foreground transition-colors hover:bg-sidebar-accent/50"
                     >
-                      <LogIn className="size-[18px]" />
+                      <LibraryIcon name="lock" size={24} />
                     </Link>
                   </TooltipTrigger>
                   <TooltipContent side="right">CMS Login</TooltipContent>
@@ -439,29 +463,12 @@ export function AppLayout() {
       {/* Main area */}
       <div className="flex flex-col flex-1 min-w-0">
         {/* Title bar */}
-        <div className="flex items-center h-[48px] px-6 border-b border-border bg-[#fafafa] shrink-0">
-          <div className="flex items-center gap-3 text-foreground" style={{ fontSize: "var(--text-p)" }}>
+        <div className="flex items-center justify-between h-[48px] px-6 border-b border-border bg-secondary shrink-0">
+          <div className="flex items-center gap-3 text-foreground min-w-0" style={{ fontSize: "var(--text-p)" }}>
             {!sidebarOpen && (
               <>
                 <div className="flex items-center gap-3">
-                  <div className="h-[14px] relative shrink-0 w-[57px]">
-                    <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 57 14">
-                      <g clipPath="url(#clip0_logo_title)">
-                        <path d={svgPaths.p1789e900} fill="var(--foreground)" />
-                        <path d={svgPaths.p1f3a2ef0} fill="var(--foreground)" />
-                        <path d={svgPaths.p3dbda200} fill="var(--foreground)" />
-                        <path d={svgPaths.p3fd86700} fill="var(--foreground)" />
-                        <path d={svgPaths.p9e11f00} fill="var(--foreground)" />
-                        <path d={svgPaths.p1d624600} fill="var(--foreground)" />
-                        <path d={svgPaths.p12113580} fill="var(--foreground)" />
-                      </g>
-                      <defs>
-                        <clipPath id="clip0_logo_title">
-                          <rect fill="white" height="14" width="57" />
-                        </clipPath>
-                      </defs>
-                    </svg>
-                  </div>
+                  <BrandLockup />
                   <span className="text-foreground opacity-90" style={{ fontSize: "var(--text-label)" }}>
                     Design System
                   </span>
@@ -469,7 +476,10 @@ export function AppLayout() {
                 <div className="w-px h-5 bg-border shrink-0" />
               </>
             )}
-            <span style={{ fontWeight: "var(--font-weight-medium)" }}>{pageTitle}</span>
+            <span style={{ fontWeight: "var(--font-weight-medium)" }} className="truncate">{pageTitle}</span>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <ThemeToggle />
           </div>
         </div>
 
