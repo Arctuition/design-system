@@ -44,6 +44,35 @@ In dev mode, the app automatically routes API calls to `http://127.0.0.1:54321` 
 - The edge function is registered locally as `make-server-067f252d` (not `server`) to match the production URL path, so Hono routes work identically in both environments
 - `.claude/edge-main-index.ts` is the committed main service router script — mounted into the Docker container at `/root/index.ts`
 
+## ChangeLog must update on every PR
+Every PR in this project that ships a user-visible change must produce a corresponding entry in the home-page Change Log. **Update both places**:
+
+1. **Production Supabase** — write the new entry directly so the live site (`https://arctuition.github.io/design-system/`) shows it immediately. Updating only the `defaultChangeLogs` seed is not enough — the seed only applies to fresh installs, never to existing prod data.
+2. **`defaultChangeLogs`** in `src/app/store/data-store.tsx` — keeps the in-repo seed aligned and serves as a code-side record.
+
+**How to write to prod Supabase:**
+
+```bash
+# 1. Read current state
+curl -sS "https://${projectId}.supabase.co/functions/v1/make-server-067f252d/state" \
+  -H "Authorization: Bearer ${publicAnonKey}"
+
+# 2. Build new entry: { id, date, version, title, description }
+#    - id format: Math.random().toString(36).slice(2, 11) + Date.now().toString(36)
+#    - description is Markdown — bullets, **bold**, `code`, [links] all render
+#      via MarkdownRenderer on the home timeline + CMS list
+
+# 3. PUT the merged list (new entry first, so it appears at the top)
+curl -sS -X PUT "https://${projectId}.supabase.co/functions/v1/make-server-067f252d/state/changeLogs" \
+  -H "Authorization: Bearer ${publicAnonKey}" \
+  -H "Content-Type: application/json" \
+  --data-binary '{"value": [<new entry>, ...existing entries]}'
+```
+
+Both `projectId` and `publicAnonKey` are in `utils/supabase/info.tsx` (anon key is the public front-end key). Show the PUT body to the user before writing — direct prod writes affect shared state.
+
+Skip the ChangeLog entry only for purely-internal changes (CLAUDE.md edits, build tooling, dev-only scripts) — when in doubt, ask. Default is "always add one."
+
 ## Keeping these docs up to date
 Say **"sync context"** in any session to trigger an update of these files.
 `/project:sync-context` does NOT work — Claude Code resolves slash commands relative to cwd, which is often a worktree, not the project root.
