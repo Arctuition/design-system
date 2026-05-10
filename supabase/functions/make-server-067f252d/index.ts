@@ -2,6 +2,14 @@ import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
 import * as kv from "./kv_store.ts";
+import {
+  ensureBucket,
+  uploadAsset,
+  listAssetPaths,
+  deleteAssets,
+  publicUrlFor,
+  guessContentType,
+} from "./storage.ts";
 
 // HTML→MD converter for Pattern saves. Markdown is the canonical source of
 // truth (Agents fetch it via /patterns/:filename.md); when a user edits a
@@ -57,6 +65,68 @@ async function htmlToMd(html: string): Promise<string> {
 
 function todayDate(): string {
   return new Date().toISOString().split("T")[0];
+}
+
+// JSZip lazy-loaded the same way as turndown — first bundle upload pays the
+// import cost, subsequent calls reuse the cached module. Keeps cold-start
+// fast for read-heavy traffic.
+let jszipPromise: Promise<any | null> | null = null;
+function loadJSZip(): Promise<any | null> {
+  if (jszipPromise) return jszipPromise;
+  jszipPromise = (async () => {
+    try {
+      const mod = await import("npm:jszip@3.10.1");
+      return (mod as any).default ?? mod;
+    } catch (e) {
+      console.error("Failed to load JSZip:", e);
+      return null;
+    }
+  })();
+  return jszipPromise;
+}
+
+/**
+ * Find every relative image reference in a markdown string.
+ * Skips absolute URLs (http://, https://, /, data:) and fenced code blocks.
+ * Used by the bundle endpoint to validate that every `![](path)` in the MD
+ * has a matching file in the zip, before any Storage write happens.
+ */
+function extractRelativeImageRefs(md: string): string[] {
+  const out: string[] = [];
+  const lines = md.split("\n");
+  let inFence = false;
+  // Match Markdown image syntax: ![alt text](path "optional title")
+  // Capturing group 1 = the URL portion before any whitespace + title.
+  const re = /!\[[^\]]*\]\(\s*([^\s)]+)/g;
+  for (const line of lines) {
+    if (line.startsWith("```")) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+    let m: RegExpExecArray | null;
+    re.lastIndex = 0;
+    while ((m = re.exec(line)) !== null) {
+      const url = m[1];
+      if (
+        url.startsWith("http://") ||
+        url.startsWith("https://") ||
+        url.startsWith("/") ||
+        url.startsWith("data:") ||
+        url.startsWith("#")
+      ) {
+        continue;
+      }
+      // Decode percent-escapes ("My%20file.png" → "My file.png") so the path
+      // can be matched against the literal filename in the zip.
+      try {
+        out.push(decodeURIComponent(url));
+      } catch {
+        out.push(url);
+      }
+    }
+  }
+  return out;
 }
 
 const app = new Hono();
@@ -421,6 +491,186 @@ app.post("/make-server-067f252d/patterns/:slug", async (c) => {
   } catch (err) {
     console.error("Error uploading pattern markdown:", err);
     return c.json({ error: `Failed: ${err}` }, 500);
+  }
+});
+
+// ──────────────────────────────────────────────
+// POST /patterns/:slug/bundle — Upload a zip bundle (markdown + assets) for
+// a pattern. The zip mirrors the editor's local folder 1:1: one .md file at
+// the root + any number of asset files (images, figures) in arbitrary
+// subdirectories. The MD references assets by relative paths; we don't
+// rewrite them — Storage layout mirrors the bundle structure, and the
+// browser-side renderer uses the pattern's asset base URL to resolve them.
+//
+// Body: multipart/form-data, field "bundle" = the zip blob.
+// Pattern must exist already (create via the standard CMS Add flow first).
+// ──────────────────────────────────────────────
+app.post("/make-server-067f252d/patterns/:slug/bundle", async (c) => {
+  try {
+    const rawSlug = c.req.param("slug");
+    const slug = rawSlug.endsWith(".zip") ? rawSlug.slice(0, -4) : rawSlug;
+
+    // 1. Look up the pattern. Must exist.
+    const patterns = (await kv.get(`${PREFIX}patterns`)) as any[] | null;
+    if (!Array.isArray(patterns) || patterns.length === 0) {
+      return c.json({ error: "Pattern not found" }, 404);
+    }
+    const matchIdx = patterns.findIndex(
+      (p) => p && !p.deleted && (p.id === slug || slugify(p.title || "") === slug),
+    );
+    if (matchIdx < 0) {
+      return c.json({ error: "Pattern not found" }, 404);
+    }
+    const patternId = patterns[matchIdx].id as string;
+
+    // 2. Parse the multipart body. Hono exposes Web FormData natively.
+    const form = await c.req.formData().catch(() => null);
+    const file = form?.get("bundle");
+    if (!file || !(file instanceof File)) {
+      return c.json(
+        { error: "Multipart body missing required `bundle` (zip) field." },
+        400,
+      );
+    }
+    const arrayBuffer = await file.arrayBuffer();
+
+    // 3. Unzip.
+    const JSZip = await loadJSZip();
+    if (!JSZip) {
+      return c.json({ error: "Server-side zip parser unavailable" }, 503);
+    }
+    let zip: any;
+    try {
+      zip = await new JSZip().loadAsync(arrayBuffer);
+    } catch (e) {
+      return c.json({ error: `Could not parse zip: ${(e as Error).message}` }, 400);
+    }
+
+    // 4. Walk entries; collect files, find the .md.
+    type Entry = { path: string; bytes: Uint8Array };
+    const entries: Entry[] = [];
+    const mdEntries: Entry[] = [];
+    for (const [path, entry] of Object.entries<any>(zip.files)) {
+      if (entry.dir) continue;
+      // Skip macOS / OS resource files that sneak into zips.
+      const base = path.split("/").pop() ?? "";
+      if (
+        base.startsWith(".") ||
+        path.startsWith("__MACOSX/") ||
+        path.includes("/.")
+      ) {
+        continue;
+      }
+      const bytes: Uint8Array = await entry.async("uint8array");
+      const e: Entry = { path, bytes };
+      entries.push(e);
+      if (path.toLowerCase().endsWith(".md")) mdEntries.push(e);
+    }
+
+    if (mdEntries.length === 0) {
+      return c.json(
+        { error: "Bundle is missing a .md file at any path." },
+        400,
+      );
+    }
+    if (mdEntries.length > 1) {
+      return c.json(
+        {
+          error: "Bundle has multiple .md files; expected exactly one.",
+          found: mdEntries.map((e) => e.path),
+        },
+        400,
+      );
+    }
+
+    // 5. Decode the markdown and collect asset paths relative to the MD's
+    // own directory. Bundles often have the MD at the root + images/ next to
+    // it; if the MD is in a subdir (e.g. "modal-dialog/foo.md") we treat that
+    // subdir as the base for everything.
+    const mdEntry = mdEntries[0];
+    const mdText = new TextDecoder("utf-8").decode(mdEntry.bytes);
+    const mdDir = mdEntry.path.includes("/")
+      ? mdEntry.path.slice(0, mdEntry.path.lastIndexOf("/") + 1)
+      : "";
+
+    // Map of relative-to-MD paths → entry, used for both validation and upload.
+    const assetsByRelPath = new Map<string, Entry>();
+    for (const e of entries) {
+      if (e.path === mdEntry.path) continue;
+      // If MD lives in a subdir, include only assets under the same prefix
+      // and store them stripped (so "modal-dialog/images/foo.png" becomes
+      // "images/foo.png" — matches what the MD references).
+      if (mdDir && !e.path.startsWith(mdDir)) continue;
+      const rel = mdDir ? e.path.slice(mdDir.length) : e.path;
+      assetsByRelPath.set(rel, e);
+    }
+
+    // 6. Validate: every relative ![](...) ref in the MD must exist in the
+    // bundle. List ALL missing refs in one error so the user can fix the
+    // bundle in one go.
+    const refs = extractRelativeImageRefs(mdText);
+    const missing = refs.filter((ref) => !assetsByRelPath.has(ref));
+    if (missing.length > 0) {
+      return c.json(
+        {
+          error: "Markdown references files that aren't in the bundle.",
+          missing,
+          tip: "Add the missing files to the zip, or fix the paths in the markdown.",
+        },
+        400,
+      );
+    }
+
+    // 7. Upload assets (each to its bundle-relative path under <patternId>/).
+    await ensureBucket();
+    const uploaded: { path: string; url: string }[] = [];
+    for (const [relPath, entry] of assetsByRelPath) {
+      const { publicUrl } = await uploadAsset(
+        patternId,
+        relPath,
+        entry.bytes,
+        guessContentType(relPath),
+      );
+      uploaded.push({ path: relPath, url: publicUrl });
+    }
+
+    // 8. Clean up orphans — assets that were in the previous bundle for this
+    // pattern but aren't in the new one.
+    const existing = await listAssetPaths(patternId).catch(() => [] as string[]);
+    const newPaths = new Set(assetsByRelPath.keys());
+    const orphans = existing.filter((p) => !newPaths.has(p));
+    if (orphans.length > 0) {
+      try {
+        await deleteAssets(patternId, orphans);
+      } catch (e) {
+        console.error("Orphan cleanup failed (non-fatal):", e);
+      }
+    }
+
+    // 9. Update the pattern's markdownContent in KV. Re-use the same shape
+    // the direct-MD-upload endpoint produces.
+    const today = todayDate();
+    const updated = {
+      ...patterns[matchIdx],
+      markdownContent: mdText,
+      markdownUpdatedAt: today,
+      updatedAt: today,
+    };
+    const newPatterns = [...patterns];
+    newPatterns[matchIdx] = updated;
+    await kv.set(`${PREFIX}patterns`, newPatterns);
+
+    return c.json({
+      ok: true,
+      pattern: updated,
+      mdPath: mdEntry.path,
+      assetsUploaded: uploaded.length,
+      assets: uploaded,
+      orphansRemoved: orphans,
+    });
+  } catch (err) {
+    console.error("Error processing bundle upload:", err);
+    return c.json({ error: `Bundle upload failed: ${(err as Error).message}` }, 500);
   }
 });
 

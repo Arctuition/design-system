@@ -3,7 +3,10 @@ import { useParams, Link } from "react-router";
 import { useAppData, type PatternArticle } from "../store/data-store";
 import { ArticleRenderer } from "../components/shared/ArticleRenderer";
 import { MarkdownRenderer } from "../components/shared/MarkdownRenderer";
+import { projectId } from "/utils/supabase/info";
 import { ArrowLeft } from "lucide-react";
+
+const STORAGE_BASE = `https://${projectId}.supabase.co/storage/v1/object/public/pattern-assets`;
 
 interface OutlineItem {
   id: string;
@@ -141,7 +144,11 @@ export function PatternDetailPage() {
           {rendering.mode === "html" ? (
             <ArticleRenderer html={rendering.processedHtml} />
           ) : (
-            <MarkdownRenderer content={rendering.mdContent} className="article-content" />
+            <MarkdownRenderer
+              content={rendering.mdContent}
+              className="article-content"
+              assetBaseUrl={`${STORAGE_BASE}/${pattern.id}/`}
+            />
           )}
         </div>
       </div>

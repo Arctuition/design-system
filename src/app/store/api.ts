@@ -143,3 +143,71 @@ export async function uploadPatternMarkdown(
     return { ok: false, error: `network: ${(err as Error)?.message ?? "unknown"}` };
   }
 }
+
+export type UploadPatternBundleResult =
+  | {
+      ok: true;
+      pattern: Record<string, any>;
+      mdPath: string;
+      assetsUploaded: number;
+      assets: { path: string; url: string }[];
+      orphansRemoved: string[];
+    }
+  | { ok: false; error: string; missing?: string[] };
+
+/**
+ * Upload a pattern bundle (zip with one .md + asset files) to the dedicated
+ * edge-function endpoint. The server unpacks the zip, validates that every
+ * relative `![](path)` in the MD has a matching file, uploads each asset to
+ * Supabase Storage at `pattern-assets/<id>/<relative-path>`, stores the MD
+ * in the patterns KV row, and cleans up assets from the previous bundle that
+ * aren't in the new one.
+ *
+ * The MD is stored verbatim — relative image paths are NOT rewritten. The
+ * frontend resolves them at render time via `MarkdownRenderer`'s
+ * `assetBaseUrl` prop.
+ */
+export async function uploadPatternBundle(
+  slug: string,
+  zipBlob: Blob,
+): Promise<UploadPatternBundleResult> {
+  try {
+    const form = new FormData();
+    form.append("bundle", zipBlob, "bundle.zip");
+    const res = await fetchWithTimeout(
+      `${BASE}/patterns/${encodeURIComponent(slug)}/bundle`,
+      {
+        method: "POST",
+        // Don't set Content-Type — the browser sets it (with the boundary)
+        // when the body is FormData. Setting it explicitly breaks the upload.
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
+        body: form,
+      },
+      30000, // bundles can be large; allow more headroom
+    );
+    if (!res.ok) {
+      const body = await res.json().catch(() => null) as
+        | { error?: string; missing?: string[] }
+        | null;
+      return {
+        ok: false,
+        error: body?.error || `HTTP ${res.status}`,
+        missing: body?.missing,
+      };
+    }
+    const json = await res.json().catch(() => null);
+    if (!json || !json.ok || !json.pattern) {
+      return { ok: false, error: "Malformed server response" };
+    }
+    return {
+      ok: true,
+      pattern: json.pattern,
+      mdPath: json.mdPath,
+      assetsUploaded: json.assetsUploaded ?? 0,
+      assets: Array.isArray(json.assets) ? json.assets : [],
+      orphansRemoved: Array.isArray(json.orphansRemoved) ? json.orphansRemoved : [],
+    };
+  } catch (err) {
+    return { ok: false, error: `network: ${(err as Error)?.message ?? "unknown"}` };
+  }
+}

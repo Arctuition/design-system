@@ -5,8 +5,11 @@ import { RichTextEditor } from "../../components/shared/RichTextEditor";
 import { MarkdownRenderer } from "../../components/shared/MarkdownRenderer";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { uploadPatternMarkdown } from "../../store/api";
-import { ArrowLeft, Save, X, History, RotateCcw, Trash2, Upload, Download, AlertTriangle } from "lucide-react";
+import { uploadPatternBundle } from "../../store/api";
+import { projectId } from "/utils/supabase/info";
+import { ArrowLeft, Save, X, History, RotateCcw, Trash2, Upload, AlertTriangle, Copy } from "lucide-react";
+
+const STORAGE_BASE = `https://${projectId}.supabase.co/storage/v1/object/public/pattern-assets`;
 import { toast } from "sonner";
 import type { ArticleVersion } from "../../store/data-store";
 
@@ -24,6 +27,15 @@ export function PatternArticleEditor() {
   const [showVersions, setShowVersions] = useState(false);
   const [mode, setMode] = useState<EditorMode>("html");
   const [uploading, setUploading] = useState(false);
+  const [lastUpload, setLastUpload] = useState<{
+    assetsUploaded: number;
+    orphansRemoved: string[];
+    mdPath: string;
+  } | null>(null);
+  const [uploadError, setUploadError] = useState<{
+    message: string;
+    missing?: string[];
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Track saved content for meaningful dirty comparison
@@ -139,64 +151,67 @@ export function PatternArticleEditor() {
     setMode(target);
   };
 
-  const handleMdUploadClick = () => fileInputRef.current?.click();
+  const handleBundleUploadClick = () => fileInputRef.current?.click();
 
-  const handleMdFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBundleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = ""; // reset so the same file can re-trigger
     if (!file) return;
 
-    if (!/\.md$|\/markdown$|\/x-markdown$/.test(file.name + " " + file.type)) {
-      const proceed = window.confirm(
-        `"${file.name}" doesn't look like a .md file. Upload anyway?`,
-      );
-      if (!proceed) return;
+    if (!/\.zip$/i.test(file.name)) {
+      toast.error(`Expected a .zip file, got "${file.name}".`);
+      return;
     }
 
     setUploading(true);
+    setUploadError(null);
     try {
-      const text = await file.text();
-      const result = await uploadPatternMarkdown(pattern.id, text);
+      const result = await uploadPatternBundle(pattern.id, file);
       if (!result.ok) {
-        toast.error(`Upload failed: ${result.error}`);
+        setUploadError({ message: result.error, missing: result.missing });
+        toast.error("Upload failed — see details below");
         return;
       }
-      // Mirror the server's update locally. The follow-on PUT/state/patterns
-      // that this triggers is a no-op (server diff sees no further change).
-      const today = new Date().toISOString().split("T")[0];
+      // Server already wrote the canonical state. Mirror it into the local
+      // store so the UI reflects markdownContent + markdownUpdatedAt without
+      // a refresh. The follow-on bulk PUT is a no-op (server diff sees no
+      // further change).
       updatePattern(pattern.id, {
-        markdownContent: text,
-        markdownUpdatedAt: today,
+        markdownContent: result.pattern.markdownContent,
+        markdownUpdatedAt: result.pattern.markdownUpdatedAt,
       });
-      toast.success(`Uploaded ${file.name}`);
+      setLastUpload({
+        assetsUploaded: result.assetsUploaded,
+        orphansRemoved: result.orphansRemoved,
+        mdPath: result.mdPath,
+      });
+      toast.success(
+        `Uploaded ${file.name} — ${result.assetsUploaded} asset(s)` +
+          (result.orphansRemoved.length
+            ? `, removed ${result.orphansRemoved.length} orphan(s)`
+            : ""),
+      );
     } catch (err) {
-      toast.error(`Read failed: ${(err as Error).message}`);
+      setUploadError({ message: (err as Error).message });
+      toast.error(`Upload failed: ${(err as Error).message}`);
     } finally {
       setUploading(false);
     }
   };
 
-  const handleMdDownload = () => {
-    const md = pattern.markdownContent || "";
-    if (!md) {
-      toast.error("No markdown source yet — save HTML or upload a .md file first.");
-      return;
+  const mdPublicUrl = `${
+    import.meta.env.DEV
+      ? "http://127.0.0.1:54321/functions/v1/make-server-067f252d"
+      : `https://${projectId}.supabase.co/functions/v1/make-server-067f252d`
+  }/patterns/${encodeURIComponent(pattern?.id || "")}.md`;
+
+  const handleCopyMdUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(mdPublicUrl);
+      toast.success("Markdown URL copied");
+    } catch {
+      toast.error("Copy failed — your browser blocked clipboard access");
     }
-    const slug = (pattern.title || pattern.id)
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-");
-    const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${slug || pattern.id}.md`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
   };
 
   const handleRestoreVersion = (version: ArticleVersion) => {
@@ -329,34 +344,35 @@ export function PatternArticleEditor() {
             />
           ) : (
             <div className="px-10 py-6">
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-4 flex-wrap">
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".md,text/markdown"
+                  accept=".zip,application/zip,application/x-zip-compressed"
                   className="hidden"
-                  onChange={handleMdFileSelected}
+                  onChange={handleBundleFileSelected}
                 />
                 <Button
                   size="sm"
                   type="button"
-                  onClick={handleMdUploadClick}
+                  onClick={handleBundleUploadClick}
                   disabled={uploading}
                   className="gap-1"
                 >
                   <Upload className="size-4" />
-                  {uploading ? "Uploading…" : "Upload .md"}
+                  {uploading ? "Uploading…" : "Upload bundle (.zip)"}
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
                   type="button"
-                  onClick={handleMdDownload}
+                  onClick={handleCopyMdUrl}
                   className="gap-1"
                   disabled={!pattern.markdownContent}
+                  title={mdPublicUrl}
                 >
-                  <Download className="size-4" />
-                  Download .md
+                  <Copy className="size-4" />
+                  Copy MD URL
                 </Button>
                 <span
                   className="ml-auto text-muted-foreground"
@@ -366,18 +382,57 @@ export function PatternArticleEditor() {
                   {pattern.htmlUpdatedAt && ` · Last HTML save: ${pattern.htmlUpdatedAt}`}
                 </span>
               </div>
+              <p
+                className="text-muted-foreground mb-4"
+                style={{ fontSize: "var(--text-label)" }}
+              >
+                Bundle = one <code>.md</code> + any asset files (images, figures) referenced by relative paths. Uploading replaces the current MD and the pattern's stored assets; orphaned files from the previous bundle are removed.
+              </p>
+              {uploadError && (
+                <div
+                  className="border border-destructive/50 bg-destructive/10 rounded-lg p-4 mb-4"
+                  style={{ fontSize: "var(--text-label)" }}
+                >
+                  <p className="text-destructive font-medium mb-1">Upload rejected</p>
+                  <p className="text-foreground">{uploadError.message}</p>
+                  {uploadError.missing && uploadError.missing.length > 0 && (
+                    <>
+                      <p className="text-foreground mt-2 mb-1">Missing files:</p>
+                      <ul className="list-disc list-inside text-foreground">
+                        {uploadError.missing.map((m) => (
+                          <li key={m}><code>{m}</code></li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              )}
+              {lastUpload && (
+                <div
+                  className="border border-border bg-secondary/30 rounded-lg p-3 mb-4"
+                  style={{ fontSize: "var(--text-label)" }}
+                >
+                  <span className="text-foreground">
+                    Last upload: <code>{lastUpload.mdPath}</code> · {lastUpload.assetsUploaded} asset(s)
+                    {lastUpload.orphansRemoved.length > 0
+                      ? ` · removed ${lastUpload.orphansRemoved.length} orphan(s) (${lastUpload.orphansRemoved.join(", ")})`
+                      : ""}
+                  </span>
+                </div>
+              )}
               <div className="border border-border rounded-lg p-6 bg-card">
                 {pattern.markdownContent ? (
                   <MarkdownRenderer
                     content={pattern.markdownContent}
                     className="article-content"
+                    assetBaseUrl={`${STORAGE_BASE}/${pattern.id}/`}
                   />
                 ) : (
                   <p
                     className="text-muted-foreground italic"
                     style={{ fontSize: "var(--text-p)" }}
                   >
-                    No markdown source yet. Upload an .md file above, or save the HTML editor to auto-generate one.
+                    No markdown source yet. Upload a bundle (.zip) above, or save the HTML editor to auto-generate one.
                   </p>
                 )}
               </div>
