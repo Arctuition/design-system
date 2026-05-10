@@ -783,6 +783,21 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
   const [restrictionMsg, setRestrictionMsg] = useState<string | null>(null);
   const restrictionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Paste options popover ──
+  // Shown briefly after a paste so the user can choose between keeping the
+  // source formatting (default — already applied) and converting to plain text.
+  // We bracket the paste with two <wbr> elements that carry an id — Chromium
+  // preserves <wbr> attributes even when they land inside heading elements
+  // (it strips id/data-* on inline <span> there).
+  const [pasteOptions, setPasteOptions] = useState<{
+    pos: { top: number; left: number };
+    markerId: string;
+    plainText: string;
+  } | null>(null);
+  const pasteOptionsRef = useRef<typeof pasteOptions>(null);
+  pasteOptionsRef.current = pasteOptions;
+  const pastePopoverRef = useRef<HTMLDivElement>(null);
+
   // ── Drag/resize state ──
   const isDraggingRef = useRef(false);
   const dragStartXRef = useRef(0);
@@ -898,6 +913,7 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [showStyleDropdown]);
+
 
   // ─── Format state updater ──────────────────────────────────────────────────
 
@@ -1824,6 +1840,174 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
     setTimeout(updateFormatState, 0);
   }, [getCurrentSelectionNode, onChange, updateFormatState]);
 
+  // ─── Paste options helpers ────────────────────────────────────────────────
+  //
+  // Strategy: a paste that contains source formatting (HTML semantic tags or
+  // Markdown source) is bracketed by two <wbr> elements:
+  //
+  //   <wbr id="pmS-ID"> ...pasted content... <wbr id="pmE-ID">
+  //
+  // <wbr> is a void inline element. Chromium preserves its attributes even
+  // when it lands inside a heading (it would strip id on <span> in the same
+  // position). Plain-text pastes don't get markers — they go through
+  // `execCommand("insertText")` so the cursor's block format wins.
+
+  // Remove both marker elements (start + end) for the given paste id.
+  // Returns true if at least one marker was found and removed.
+  const stripPasteMarkers = useCallback((root: HTMLElement, markerId: string): boolean => {
+    const nodes = root.querySelectorAll<HTMLElement>(
+      `#pmS-${CSS.escape(markerId)}, #pmE-${CSS.escape(markerId)}`
+    );
+    nodes.forEach((n) => n.parentNode?.removeChild(n));
+    return nodes.length > 0;
+  }, []);
+
+  // <wbr> is a void element with no layout box — its own getBoundingClientRect
+  // returns 0,0,0,0. Wrap it in a Range to query the actual on-screen position
+  // of where the marker sits in the inline flow.
+  const rectOfNode = (node: Node): DOMRect => {
+    const r = document.createRange();
+    r.selectNode(node);
+    return r.getBoundingClientRect();
+  };
+
+  // Strip empty heading elements (h1–h6 with no text content) that may have
+  // been left behind when the browser split a heading around an inserted
+  // block. Without this, a stale H2's border-bottom keeps showing.
+  const cleanupEmptyHeadings = useCallback((root: HTMLElement) => {
+    root.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((h) => {
+      const text = (h.textContent || "").replace(/[​ \s]+/g, "");
+      if (text.length === 0 && !h.querySelector("img, br")) {
+        h.parentNode?.removeChild(h);
+      }
+    });
+  }, []);
+
+  // Compute the editor's innerHTML *as if* the markers for this paste were
+  // already removed. Used to keep React state clean while the markers still
+  // live in the DOM as popover anchors.
+  const computeUnmarkedHtml = useCallback((markerId: string): string => {
+    if (!editorRef.current) return "";
+    const clone = editorRef.current.cloneNode(true) as HTMLElement;
+    stripPasteMarkers(clone, markerId);
+    cleanupEmptyHeadings(clone);
+    return clone.innerHTML;
+  }, [stripPasteMarkers, cleanupEmptyHeadings]);
+
+  // Accept the source formatting (default) — just remove the markers and the
+  // empty heading shells the split may have left behind.
+  const acceptFormattedPaste = useCallback(() => {
+    const opts = pasteOptionsRef.current;
+    if (!opts || !editorRef.current) return;
+    stripPasteMarkers(editorRef.current, opts.markerId);
+    cleanupEmptyHeadings(editorRef.current);
+    isInternalChange.current = true;
+    onChange(editorRef.current.innerHTML);
+    setPasteOptions(null);
+  }, [stripPasteMarkers, cleanupEmptyHeadings, onChange]);
+
+  // Replace the marker-bounded region with the plain text, inheriting whatever
+  // block format already surrounds the markers — i.e. if you pasted into an
+  // <h2>, the result reads as text inside that <h2>.
+  const convertPasteToPlainText = useCallback(() => {
+    const opts = pasteOptionsRef.current;
+    if (!opts || !editorRef.current) {
+      setPasteOptions(null);
+      return;
+    }
+    const editor = editorRef.current;
+    const start = editor.querySelector(`#pmS-${CSS.escape(opts.markerId)}`) as HTMLElement | null;
+    const end = editor.querySelector(`#pmE-${CSS.escape(opts.markerId)}`) as HTMLElement | null;
+
+    if (start && end) {
+      const range = document.createRange();
+      // Range covers everything between the markers (exclusive of the markers
+      // themselves so we can drop them cleanly afterwards).
+      range.setStartAfter(start);
+      range.setEndBefore(end);
+      range.deleteContents();
+
+      // Position the cursor at the seam, then insert the plain text. The
+      // surrounding block (the original <h2>) provides the format.
+      const sel = window.getSelection();
+      if (sel) {
+        const caret = document.createRange();
+        caret.setStartAfter(start);
+        caret.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(caret);
+        if (opts.plainText) {
+          document.execCommand("insertText", false, opts.plainText);
+        }
+      }
+    }
+
+    stripPasteMarkers(editor, opts.markerId);
+    cleanupEmptyHeadings(editor);
+    isInternalChange.current = true;
+    onChange(editor.innerHTML);
+    setPasteOptions(null);
+  }, [stripPasteMarkers, cleanupEmptyHeadings, onChange]);
+
+  // Paste-options popover: outside-click accepts format, scroll/resize repositions,
+  // auto-dismiss after a few seconds.
+  useEffect(() => {
+    if (!pasteOptions) return;
+
+    const onMouseDown = (e: MouseEvent) => {
+      const t = e.target as Node | null;
+      if (pastePopoverRef.current && t && pastePopoverRef.current.contains(t)) return;
+      acceptFormattedPaste();
+    };
+
+    const onReposition = () => {
+      if (!editorRef.current) return;
+      const start = editorRef.current.querySelector(
+        `#pmS-${CSS.escape(pasteOptions.markerId)}`
+      ) as HTMLElement | null;
+      const end = editorRef.current.querySelector(
+        `#pmE-${CSS.escape(pasteOptions.markerId)}`
+      ) as HTMLElement | null;
+      if (!start && !end) {
+        acceptFormattedPaste();
+        return;
+      }
+      const rects = [start, end]
+        .filter((n): n is HTMLElement => !!n)
+        .map((n) => rectOfNode(n));
+      const top = Math.max(...rects.map((r) => r.bottom)) + 4;
+      const left = Math.min(...rects.map((r) => r.left));
+      setPasteOptions((prev) => (prev ? { ...prev, pos: { top, left } } : null));
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") acceptFormattedPaste();
+    };
+
+    document.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("scroll", onReposition, true);
+    window.addEventListener("resize", onReposition);
+    document.addEventListener("keydown", onKeyDown);
+    const timer = setTimeout(acceptFormattedPaste, 8000);
+
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("scroll", onReposition, true);
+      window.removeEventListener("resize", onReposition);
+      document.removeEventListener("keydown", onKeyDown);
+      clearTimeout(timer);
+    };
+  }, [pasteOptions, acceptFormattedPaste]);
+
+  // Safety: if the editor unmounts while the popover is open, strip the
+  // markers so they can't leak into a pending save.
+  useEffect(() => {
+    return () => {
+      const opts = pasteOptionsRef.current;
+      if (opts && editorRef.current) stripPasteMarkers(editorRef.current, opts.markerId);
+    };
+  }, [stripPasteMarkers]);
+
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
     console.log('📋 PASTE EVENT TRIGGERED');
     
@@ -1865,108 +2049,117 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
       const toInsert = plainText.replace(/\r?\n/g, ' '); // Replace newlines with spaces for inline elements
       document.execCommand("insertText", false, toInsert);
     } else {
-      let toInsert: string;
-      
+      // ── Classify the paste ──
+      // - "html"      : clipboard carries HTML with semantic tags (Word, Notion,
+      //                 Google Docs, web pages). Keep the source formatting.
+      // - "markdown"  : plain text that *looks* like Markdown source. Parse it,
+      //                 then shift headings up by one level — Markdown H1 is a
+      //                 document title; in this editor every section heading is
+      //                 H1, so source H2 maps to our H1, H3 → H2, etc.
+      // - "plain"     : everything else (e.g. text from Figma). No formatting
+      //                 to keep — let the cursor's current block format win by
+      //                 falling through to execCommand("insertText").
+      let toInsert = "";
+      let pasteKind: "html" | "markdown" | "plain" = "plain";
+
       if (htmlContent && htmlContent.trim()) {
-        // Parse the HTML properly - Notion/Google Docs may wrap in <html><head><body>
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlContent, 'text/html');
-        
-        // Extract body content (or fall back to the whole parsed content)
         const bodyContent = doc.body || doc.documentElement;
-        
-        // Create a clean container
         const tempDiv = document.createElement('div');
-        
-        // Clone the content nodes (avoiding head, meta, etc.)
-        Array.from(bodyContent.childNodes).forEach(node => {
+        Array.from(bodyContent.childNodes).forEach((node) => {
           tempDiv.appendChild(node.cloneNode(true));
         });
-        
-        // Remove potentially dangerous elements
+
         const dangerous = tempDiv.querySelectorAll('script, link, meta, iframe, object, embed, head, style');
-        dangerous.forEach(el => el.remove());
-        
-        // Remove event handler attributes AND clean up Notion/external app attributes
-        const allElements = tempDiv.querySelectorAll('*');
-        allElements.forEach(el => {
-          Array.from(el.attributes).forEach(attr => {
-            // Remove event handlers
-            if (attr.name.startsWith('on')) {
-              el.removeAttribute(attr.name);
-            }
-            // Remove data attributes (Notion IDs, etc.)
-            if (attr.name.startsWith('data-')) {
-              el.removeAttribute(attr.name);
-            }
-            // Remove dir, contenteditable attributes
-            if (attr.name === 'dir' || attr.name === 'contenteditable') {
+        dangerous.forEach((el) => el.remove());
+
+        tempDiv.querySelectorAll('*').forEach((el) => {
+          Array.from(el.attributes).forEach((attr) => {
+            if (attr.name.startsWith('on') || attr.name.startsWith('data-') ||
+                attr.name === 'dir' || attr.name === 'contenteditable') {
               el.removeAttribute(attr.name);
             }
           });
-          
-          // Remove ALL class attributes to avoid external styling conflicts
           el.removeAttribute('class');
-          
-          // Remove inline styles to use only CSS variables from design system
           el.removeAttribute('style');
         });
-        
+
         toInsert = tempDiv.innerHTML;
-        console.log('📄 Cleaned HTML length:', toInsert?.length);
-        console.log('📄 Cleaned HTML preview:', toInsert?.substring(0, 200));
-        console.log('📋 Plain text preview:', plainText?.substring(0, 200));
-        
-        // Only fall back to markdown if we truly have no HTML tags
         const hasSemanticTags = /<(h[1-6]|strong|em|code|pre|ul|ol|li|blockquote|a|img|table|del|hr)[>\s\/]/i.test(toInsert);
-        console.log('Has semantic tags?', hasSemanticTags);
-        if (!toInsert || !hasSemanticTags) {
-          console.log('⚠️ No semantic tags in HTML, falling back to markdown parsing');
-          const hasMarkdownSyntax = /^#{1,6}\s+|^\d+\.\s+|^[-*+]\s+|^>\s+|\*\*.*\*\*|__.*__|~~.*~~|`.*`|\[.*\]\(.*\)|!\[.*\]\(.*\)/m.test(plainText);
-          console.log('Has markdown syntax?', hasMarkdownSyntax);
-          if (hasMarkdownSyntax) {
-            console.log('Parsing as markdown');
-            toInsert = parseMarkdownToHTML(plainText);
-            console.log('Parsed markdown HTML:', toInsert);
-          } else {
-            toInsert = plainText
-              .split(/\r?\n/)
-              .map((line) => `<p>${line.trim() || "<br>"}</p>`)
-              .join("");
-          }
-        } else {
-          console.log('✅ Using cleaned HTML with semantic tags');
+        if (toInsert && hasSemanticTags) {
+          pasteKind = "html";
         }
-      } else if (plainText) {
-        // No HTML - parse markdown formatting if present, otherwise convert to paragraphs
+      }
+
+      if (pasteKind === "plain" && plainText) {
         const hasMarkdownSyntax = /^#{1,6}\s+|^\d+\.\s+|^[-*+]\s+|^>\s+|\*\*.*\*\*|__.*__|~~.*~~|`.*`|\[.*\]\(.*\)|!\[.*\]\(.*\)/m.test(plainText);
-        console.log('Plain text only - has markdown?', hasMarkdownSyntax);
-        
         if (hasMarkdownSyntax) {
-          // Try to parse as markdown
-          console.log('Parsing plain text as markdown');
-          toInsert = parseMarkdownToHTML(plainText);
-          console.log('Parsed markdown HTML:', toInsert);
-        } else {
-          // Plain text - convert to paragraphs
-          toInsert = plainText
-            .split(/\r?\n/)
-            .map((line) => `<p>${line.trim() || "<br>"}</p>`)
-            .join("");
+          // Parse, then shift headings up by one (h2..h6 → h1..h5; h1 stays).
+          // Done with a single-pass replace so we don't cascade h6 → h1.
+          const parsed = parseMarkdownToHTML(plainText);
+          toInsert = parsed.replace(/<(\/?)h([2-6])\b/g, (_m, slash, level) =>
+            `<${slash}h${parseInt(level, 10) - 1}`
+          );
+          pasteKind = "markdown";
+        }
+      }
+
+      // Dismiss any previous popover before starting a new paste.
+      if (pasteOptionsRef.current && editorRef.current) {
+        stripPasteMarkers(editorRef.current, pasteOptionsRef.current.markerId);
+        setPasteOptions(null);
+      }
+
+      editorRef.current?.focus();
+
+      if (pasteKind === "plain") {
+        // Plain text: defer to the browser's native insertText so the cursor's
+        // current block format (P / H1-H6 / quote / list-item / …) is inherited
+        // exactly. No popover — there's no source format to keep.
+        const fallback = plainText || "";
+        if (fallback) document.execCommand("insertText", false, fallback);
+        if (editorRef.current) {
+          isInternalChange.current = true;
+          onChange(editorRef.current.innerHTML);
         }
       } else {
-        return;
-      }
-      
-      editorRef.current?.focus();
-      document.execCommand("insertHTML", false, toInsert);
-      
-      if (editorRef.current) {
-        isInternalChange.current = true;
-        onChange(editorRef.current.innerHTML);
+        // Formatted (HTML or Markdown) paste: bracket the inserted region
+        // with two <wbr> markers. Chromium preserves their attributes even
+        // when they end up inside a heading after a block split.
+        const markerId = `pm${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+        const startMark = `<wbr id="pmS-${markerId}">`;
+        const endMark = `<wbr id="pmE-${markerId}">`;
+
+        document.execCommand("insertHTML", false, startMark + toInsert + endMark);
+
+        const start = editorRef.current?.querySelector(`#pmS-${markerId}`) as HTMLElement | null;
+        const end = editorRef.current?.querySelector(`#pmE-${markerId}`) as HTMLElement | null;
+
+        if (editorRef.current) {
+          // React state holds the unmarked HTML so the markers never reach a
+          // save. They live in the DOM only as popover anchors.
+          isInternalChange.current = true;
+          onChange(start || end ? computeUnmarkedHtml(markerId) : editorRef.current.innerHTML);
+        }
+
+        if (start && end) {
+          // <wbr> is a void element — its own getBoundingClientRect() returns
+          // 0,0,0,0. Wrap each marker in a Range to get its layout position.
+          const sRect = rectOfNode(start);
+          const eRect = rectOfNode(end);
+          // Anchor the popover at the bottom-left of the pasted region.
+          const top = Math.max(sRect.bottom, eRect.bottom) + 4;
+          const left = Math.min(sRect.left, eRect.left);
+          setPasteOptions({
+            pos: { top, left },
+            markerId,
+            plainText: plainText || "",
+          });
+        }
       }
     }
-    
+
       setTimeout(updateFormatState, 0);
     } catch (error) {
       console.error('❌ PASTE ERROR:', error);
@@ -1979,7 +2172,7 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
         }
       }
     }
-  }, [onChange, updateFormatState]);
+  }, [onChange, updateFormatState, computeUnmarkedHtml, stripPasteMarkers]);
 
   /** Paste from toolbar button – uses internal clipboard only. */
   const pasteFromToolbar = useCallback(async () => {
@@ -2819,6 +3012,14 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
 
   const handleInput = useCallback(() => {
     if (editorRef.current) {
+      // If the paste-options popover is showing, the user typing accepts the
+      // formatted paste — strip the marker spans *synchronously* so they
+      // don't end up in the innerHTML we're about to emit.
+      if (pasteOptionsRef.current) {
+        stripPasteMarkers(editorRef.current, pasteOptionsRef.current.markerId);
+        cleanupEmptyHeadings(editorRef.current);
+        setPasteOptions(null);
+      }
       // If the user is editing inside a highlighted code block, invalidate its
       // highlight so the next idle pass re-runs hljs on the up-to-date text.
       // We don't strip the existing spans now — that would jump the caret.
@@ -2860,7 +3061,7 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
       onChange(editorRef.current.innerHTML);
     }
     updateFormatState();
-  }, [onChange, updateFormatState]);
+  }, [onChange, updateFormatState, stripPasteMarkers, cleanupEmptyHeadings]);
 
   // ─── Effects ──────────────────────────────────────────────────────────────
 
@@ -3455,6 +3656,49 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
             onClick={() => deleteColumnLayout(activeColLayout)} style={{ fontSize: "var(--text-label)" }}>
             <Trash2 className="size-3" /> Delete
           </button>
+        </div>
+      )}
+
+      {/* ── Floating PASTE OPTIONS popover ── */}
+      {pasteOptions && (
+        <div
+          ref={pastePopoverRef}
+          className="fixed z-20 flex items-center gap-1 px-1.5 py-1 bg-card border border-border rounded-[var(--radius-card)] backdrop-blur-md"
+          style={{
+            top: pasteOptions.pos.top,
+            left: pasteOptions.pos.left,
+            fontSize: "var(--text-label)",
+            boxShadow: "0px 4px 12px rgba(0,0,0,0.15), 0px 1px 4px rgba(0,0,0,0.1)",
+          }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <span
+            className="text-muted-foreground mr-0.5 shrink-0 pl-1"
+            style={{ fontSize: "var(--text-label)" }}
+          >
+            Paste as
+          </span>
+          <div className="w-px h-4 bg-border mx-0.5" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2"
+            type="button"
+            onClick={acceptFormattedPaste}
+            style={{ fontSize: "var(--text-label)" }}
+          >
+            Keep formatting
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2"
+            type="button"
+            onClick={convertPasteToPlainText}
+            style={{ fontSize: "var(--text-label)" }}
+          >
+            Plain text
+          </Button>
         </div>
       )}
 
