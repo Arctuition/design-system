@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { Copy } from "lucide-react";
+import { Link } from "react-router";
+import { ArrowLeft, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs";
 import {
@@ -16,8 +17,8 @@ import { copyToClipboard } from "../utils/clipboard";
 
 function SwatchRow({ token }: { token: ParsedColorToken }) {
   const copyVal = () => {
-    copyToClipboard(token.value);
-    toast.success(`Copied ${token.value}`);
+    copyToClipboard(token.hex);
+    toast.success(`Copied ${token.hex}`);
   };
   const copyVar = () => {
     copyToClipboard(token.cssVar);
@@ -29,8 +30,8 @@ function SwatchRow({ token }: { token: ParsedColorToken }) {
       {/* Swatch */}
       <div
         className="size-10 rounded-[var(--radius-card)] border border-border shrink-0"
-        style={{ backgroundColor: token.value }}
-        title={token.value}
+        style={{ backgroundColor: token.hex }}
+        title={token.hex}
       />
 
       {/* Name */}
@@ -58,7 +59,7 @@ function SwatchRow({ token }: { token: ParsedColorToken }) {
         onClick={copyVal}
         title="Click to copy value"
       >
-        {token.value}
+        {token.hex}
         <Copy className="size-3 opacity-0 group-hover:opacity-100 transition-opacity" />
       </code>
     </div>
@@ -124,6 +125,14 @@ export function ColorSwatchesPage() {
     <div className="flex">
       {/* Main content */}
       <div className="flex-1 min-w-0 max-w-[1400px] mx-auto px-8 py-10">
+        <Link
+          to="/color"
+          className="inline-flex items-center gap-1.5 text-primary mb-6 hover:underline"
+          style={{ fontSize: "var(--text-label)" }}
+        >
+          <ArrowLeft className="size-4" />
+          Back to Color
+        </Link>
         <div className="mb-1">
           <h1 style={{ fontSize: "var(--text-h2)", fontWeight: "var(--font-weight-normal)" }}>
             Color Swatches

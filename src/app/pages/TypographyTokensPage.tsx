@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Download } from "lucide-react";
+import { Link } from "react-router";
+import { ArrowLeft, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "../components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs";
@@ -30,6 +31,14 @@ export function TypographyTokensPage() {
 
   return (
     <div className="max-w-[900px] mx-auto px-8 py-10">
+      <Link
+        to="/typography"
+        className="inline-flex items-center gap-1.5 text-primary mb-6 hover:underline"
+        style={{ fontSize: "var(--text-label)" }}
+      >
+        <ArrowLeft className="size-4" />
+        Back to Typography
+      </Link>
       <div className="flex items-center justify-between mb-1 flex-wrap gap-3">
         <h1 style={{ fontSize: "var(--text-h2)", fontWeight: "var(--font-weight-normal)" }}>
           Typography Tokens

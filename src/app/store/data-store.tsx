@@ -269,6 +269,40 @@ const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
     date: "2026-05-10",
+    version: "1.3.0",
+    title: "Web View pattern — Permission, States, Accessibility",
+    description: `Expanded the **Web View** pattern article with the missing top-level sections from the source Figma spec, and filled in the previously-empty Style Variables table.
+
+**New sections**
+- **Permission-Gated Interactions** — Location Access, File Upload/Download and Access (with Upload and Download bullet groups), Other Permission Requests
+- **States and Error Handling** — Loading State, Slow Network, Skeleton Loader, Offline, Load Failure, Scheduled Outage, Recovery, each with the device-frame illustration from Figma
+- **Accessibility** — intro + "detail guide to be added later" placeholder
+
+**Style Variables table**
+- 9 rows: Overlay Color, Background, Corner Radius, Shadow / Elevation, Outer Margin, Title Font, Button Size, Button Spacing, Grid System
+
+**Light copy edits**
+- "indicate user" → "indicate the cause to the user", "if applies" → "if applicable", "We're doing some works" → "some work", added missing articles ("a deliberate user action"), fixed tense slips on Load Failure intro`,
+  },
+  {
+    id: uid(),
+    date: "2026-05-10",
+    version: "1.2.2",
+    title: "Editor and navigation polish",
+    description: `Three small UX fixes across the public site and the article editor.
+
+**Color Swatches preview**
+- Swatch thumbnails and hex pills on \`/color/swatches\` were rendering empty/gray because the page referenced a stale \`token.value\` field that had been renamed to \`token.hex\` in a token-utils refactor. Both now read from \`token.hex\`.
+
+**Back links on secondary pages**
+- Added \`← Back to <parent>\` links to \`/color/tokens\`, \`/color/swatches\`, \`/typography/tokens\`, and \`/size/tokens\`. Same style as the existing pattern-detail back link.
+
+**Editor — trailing whitespace**
+- The article editor (\`RichTextEditor\`) now reserves ~33vh of bottom whitespace inside the contentEditable. Clicking anywhere in the whitespace places the caret at the end of the article (browser-native), and as you type at the end, the caret naturally sits closer to the middle of the viewport instead of glued to the bottom edge.`,
+  },
+  {
+    id: uid(),
+    date: "2026-05-10",
     version: "1.2.1",
     title: "Smarter paste in the rich-text editor",
     description: `Pasting in CMS articles now does the right thing without manual reformatting.

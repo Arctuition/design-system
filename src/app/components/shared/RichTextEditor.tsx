@@ -3487,7 +3487,7 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
             ref={editorRef}
             contentEditable
             suppressContentEditableWarning
-            className="rte-editor article-content min-h-full px-10 py-12 outline-none overflow-auto max-w-[818px] mx-auto w-full"
+            className="rte-editor article-content min-h-full px-10 pt-12 pb-[33vh] outline-none overflow-auto max-w-[818px] mx-auto w-full"
             style={{ fontSize: "var(--text-p)", lineHeight: "1.5" }}
             onInput={handleInput}
             onKeyDown={handleKeyDown}
