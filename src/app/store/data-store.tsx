@@ -247,6 +247,27 @@ const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
     date: "2026-05-10",
+    version: "1.2.1",
+    title: "Smarter paste in the rich-text editor",
+    description: `Pasting in CMS articles now does the right thing without manual reformatting.
+
+**Default behavior matches the destination**
+- Plain text from sources like Figma inherits the cursor's current block format — paste at the end of an H2 and the new text stays in that H2.
+- HTML and Markdown sources keep their formatting by default.
+
+**Paste as popover**
+- For HTML or Markdown pastes, a small popover appears next to the inserted content with **Keep formatting** (default) and **Plain text** (re-applies the destination format).
+- Auto-dismisses on outside click, scroll, typing, or after a few seconds.
+
+**Markdown heading shift**
+- Markdown headings move up one level on paste (\`##\` → H1, \`###\` → H2, …) so source documents fit this editor's flat heading hierarchy where H1 can repeat per section.
+
+**Bug fix**
+- Pasting near a heading no longer leaves a stale H2 underline behind after the heading is split.`,
+  },
+  {
+    id: uid(),
+    date: "2026-05-10",
     version: "1.2.0",
     title: "Theme toggle, brand refresh, dark-mode polish",
     description: `The Design System website now applies the latest tokens, brand assets, and library icons end-to-end — and dark mode actually works.
