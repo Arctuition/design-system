@@ -647,6 +647,57 @@ const NAME_TAG_MAP: Record<string, string[]> = {
   scroll:       ["swipe", "overflow", "vertical", "horizontal"],
   pinch:        ["zoom", "gesture", "scale"],
   spread:       ["zoom", "gesture", "scale", "expand"],
+
+  /* ── ArcSite product domain & extended vocabulary ────
+     Domain-specific concepts (drawings, proposals, calibration, signatures,
+     wire/cash payments) plus general-purpose tokens that were missing from
+     the dictionary above. Added after auditing icons that came out of the
+     CMS with only `[name, size]` as their tags. */
+  signature:    ["sign", "autograph", "esign", "signoff", "signed", "endorse"],
+  approve:      ["approval", "accept", "signoff", "confirm", "ok", "stamp"],
+  unstar:       ["unfavorite", "unbookmark", "remove favorite", "deselect"],
+  calibrate:    ["calibration", "tune", "adjust", "align", "configure"],
+  adjust:       ["modify", "tune", "tweak", "set", "configure", "fine tune"],
+  calculation:  ["calculate", "math", "compute", "formula", "arithmetic"],
+  calculator:   ["calculate", "math", "compute", "arithmetic", "numeric"],
+  quantity:     ["amount", "count", "number", "measure", "qty"],
+  perimeter:    ["measurement", "outline", "boundary", "edge", "circumference"],
+  angle:        ["measurement", "degree", "corner", "geometry", "rotation"],
+  mirror:       ["flip", "reverse", "reflect"],
+  magnet:       ["magnetic", "attract", "snap", "pull"],
+  grip:         ["handle", "drag", "reorder", "dots", "move", "rearrange"],
+  drawing:      ["draw", "sketch", "blueprint", "illustration", "art"],
+  pdf:          ["document", "file", "acrobat", "export"],
+  excel:        ["spreadsheet", "xls", "xlsx", "sheets", "microsoft"],
+  spreadsheet:  ["excel", "sheet", "table", "rows", "columns", "grid"],
+  proposal:     ["document", "quote", "estimate", "offer", "bid", "deal"],
+  estimate:     ["quote", "proposal", "appraisal", "approximation"],
+  tax:          ["finance", "money", "duty", "vat", "taxation"],
+  cash:         ["money", "currency", "payment", "bills", "coins"],
+  wire:         ["transfer", "payment", "bank", "wiring", "remittance", "ach"],
+  business:     ["office", "company", "corporate", "professional", "enterprise"],
+  company:      ["business", "office", "corporate", "organization", "firm"],
+  support:      ["help", "assistance", "service", "customer", "ticket"],
+  handshake:    ["agreement", "deal", "partnership", "trust", "greet"],
+  community:    ["group", "people", "users", "members", "society"],
+  address:      ["location", "place", "street", "contact"],
+  form:         ["input", "fields", "questionnaire", "survey", "data entry"],
+  annotation:   ["comment", "note", "label", "markup", "remark"],
+  exclamation:  ["alert", "warning", "important", "attention", "bang"],
+  void:         ["empty", "null", "blank", "cancel", "invalidate"],
+  bundle:       ["package", "group", "collection", "set", "kit"],
+  media:        ["content", "image", "video", "photo", "asset"],
+  block:        ["section", "chunk", "module", "stop", "prevent"],
+  xmark:        ["x", "close", "cancel", "dismiss", "remove", "cross"],
+  legend:       ["key", "guide", "labels", "reference", "explanation"],
+  deselect:     ["unselect", "clear selection", "uncheck", "unmark"],
+  recycle:      ["reuse", "repeat", "cycle", "renew", "sustainable"],
+  saved:        ["bookmarked", "stored", "kept", "favorite", "preserved"],
+  unread:       ["new", "notification", "badge", "fresh", "pending"],
+  screenshot:   ["capture", "snapshot", "screen", "screen grab"],
+  variable:     ["var", "parameter", "value", "placeholder", "dynamic"],
+  computer:     ["desktop", "pc", "machine", "workstation", "laptop"],
+  integration:  ["integrate", "connect", "api", "plugin", "link", "sync"],
 };
 
 function uniqueTags(tags: string[]): string[] {
@@ -694,12 +745,16 @@ export function buildIconTagsFromName(name: string): string[] {
   const tags: string[] = [...tokens];
 
   for (const token of tokens) {
+    // Icon names encode size as `{height}x{width}` (height first, e.g.
+    // `chevron right 16x10` is 16 tall × 10 wide). The grouping bucket
+    // is height, so an icon counts as "small" when both dimensions fit
+    // the 16-height bucket.
     const sizeMatch = token.match(/^(\d{1,3})x(\d{1,3})$/);
     if (sizeMatch) {
-      const w = sizeMatch[1];
-      const h = sizeMatch[2];
-      tags.push(`${w}x${h}`);
-      if (parseInt(w, 10) <= 16 && parseInt(h, 10) <= 16) tags.push("small");
+      const h = sizeMatch[1];
+      const w = sizeMatch[2];
+      tags.push(`${h}x${w}`);
+      if (parseInt(h, 10) <= 16 && parseInt(w, 10) <= 16) tags.push("small");
     }
 
     const mapped = NAME_TAG_MAP[token];

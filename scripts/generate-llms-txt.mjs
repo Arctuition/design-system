@@ -168,17 +168,43 @@ them directly inside the design system itself, never in product UI.
 
 2. **Working on a prototype or any project that does not have its own
    icon library**? Use the design system's icon library:
-   - Visual browser:  /iconology
-   - JSON manifest:   /icons.json   (machine-readable, includes inline SVG + tags)
+   - Visual browser:    /iconology
+   - Search manifest:   /icons.index.json  (slim — name + tags + size, no SVG bytes)
+   - Per-icon SVG file: /icons/{fileName}  (raw SVG, ~700 bytes each)
+   - Full manifest:     /icons.json        (every icon + inline \`svgContent\`)
 
-   Each entry in \`/icons.json\` has:
-   - \`name\`        — kebab-case identifier
+   **Two-step flow (recommended for agents):**
+   1. Fetch \`/icons.index.json\` and search by tag (e.g. \`tags.includes("arrow")\`),
+      \`name\`, or \`size\` / \`height\` / \`width\`. The slim index is ~5× smaller
+      than the full manifest, so it fits comfortably into context during the
+      "pick an icon" phase.
+   2. Once you've picked one, fetch \`/icons/\${entry.fileName}\` to get the raw
+      SVG (~700 bytes) and drop it straight into your component. Use this
+      path with \`<img src>\`, \`fetch().then(r => r.text())\`, or any other
+      SVG-loading mechanism.
+
+   You can skip the manifest and use \`/icons.json\` if you want the entire
+   library inline in one request — but for picking a handful of icons,
+   slim index → per-file fetch is far lighter.
+
+   Each entry has:
+   - \`name\`        — kebab-case identifier (with size suffix, e.g. \`chevron right 16x10\`)
    - \`fileName\`    — original upload filename
    - \`tags\`        — search keywords (intent + visual descriptors)
-   - \`svgContent\`  — full inline SVG, ready to drop into a component
+   - \`size\`        — parsed size string, e.g. \`"16x10"\`
+   - \`height\`      — height in px (number)
+   - \`width\`       — width in px (number)
+   - \`svgContent\`  — full inline SVG (full manifest only)
 
-   Search the manifest by tag (e.g. \`tags.includes("arrow")\`) or name to
-   pick an icon, then inline the \`svgContent\` directly.
+   **Size convention — read carefully:** the size suffix in icon names and
+   the \`size\` field is **\`{height}x{width}\`** (height first, *not* the
+   common width × height ordering). For example, \`chevron right 16x10\`
+   is **16px tall, 10px wide**. Height is the canonical grouping dimension:
+   icons in the same height bucket may have slightly different widths
+   (e.g. a 16-tall arrow might be 10, 11, or 12 wide depending on the
+   glyph), but they're all considered the "16-height" set and should be
+   used together for visual consistency. When deciding which size to use,
+   match the **height** to the surrounding text/UI density, not the width.
 
 ---
 
