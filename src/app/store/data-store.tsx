@@ -265,7 +265,7 @@ const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
     date: "2026-05-10",
-    version: "1.2.1",
+    version: "1.2.2",
     title: "Editor and navigation polish",
     description: `Three small UX fixes across the public site and the article editor.
 
@@ -277,6 +277,27 @@ const defaultChangeLogs: ChangeLogEntry[] = [
 
 **Editor — trailing whitespace**
 - The article editor (\`RichTextEditor\`) now reserves ~33vh of bottom whitespace inside the contentEditable. Clicking anywhere in the whitespace places the caret at the end of the article (browser-native), and as you type at the end, the caret naturally sits closer to the middle of the viewport instead of glued to the bottom edge.`,
+  },
+  {
+    id: uid(),
+    date: "2026-05-10",
+    version: "1.2.1",
+    title: "Smarter paste in the rich-text editor",
+    description: `Pasting in CMS articles now does the right thing without manual reformatting.
+
+**Default behavior matches the destination**
+- Plain text from sources like Figma inherits the cursor's current block format — paste at the end of an H2 and the new text stays in that H2.
+- HTML and Markdown sources keep their formatting by default.
+
+**Paste as popover**
+- For HTML or Markdown pastes, a small popover appears next to the inserted content with **Keep formatting** (default) and **Plain text** (re-applies the destination format).
+- Auto-dismisses on outside click, scroll, typing, or after a few seconds.
+
+**Markdown heading shift**
+- Markdown headings move up one level on paste (\`##\` → H1, \`###\` → H2, …) so source documents fit this editor's flat heading hierarchy where H1 can repeat per section.
+
+**Bug fix**
+- Pasting near a heading no longer leaves a stale H2 underline behind after the heading is split.`,
   },
   {
     id: uid(),
