@@ -53,10 +53,25 @@ export interface IconItem {
   updatedAt?: string;
 }
 
+/**
+ * Pattern article. Markdown is the canonical source of truth for Agents
+ * (served via /patterns/:filename.md). HTML is an optional higher-fidelity
+ * rendering, auto-generated when the user edits via the rich-text editor
+ * (Phase C+). The browser displays whichever of the two was saved more
+ * recently — see PatternDetailPage. Drift is impossible because conversion
+ * is one-way (HTML → MD on save) and timestamps decide the winner.
+ */
 export interface PatternArticle {
   id: string;
   title: string;
+  /** HTML rendered from the rich-text editor. Empty string when no HTML version exists yet (MD-uploaded pattern). */
   content: string;
+  /** Markdown source. Set directly via MD upload, or auto-generated from `content` on HTML save. Canonical for Agents. */
+  markdownContent: string;
+  /** ISO date of the last `content` (HTML) save. Empty string if HTML was never saved. */
+  htmlUpdatedAt: string;
+  /** ISO date of the last `markdownContent` save (direct upload or auto-generation). Empty string if MD was never saved. */
+  markdownUpdatedAt: string;
   createdAt: string;
   updatedAt: string;
   deleted: boolean;
@@ -114,7 +129,7 @@ interface AppContextType extends AppState {
   removeIcon: (id: string) => void;
   bulkAddIcons: (icons: Omit<IconItem, "id">[]) => void;
   regenerateAllIconTags: () => { changed: boolean; iconCount: number };
-  addPattern: (pattern: Omit<PatternArticle, "id" | "createdAt" | "updatedAt" | "deleted">) => void;
+  addPattern: (pattern: Omit<PatternArticle, "id" | "createdAt" | "updatedAt" | "deleted" | "markdownContent" | "markdownUpdatedAt" | "htmlUpdatedAt">) => void;
   updatePattern: (id: string, pattern: Partial<PatternArticle>) => void;
   softDeletePattern: (id: string) => void;
   restorePattern: (id: string) => void;
@@ -244,6 +259,39 @@ const defaultSizeArticle = `<h1>Size &amp; Space Tokens</h1><p>ArcSite's size an
 .page-content { padding: var(--size-padding-md); }</code></pre><h2>Exported files</h2><p>The CSS VAR export produces a ZIP containing five files: <code>size-global.css</code>, <code>size-device-mobile.css</code>, <code>size-device-tablet.css</code>, <code>size-web-mobile.css</code>, and <code>size-web-desktop.css</code>. Load the global file plus whichever mode file matches your target platform.</p>`;
 
 const defaultChangeLogs: ChangeLogEntry[] = [
+  {
+    id: uid(),
+    date: "2026-05-10",
+    version: "1.5.0",
+    title: "Pattern docs — markdown-first pipeline with bundle upload",
+    description: `Pattern documentation now has a markdown-first content pipeline so AI agents can fetch canonical sources directly, and editors upload patterns as a portable bundle (one \`.md\` + any asset files) instead of juggling rich-text HTML and image hosting separately.
+
+**Public markdown endpoint**
+- New \`GET /patterns/:slug.md\` on the edge function returns the canonical markdown source with \`Content-Type: text/markdown\`. Looked up by id or kebab-cased title.
+- Designed for AI / LLM crawlers (Claude, GPT) — fetch a pattern's source without parsing the JSON state envelope.
+
+**Bundle upload**
+- New \`POST /patterns/:id/bundle\` accepts a multipart zip with one \`.md\` and any number of asset files (images, figures) referenced by relative paths.
+- Server unpacks, validates that every \`![](path)\` in the markdown has a matching file (lists ALL missing files in one error), uploads each asset to Supabase Storage at \`pattern-assets/<patternId>/<relative-path>\`, stores the markdown in the patterns row, and cleans up assets from the previous bundle that aren't in the new one.
+- The desktop folder layout and the Supabase Storage layout are 1:1 mirrors — the markdown stays portable (relative paths preserved), the deployment knows how to resolve them.
+- JSZip lazy-loaded with try/catch fallback (matches turndown — a registry hiccup degrades to a clean error rather than breaking other endpoints).
+
+**Dual-mode CMS pattern editor**
+- Editor has a top-bar toggle between **HTML editor** (existing rich text) and **Markdown source** (bundle upload + preview).
+- Markdown mode shows an inline error block when a bundle is rejected (e.g. missing image files), a last-upload summary (assets + orphans removed), and a "Copy MD URL" button for handing the canonical source URL to an agent.
+- A stale-MD warning appears in HTML mode if the markdown source has been edited more recently than the HTML.
+
+**Server-side processing gate**
+- Saves to \`state/patterns\` go through \`processPatternsBeforeSave\` on the edge function: diffs incoming vs stored, stamps \`htmlUpdatedAt\` / \`markdownUpdatedAt\` on the changed side, and runs turndown to auto-generate MD when HTML changes. Works the same whether the save came from CMS, the bundle endpoint, or a \`curl\` PUT — no client-side bypass.
+
+**Display**
+- \`MarkdownRenderer\` gains an \`assetBaseUrl\` prop. When set, ReactMarkdown's \`urlTransform\` rewrites relative URLs (\`images/foo.png\`) to \`<assetBaseUrl><relativePath>\`. Absolute URLs, root paths, \`data:\` URIs, and in-page anchors pass through unchanged.
+- \`PatternDetailPage\` picks rendering by timestamp: HTML wins when at least as fresh as MD; otherwise renders MD with the pattern's Supabase Storage URL prefix as \`assetBaseUrl\`. Existing HTML-only patterns are unaffected — backfill on load sets \`htmlUpdatedAt\` from each pattern's \`updatedAt\`, and empty \`markdownUpdatedAt\` always loses the comparison.
+
+**Data model**
+- \`PatternArticle\` gains \`markdownContent\`, \`htmlUpdatedAt\`, \`markdownUpdatedAt\`. No migration needed; legacy data backfilled on first read.
+- New Supabase Storage bucket \`pattern-assets\` (public read), created idempotently by the edge function on first bundle upload.`,
+  },
   {
     id: uid(),
     date: "2026-05-10",
@@ -424,6 +472,9 @@ const defaultPatterns: PatternArticle[] = [
     id: uid(),
     title: "Web View",
     content: `<h2>Overview</h2><p>The Web View is a container used to display web content within the app interface. It facilitates embedding web-based content within the mobile and tablet application, allowing reuse of existing web modules while maintaining a cohesive in-app experience.</p><h3>When to Use</h3><p>Use a Web View for content that is external to the app's core codebase, for example, user site management page, interactive help guide, or terms and conditions hosted online.</p><h3>Format Variants</h3><p>To accommodate different workflow scopes and user needs, the Web View is presented in three distinct styles:</p><ul><li><strong>Modal Web View:</strong> A web view displayed as a modal overlay on top of the current context.</li><li><strong>Full-Screen Web View (Single-Page):</strong> A full-screen web view for a single, self-contained web page.</li><li><strong>Full-Screen Web View (Multi-Page/Modal):</strong> A full-screen web view that supports multiple pages or an entire module.</li></ul><h2>Anatomy</h2><h3>Modal Web View</h3><p>An overlay container that dims the background and hosts the web view with a header section displaying the task title.</p><h3>Full-Screen Web View</h3><p>A full-screen container that displays a single web page, providing an immersive browsing experience.</p><h2>Recommendations</h2><p>Use a Web View for content that is external to the app's core codebase. Avoid using a Web View for simple confirmations or inputs that can be achieved with native dialogs or controls.</p>`,
+    markdownContent: "",
+    markdownUpdatedAt: "",
+    htmlUpdatedAt: "2026-03-10",
     createdAt: "2026-03-01",
     updatedAt: "2026-03-10",
     deleted: false,
@@ -432,6 +483,9 @@ const defaultPatterns: PatternArticle[] = [
     id: uid(),
     title: "Navigation Patterns",
     content: `<h2>Overview</h2><p>Navigation patterns define how users move through the application. Consistent navigation helps users build a mental model of the app's structure and find content efficiently.</p><h3>Primary Navigation</h3><p>The primary navigation is the main way users move between top-level sections of the application. It is always visible and provides clear indication of the current location.</p><h3>Secondary Navigation</h3><p>Secondary navigation provides access to sub-sections within a primary section. It appears contextually based on the current primary navigation selection.</p><h2>Best Practices</h2><h3>Consistency</h3><p>Maintain consistent navigation patterns throughout the application. Users should always know where they are and how to get back to familiar locations.</p><h3>Hierarchy</h3><p>Organize navigation items in a logical hierarchy that reflects the information architecture of your content.</p>`,
+    markdownContent: "",
+    markdownUpdatedAt: "",
+    htmlUpdatedAt: "2026-03-08",
     createdAt: "2026-02-15",
     updatedAt: "2026-03-08",
     deleted: false,
@@ -440,6 +494,9 @@ const defaultPatterns: PatternArticle[] = [
     id: uid(),
     title: "Form Patterns",
     content: `<h2>Overview</h2><p>Form patterns establish consistent approaches for collecting user input across the application. Well-designed forms reduce cognitive load and help users complete tasks efficiently.</p><h3>Input Fields</h3><p>Standard input fields should follow consistent sizing, spacing, and labeling conventions. Always provide clear labels and helpful placeholder text.</p><h3>Validation</h3><p>Form validation should be immediate and helpful. Display error messages inline with the relevant field and use color coding to indicate the state of validation.</p><h2>Layout Guidelines</h2><h3>Single Column</h3><p>Use single-column layouts for forms that require sequential input. This is the most common and accessible layout pattern.</p><h3>Multi Column</h3><p>Multi-column layouts may be used for related fields that logically group together, such as first name and last name.</p>`,
+    markdownContent: "",
+    markdownUpdatedAt: "",
+    htmlUpdatedAt: "2026-03-05",
     createdAt: "2026-02-10",
     updatedAt: "2026-03-05",
     deleted: false,
@@ -534,7 +591,21 @@ function buildStateFromServer(serverData: Record<string, any>): AppState {
           }))
         : defaults.icons,
     ),
-    patterns: Array.isArray(serverData.patterns) ? serverData.patterns : defaults.patterns,
+    patterns: Array.isArray(serverData.patterns)
+      ? serverData.patterns.map((p: any) => {
+          // Backfill MD-side fields for legacy data persisted before they existed.
+          // Legacy patterns were HTML-only, so htmlUpdatedAt mirrors the doc-level
+          // updatedAt. Spread `p` last so any field already present on the saved
+          // pattern wins over the default.
+          const legacyUpdatedAt = typeof p?.updatedAt === "string" ? p.updatedAt : "";
+          return {
+            markdownContent: "",
+            markdownUpdatedAt: "",
+            htmlUpdatedAt: legacyUpdatedAt,
+            ...p,
+          };
+        })
+      : defaults.patterns,
     editors,
     isAuthenticated: false,
     currentUser: null,
@@ -1134,13 +1205,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       update({ icons: enriched }, "icons");
       return { changed: true, iconCount: enriched.length };
     },
-    addPattern: (pattern) =>
+    addPattern: (pattern) => {
+      // Existing addPattern callers create via the HTML editor (only authoring
+      // flow today), so the new pattern's HTML side is fresh and the MD side is
+      // empty. Phase C's MD-upload flow will set the timestamps the other way.
+      const today = new Date().toISOString().split("T")[0];
       update({
         patterns: [
           ...state.patterns,
-          { ...pattern, id: uid(), createdAt: new Date().toISOString().split("T")[0], updatedAt: new Date().toISOString().split("T")[0], deleted: false },
+          {
+            ...pattern,
+            id: uid(),
+            createdAt: today,
+            updatedAt: today,
+            deleted: false,
+            markdownContent: "",
+            markdownUpdatedAt: "",
+            htmlUpdatedAt: today,
+          },
         ],
-      }, "patterns"),
+      }, "patterns");
+    },
     updatePattern: (id, pattern) =>
       update({
         patterns: state.patterns.map((p) =>
