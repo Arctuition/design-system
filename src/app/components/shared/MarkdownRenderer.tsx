@@ -6,13 +6,45 @@ import { CssSyntaxBlock } from "./CssSyntaxBlock";
 interface MarkdownRendererProps {
   content: string;
   className?: string;
+  /**
+   * Base URL prepended to relative asset references in the markdown. The MD
+   * source is stored verbatim with bundle-relative paths (e.g.
+   * `images/foo.png`); pattern assets actually live in Supabase Storage at
+   * `<assetBaseUrl><relativePath>`. Setting this prop opts into render-time
+   * URL rewriting so the MD never has to know its own deployed location.
+   *
+   * Absolute URLs (http/https/protocol-relative), root-relative paths (`/...`),
+   * `data:` URIs, and in-page anchors (`#...`) are passed through unchanged.
+   *
+   * Must end with a `/` to compose cleanly with the relative path.
+   */
+  assetBaseUrl?: string;
 }
 
-export function MarkdownRenderer({ content, className }: MarkdownRendererProps) {
+function resolveUrl(url: string | undefined, base?: string): string | undefined {
+  if (!url) return url;
+  if (!base) return url;
+  if (
+    /^[a-z][a-z0-9+.-]*:/i.test(url) || // any scheme: http:, https:, data:, mailto:, etc.
+    url.startsWith("//") ||
+    url.startsWith("/") ||
+    url.startsWith("#")
+  ) {
+    return url;
+  }
+  return base + url;
+}
+
+export function MarkdownRenderer({
+  content,
+  className,
+  assetBaseUrl,
+}: MarkdownRendererProps) {
   return (
     <div className={className}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        urlTransform={(url) => resolveUrl(url, assetBaseUrl) || ""}
         components={{
           h1: ({ children }) => (
             <h1 style={{ fontSize: "var(--text-h1)", fontWeight: "var(--font-weight-normal)", marginBottom: "1rem", marginTop: "2rem" }}>

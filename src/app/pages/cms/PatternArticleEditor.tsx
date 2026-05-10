@@ -2,11 +2,18 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Navigate, Link, useParams } from "react-router";
 import { useAppData } from "../../store/data-store";
 import { RichTextEditor } from "../../components/shared/RichTextEditor";
+import { MarkdownRenderer } from "../../components/shared/MarkdownRenderer";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { ArrowLeft, Save, X, History, RotateCcw, Trash2 } from "lucide-react";
+import { uploadPatternBundle } from "../../store/api";
+import { projectId } from "/utils/supabase/info";
+import { ArrowLeft, Save, X, History, RotateCcw, Trash2, Upload, AlertTriangle, Copy } from "lucide-react";
+
+const STORAGE_BASE = `https://${projectId}.supabase.co/storage/v1/object/public/pattern-assets`;
 import { toast } from "sonner";
 import type { ArticleVersion } from "../../store/data-store";
+
+type EditorMode = "html" | "markdown";
 
 export function PatternArticleEditor() {
   const { id } = useParams<{ id: string }>();
@@ -18,10 +25,28 @@ export function PatternArticleEditor() {
   const [draftContent, setDraftContent] = useState(pattern?.content || "");
   const [dirty, setDirty] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
+  const [mode, setMode] = useState<EditorMode>("html");
+  const [uploading, setUploading] = useState(false);
+  const [lastUpload, setLastUpload] = useState<{
+    assetsUploaded: number;
+    orphansRemoved: string[];
+    mdPath: string;
+  } | null>(null);
+  const [uploadError, setUploadError] = useState<{
+    message: string;
+    missing?: string[];
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Track saved content for meaningful dirty comparison
   const savedTitleRef = useRef(pattern?.title || "");
   const savedContentRef = useRef(pattern?.content || "");
+
+  // True when this pattern's MD source is fresher than its HTML — the HTML
+  // editor is showing stale content and saving it would clobber the newer MD.
+  const mdNewerThanHtml = !!pattern
+    && !!pattern.markdownUpdatedAt
+    && pattern.markdownUpdatedAt > (pattern.htmlUpdatedAt || "");
 
   const normalizeForComparison = useCallback((html: string) => {
     return html.replace(/<[^>]*>/g, "").replace(/&nbsp;/gi, " ").replace(/\s+/g, "").trim();
@@ -116,6 +141,79 @@ export function PatternArticleEditor() {
     setDirty(false);
   };
 
+  const switchMode = (target: EditorMode) => {
+    if (target === mode) return;
+    if (mode === "html" && dirty) {
+      const ok = window.confirm("You have unsaved HTML changes. Switching modes will discard them. Continue?");
+      if (!ok) return;
+      handleCancel();
+    }
+    setMode(target);
+  };
+
+  const handleBundleUploadClick = () => fileInputRef.current?.click();
+
+  const handleBundleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // reset so the same file can re-trigger
+    if (!file) return;
+
+    if (!/\.zip$/i.test(file.name)) {
+      toast.error(`Expected a .zip file, got "${file.name}".`);
+      return;
+    }
+
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const result = await uploadPatternBundle(pattern.id, file);
+      if (!result.ok) {
+        setUploadError({ message: result.error, missing: result.missing });
+        toast.error("Upload failed — see details below");
+        return;
+      }
+      // Server already wrote the canonical state. Mirror it into the local
+      // store so the UI reflects markdownContent + markdownUpdatedAt without
+      // a refresh. The follow-on bulk PUT is a no-op (server diff sees no
+      // further change).
+      updatePattern(pattern.id, {
+        markdownContent: result.pattern.markdownContent,
+        markdownUpdatedAt: result.pattern.markdownUpdatedAt,
+      });
+      setLastUpload({
+        assetsUploaded: result.assetsUploaded,
+        orphansRemoved: result.orphansRemoved,
+        mdPath: result.mdPath,
+      });
+      toast.success(
+        `Uploaded ${file.name} — ${result.assetsUploaded} asset(s)` +
+          (result.orphansRemoved.length
+            ? `, removed ${result.orphansRemoved.length} orphan(s)`
+            : ""),
+      );
+    } catch (err) {
+      setUploadError({ message: (err as Error).message });
+      toast.error(`Upload failed: ${(err as Error).message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const mdPublicUrl = `${
+    import.meta.env.DEV
+      ? "http://127.0.0.1:54321/functions/v1/make-server-067f252d"
+      : `https://${projectId}.supabase.co/functions/v1/make-server-067f252d`
+  }/patterns/${encodeURIComponent(pattern?.id || "")}.md`;
+
+  const handleCopyMdUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(mdPublicUrl);
+      toast.success("Markdown URL copied");
+    } catch {
+      toast.error("Copy failed — your browser blocked clipboard access");
+    }
+  };
+
   const handleRestoreVersion = (version: ArticleVersion) => {
     setDraftContent(version.content);
     setDirty(true);
@@ -167,38 +265,179 @@ export function PatternArticleEditor() {
             >
               <History className="size-4" /> Versions ({versions.length})
             </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={handleCancel} 
-              className="px-4"
-              type="button"
-            >
-              Cancel
-            </Button>
-            <Button 
-              size="sm" 
-              onClick={handleSave} 
-              disabled={!dirty} 
-              className="px-6"
-              type="button"
-            >
-              Save
-            </Button>
+            {mode === "html" && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancel}
+                  className="px-4"
+                  type="button"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={!dirty}
+                  className="px-6"
+                  type="button"
+                >
+                  Save
+                </Button>
+              </>
+            )}
           </div>
+        </div>
+
+        {/* Mode toggle */}
+        <div className="flex items-center gap-2 px-10 py-2 border-t border-border bg-muted/20">
+          <span className="text-muted-foreground" style={{ fontSize: "var(--text-label)" }}>
+            Source:
+          </span>
+          <Button
+            size="sm"
+            variant={mode === "html" ? "default" : "ghost"}
+            type="button"
+            onClick={() => switchMode("html")}
+          >
+            HTML editor
+          </Button>
+          <Button
+            size="sm"
+            variant={mode === "markdown" ? "default" : "ghost"}
+            type="button"
+            onClick={() => switchMode("markdown")}
+          >
+            Markdown source
+          </Button>
+          <span
+            className="ml-3 text-muted-foreground"
+            style={{ fontSize: "var(--text-label)" }}
+          >
+            {mode === "html"
+              ? "Saving regenerates the markdown source automatically."
+              : "Upload-only. The site shows MD whenever it's newer than HTML."}
+          </span>
+          {mode === "html" && mdNewerThanHtml && (
+            <span
+              className="ml-auto flex items-center gap-1.5 text-amber-700 dark:text-amber-400"
+              style={{ fontSize: "var(--text-label)" }}
+            >
+              <AlertTriangle className="size-4" />
+              Markdown source ({pattern.markdownUpdatedAt}) is newer than the HTML below ({pattern.htmlUpdatedAt || "never"}). Saving will overwrite it.
+            </span>
+          )}
         </div>
       </div>
 
       {/* Main content area */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         <div className="flex-1 overflow-auto">
-          <RichTextEditor
-            value={draftContent}
-            onChange={handleContentChange}
-            onSave={dirty ? handleSave : undefined}
-            stickyToolbar
-            borderless
-          />
+          {mode === "html" ? (
+            <RichTextEditor
+              value={draftContent}
+              onChange={handleContentChange}
+              onSave={dirty ? handleSave : undefined}
+              stickyToolbar
+              borderless
+            />
+          ) : (
+            <div className="px-10 py-6">
+              <div className="flex items-center gap-2 mb-4 flex-wrap">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".zip,application/zip,application/x-zip-compressed"
+                  className="hidden"
+                  onChange={handleBundleFileSelected}
+                />
+                <Button
+                  size="sm"
+                  type="button"
+                  onClick={handleBundleUploadClick}
+                  disabled={uploading}
+                  className="gap-1"
+                >
+                  <Upload className="size-4" />
+                  {uploading ? "Uploading…" : "Upload bundle (.zip)"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  type="button"
+                  onClick={handleCopyMdUrl}
+                  className="gap-1"
+                  disabled={!pattern.markdownContent}
+                  title={mdPublicUrl}
+                >
+                  <Copy className="size-4" />
+                  Copy MD URL
+                </Button>
+                <span
+                  className="ml-auto text-muted-foreground"
+                  style={{ fontSize: "var(--text-label)" }}
+                >
+                  Last MD save: {pattern.markdownUpdatedAt || "never"}
+                  {pattern.htmlUpdatedAt && ` · Last HTML save: ${pattern.htmlUpdatedAt}`}
+                </span>
+              </div>
+              <p
+                className="text-muted-foreground mb-4"
+                style={{ fontSize: "var(--text-label)" }}
+              >
+                Bundle = one <code>.md</code> + any asset files (images, figures) referenced by relative paths. Uploading replaces the current MD and the pattern's stored assets; orphaned files from the previous bundle are removed.
+              </p>
+              {uploadError && (
+                <div
+                  className="border border-destructive/50 bg-destructive/10 rounded-lg p-4 mb-4"
+                  style={{ fontSize: "var(--text-label)" }}
+                >
+                  <p className="text-destructive font-medium mb-1">Upload rejected</p>
+                  <p className="text-foreground">{uploadError.message}</p>
+                  {uploadError.missing && uploadError.missing.length > 0 && (
+                    <>
+                      <p className="text-foreground mt-2 mb-1">Missing files:</p>
+                      <ul className="list-disc list-inside text-foreground">
+                        {uploadError.missing.map((m) => (
+                          <li key={m}><code>{m}</code></li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              )}
+              {lastUpload && (
+                <div
+                  className="border border-border bg-secondary/30 rounded-lg p-3 mb-4"
+                  style={{ fontSize: "var(--text-label)" }}
+                >
+                  <span className="text-foreground">
+                    Last upload: <code>{lastUpload.mdPath}</code> · {lastUpload.assetsUploaded} asset(s)
+                    {lastUpload.orphansRemoved.length > 0
+                      ? ` · removed ${lastUpload.orphansRemoved.length} orphan(s) (${lastUpload.orphansRemoved.join(", ")})`
+                      : ""}
+                  </span>
+                </div>
+              )}
+              <div className="border border-border rounded-lg p-6 bg-card">
+                {pattern.markdownContent ? (
+                  <MarkdownRenderer
+                    content={pattern.markdownContent}
+                    className="article-content"
+                    assetBaseUrl={`${STORAGE_BASE}/${pattern.id}/`}
+                  />
+                ) : (
+                  <p
+                    className="text-muted-foreground italic"
+                    style={{ fontSize: "var(--text-p)" }}
+                  >
+                    No markdown source yet. Upload a bundle (.zip) above, or save the HTML editor to auto-generate one.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Version sidebar */}
