@@ -143,7 +143,7 @@ export function IconEditor() {
   const bulkInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
   const [replacingId, setReplacingId] = useState<string | null>(null);
-  const [bulkResult, setBulkResult] = useState<{ added: number; updated: number } | null>(null);
+  const [bulkResult, setBulkResult] = useState<{ added: number; updated: number; duplicatesInBatch: number } | null>(null);
 
   if (!isAuthenticated) return <Navigate to="/cms/login" replace />;
 
@@ -182,10 +182,19 @@ export function IconEditor() {
       if (bulkInputRef.current) bulkInputRef.current.value = "";
       return;
     }
+    // Dedupe within the batch by fileName (last upload wins). Without this,
+    // parallel FileReader callbacks all close over the same `icons` snapshot,
+    // so two same-named files in one batch would both miss the existence
+    // check and produce two records with the same fileName.
+    const dedupedByName = new Map<string, File>();
+    svgFiles.forEach((f) => dedupedByName.set(f.name, f));
+    const uniqueFiles = Array.from(dedupedByName.values());
+    const duplicatesInBatch = svgFiles.length - uniqueFiles.length;
+
     let count = 0;
     let updatedCount = 0;
-    const total = svgFiles.length;
-    svgFiles.forEach((file) => {
+    const total = uniqueFiles.length;
+    uniqueFiles.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (ev) => {
         const content = ev.target?.result as string;
@@ -203,7 +212,11 @@ export function IconEditor() {
         }
         count++;
         if (count === total) {
-          setBulkResult({ added: total - updatedCount, updated: updatedCount });
+          setBulkResult({
+            added: total - updatedCount,
+            updated: updatedCount,
+            duplicatesInBatch,
+          });
         }
       };
       reader.readAsText(file);
@@ -629,9 +642,20 @@ export function IconEditor() {
               <span>Existing icons updated</span>
               <span className="font-medium" style={{ color: "var(--color-label-action-primary)" }}>{bulkResult?.updated ?? 0}</span>
             </div>
+            {(bulkResult?.duplicatesInBatch ?? 0) > 0 && (
+              <div className="flex justify-between">
+                <span>Duplicate filenames in batch (collapsed)</span>
+                <span className="font-medium" style={{ color: "var(--color-label-secondary)" }}>{bulkResult?.duplicatesInBatch ?? 0}</span>
+              </div>
+            )}
             {(bulkResult?.updated ?? 0) > 0 && (
               <p className="pt-1" style={{ fontSize: "var(--text-label)", color: "var(--color-label-secondary)" }}>
                 Updated icons had their SVG renewed while keeping their original tags.
+              </p>
+            )}
+            {(bulkResult?.duplicatesInBatch ?? 0) > 0 && (
+              <p className="pt-1" style={{ fontSize: "var(--text-label)", color: "var(--color-label-secondary)" }}>
+                Same filename appeared multiple times in this upload — only the last one was kept.
               </p>
             )}
           </div>

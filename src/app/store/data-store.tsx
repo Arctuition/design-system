@@ -247,6 +247,28 @@ const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
     date: "2026-05-10",
+    version: "1.4.0",
+    title: "AI agent icon search — slim manifest, per-file SVGs, richer tags",
+    description: `Three changes that make the icon library easier for AI agents (Claude, Cursor, etc.) to consume, plus a CMS bulk-upload bug fix.
+
+**Slim search manifest**
+- \`/icons.index.json\` — same metadata as \`/icons.json\` (name, tags, size) but **no inline SVG bytes**, ~5× smaller (~100 KB vs ~530 KB). Agents use this for the "pick an icon" phase without pulling the whole library into context.
+
+**Per-icon SVG files**
+- \`/icons/{fileName}\` — every icon now also serves as a standalone ~700-byte file. After picking via the slim index, an agent (or any consumer) can drop a single icon into a component with \`<img src>\` or a 1-line \`fetch().then(r => r.text())\`.
+
+**Smarter tag matching**
+- Expanded the icon tag enrichment dictionary by 45 entries (signature, calibrate, perimeter, wire transfer, screenshot, recycle, integration, …). 115 icons gained richer synonyms (4,703 → 5,276 tags), so queries like "signoff", "math", or "wire payment" now hit the right icon by intent instead of by exact name.
+
+**Size convention documented**
+- \`llms.txt\` now spells out that icon size strings are **\`{height}x{width}\`** (height first, *not* the conventional width × height). Same height = same visual bucket; widths within a bucket may vary slightly (e.g. a 16-tall arrow can be 10–12 wide depending on the glyph).
+
+**Fixed: bulk upload could create duplicate icons**
+- The Icon Editor's bulk upload had a stale-closure bug where parallel \`FileReader\` callbacks closed over the same \`icons\` snapshot, so two same-named files in one upload would both miss the dedup check and create separate records. Now the batch is deduped at the entry point (last upload wins) and the result dialog surfaces a "Duplicate filenames in batch (collapsed): N" line when it happens.`,
+  },
+  {
+    id: uid(),
+    date: "2026-05-10",
     version: "1.2.1",
     title: "Smarter paste in the rich-text editor",
     description: `Pasting in CMS articles now does the right thing without manual reformatting.
