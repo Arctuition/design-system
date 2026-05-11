@@ -261,6 +261,28 @@ const defaultSizeArticle = `<h1>Size &amp; Space Tokens</h1><p>ArcSite's size an
 const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
+    date: "2026-05-11",
+    version: "1.5.1",
+    title: "Modal Dialogs — Do/Don't pairs, anatomy diagram, refined visuals",
+    description: `The Modal Dialogs pattern doc gets a visual overhaul. The page now teaches each anti-pattern as a side-by-side Do/Don't comparison instead of a single "bad example" image, adds a numbered anatomy diagram for the modal structure, and replaces every type example with a tighter, more consistent mockup.
+
+**Side-by-side Do/Don't pairs**
+- Six anti-patterns (nested modals × 2, body overflow × 2, generic verbs × 2) now render as two-column tiles using the Design Library \`Image background\` component — green check + bar on the Do side, red error + bar on the Don't side.
+- Each pair is wired into the rich-text editor's native two-column layout (\`<div data-rte-cols="2">\`), so the same HTML can be edited in CMS or pasted verbatim across environments. The two-column block collapses to a single column at <640px (existing responsive rule).
+- For Markdown fallback the pairs flatten into sequential Do-image / Don't-image references — readable for AI agents and small-screen MD viewers, where two-column isn't possible.
+
+**Modal anatomy diagram**
+- New \`images/anatomy.png\` lives at the top of the Anatomy section: a single annotated mockup with 9 numbered callouts (Modal, Header, Title, Close, Body, Footer, Primary / Secondary / Tertiary action). Replaces the previous text-only walkthrough.
+
+**Type example mockups (Alert / Details / Create / Browse / Configure / Preview)**
+- All six type illustrations redone at a consistent 800px width, comfortable padding, and corrected proportions (Preview shrunk to 640px modal width so the document doesn't bleed to the stage edge).
+- Tightened body content — modals \`HUG\` height instead of carrying empty space.
+
+**Production assets**
+- 19 PNG assets uploaded to \`pattern-assets/sfh2uhifu19e12507690/images/\` via the bundle endpoint. Old single-image anti-pattern references (\`anti-X.png\`) replaced by paired \`anti-X-do.png\` + \`anti-X-dont.png\`; orphans cleaned up automatically.`,
+  },
+  {
+    id: uid(),
     date: "2026-05-10",
     version: "1.5.0",
     title: "Pattern docs — markdown-first pipeline with bundle upload",
