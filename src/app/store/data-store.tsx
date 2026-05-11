@@ -1,6 +1,27 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { loadStateFromServer, saveStateKey, bulkSaveState } from "./api";
+import { loadStateFromServer, loadStateKey, saveStateKey, bulkSaveState } from "./api";
+
+/**
+ * Per-articleKey cap on stored versions. Must match the server-side
+ * MAX_VERSIONS_PER_ARTICLE in supabase/functions/make-server-067f252d/index.ts
+ * — both sides enforce it so a save started before lazy hydration finishes
+ * can't clobber server state with a 1-entry array, and a curl PUT can't
+ * grow KV without bound.
+ */
+const MAX_VERSIONS_PER_ARTICLE = 5;
+
+function capArticleVersions(versions: ArticleVersion[]): ArticleVersion[] {
+  const counts = new Map<string, number>();
+  const kept: ArticleVersion[] = [];
+  for (const v of versions) {
+    const next = (counts.get(v.articleKey) ?? 0) + 1;
+    if (next > MAX_VERSIONS_PER_ARTICLE) continue;
+    counts.set(v.articleKey, next);
+    kept.push(v);
+  }
+  return kept;
+}
 import { projectId, publicAnonKey } from "/utils/supabase/info";
 import { buildIconTagsFromName, enrichAllIconTags, rebuildIconTags } from "./icon-tag-enrichment";
 import { chromeIconSeeds } from "./chrome-icon-seeds";
@@ -259,6 +280,26 @@ const defaultSizeArticle = `<h1>Size &amp; Space Tokens</h1><p>ArcSite's size an
 .page-content { padding: var(--size-padding-md); }</code></pre><h2>Exported files</h2><p>The CSS VAR export produces a ZIP containing five files: <code>size-global.css</code>, <code>size-device-mobile.css</code>, <code>size-device-tablet.css</code>, <code>size-web-mobile.css</code>, and <code>size-web-desktop.css</code>. Load the global file plus whichever mode file matches your target platform.</p>`;
 
 const defaultChangeLogs: ChangeLogEntry[] = [
+  {
+    id: uid(),
+    date: "2026-05-11",
+    version: "1.5.2",
+    title: "First-paint fix — lazy versions, inline-image extraction, capped history",
+    description: `Initial \`/state\` load went from **13.9 MB / 7+ s TTFB** to **~3.5 MB / ~1 s** by deferring article version history off the critical path, capping it at 5 entries per article, and rewriting inline base64 images to public Storage URLs on save. Safari users (8 s client timeout on the bulk load) stop seeing the "Can't reach the content server" toast on opening the site.
+
+**Lazy article versions**
+- Server: \`GET /state\` no longer includes \`articleVersions\`. The slice is fetched on demand via new \`GET /state/:key\`, triggered by opening the Version sidebar or by any save.
+- Client: \`ensureArticleVersionsLoaded\` hydrates the slice once per session, with promise-deduped concurrent triggers; saves and deletes always await it so they can't accidentally PUT a 1-entry array that clobbers server history.
+
+**Capped version history**
+- Both client and server enforce \`MAX_VERSIONS_PER_ARTICLE = 5\` per \`articleKey\`. A buggy client or curl PUT can't grow KV without bound; oldest entries past the cap are dropped silently.
+
+**Inline-image stripping on save**
+- Rich-text pastes and the editor's image-upload button used to inline images as \`data:image/...;base64,...\` directly in the HTML, ballooning patterns to 1+ MB and each version snapshot the same. Existing data: a single Web View pattern carried 1.87 MB of base64 and its 10 versions another 10.4 MB.
+- Server-side \`stripInlineImagesFromHtml\` extracts every data URL, uploads it once (SHA-256 dedup) to \`pattern-assets/_inline/<articleKey>/<hash>.<ext>\`, and rewrites the HTML to reference the public URL. Runs in \`processPatternsBeforeSave\`, in PUT \`/state/:key\` for HTML article keys (\`homeArticle\`, \`typographyArticle\`, \`colorArticle\`, \`sizeArticle\`, \`iconologyArticle\`), and in \`processArticleVersionsBeforeSave\` for version snapshots.
+- Inline images live under \`_inline/\` (underscore prefix avoids collision with pattern IDs) so the bundle-upload orphan-cleanup pass doesn't sweep them away.
+- Legacy rows clean themselves up on next save — no separate migration step.`,
+  },
   {
     id: uid(),
     date: "2026-05-11",
@@ -749,6 +790,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // With a cache hit, paint immediately and let the server response merge in.
   const [isLoading, setIsLoading] = useState(cachedLocal === null);
   const initializedRef = useRef(false);
+  // articleVersions is lazy-loaded — it's excluded from the bulk GET /state
+  // because version history can grow to 10+ MB per article (HTML snapshots
+  // with inline images), which used to push the initial load past Safari's
+  // 8-second client timeout. We hydrate it the first time anything reads or
+  // writes a version. The ref tracks load state; the promise dedups
+  // concurrent triggers so a rapid save→save before the load resolves still
+  // only fires one GET.
+  const articleVersionsLoadedRef = useRef(false);
+  const articleVersionsLoadPromiseRef = useRef<Promise<void> | null>(null);
   // Track which keys changed for granular server sync
   const pendingSyncRef = useRef<Set<string>>(new Set());
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -774,6 +824,34 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  /**
+   * Ensure articleVersions has been pulled from the server before any
+   * write that touches it. The bulk GET /state excludes articleVersions so
+   * first paint is fast; this hydrates the slice on demand. Idempotent: the
+   * first call starts the fetch, every concurrent caller awaits the same
+   * promise, and once it resolves the ref short-circuits all future calls.
+   *
+   * Critical: saveArticleWithVersion and deleteArticleVersion MUST await
+   * this before computing the new articleVersions array, otherwise they'd
+   * build `[newVersion, ...empty]` from the initial empty slice and PUT
+   * that to the server — clobbering all existing history.
+   */
+  const ensureArticleVersionsLoaded = useCallback((): Promise<void> => {
+    if (articleVersionsLoadedRef.current) return Promise.resolve();
+    if (articleVersionsLoadPromiseRef.current) return articleVersionsLoadPromiseRef.current;
+    const p = (async () => {
+      const versions = await loadStateKey<ArticleVersion[]>("articleVersions", []);
+      const safe = Array.isArray(versions) ? versions : [];
+      setState((prev) => ({ ...prev, articleVersions: safe }));
+      articleVersionsLoadedRef.current = true;
+    })().catch((err) => {
+      console.warn("articleVersions lazy-load failed; treating as empty:", err);
+      articleVersionsLoadedRef.current = true; // give up — empty slice is fine
+    });
+    articleVersionsLoadPromiseRef.current = p;
+    return p;
+  }, []);
+
   // On mount: load from server and seed defaults if needed
   useEffect(() => {
     if (initializedRef.current) return;
@@ -793,6 +871,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             isAuthenticated: prev.isAuthenticated,
             currentUser: prev.currentUser,
             authExpiry: prev.authExpiry,
+            // Server no longer ships articleVersions in the bulk /state
+            // response (lazy-loaded to keep first paint fast), so preserve
+            // whatever the localStorage hydration already painted. The
+            // version sidebar may briefly show stale data; opening it (or
+            // saving an article) triggers ensureArticleVersionsLoaded and
+            // refreshes from server.
+            articleVersions: prev.articleVersions,
           }));
           if (enriched) {
             persistKey("ds:icons", enriched);
@@ -1309,48 +1394,88 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     // Versioning
     saveArticleWithVersion: (articleKey: string, content: string, saveFn: (html: string) => void) => {
-      // Get the current content before saving to store as version
-      const currentContentMap: Record<string, string> = {
-        home: state.homeArticle,
-        typography: state.typographyArticle,
-        color: state.colorArticle,
-        size: state.sizeArticle,
-        iconology: state.iconologyArticle,
-      };
-      // Also check pattern articles (key format: "pattern-{id}")
-      let currentContent = currentContentMap[articleKey];
-      if (!currentContent && articleKey.startsWith("pattern-")) {
-        const patternId = articleKey.replace("pattern-", "");
-        const pattern = state.patterns.find((p) => p.id === patternId);
-        if (pattern) currentContent = pattern.content;
-      }
-      if (currentContent && currentContent !== content) {
-        const existingVersions = (state.articleVersions || []).filter((v) => v.articleKey === articleKey);
-        const versionNum = existingVersions.length + 1;
-        const newVersion: ArticleVersion = {
-          id: uid(),
-          articleKey,
-          content: currentContent,
-          timestamp: new Date().toISOString(),
-          author: state.currentUser?.username || "admin",
-          label: `Version ${versionNum}`,
-        };
-        update({
-          articleVersions: [newVersion, ...(state.articleVersions || [])],
-        }, "articleVersions");
-      }
+      // Fire-and-forget: callers don't await this today, and the saveFn
+      // (which writes the *new* content) runs synchronously below so the
+      // editor's "Saved" toast still snaps. The version creation itself is
+      // gated on the lazy load — see ensureArticleVersionsLoaded for why.
+      const versionWritePromise = (async () => {
+        await ensureArticleVersionsLoaded();
+        setState((prev) => {
+          const currentContentMap: Record<string, string> = {
+            home: prev.homeArticle,
+            typography: prev.typographyArticle,
+            color: prev.colorArticle,
+            size: prev.sizeArticle,
+            iconology: prev.iconologyArticle,
+          };
+          let currentContent = currentContentMap[articleKey];
+          if (!currentContent && articleKey.startsWith("pattern-")) {
+            const patternId = articleKey.replace("pattern-", "");
+            const pattern = prev.patterns.find((p) => p.id === patternId);
+            if (pattern) currentContent = pattern.content;
+          }
+          if (!currentContent || currentContent === content) {
+            return prev; // nothing to snapshot
+          }
+          const existingForKey = (prev.articleVersions || []).filter(
+            (v) => v.articleKey === articleKey,
+          );
+          const versionNum = existingForKey.length + 1;
+          const newVersion: ArticleVersion = {
+            id: uid(),
+            articleKey,
+            content: currentContent,
+            timestamp: new Date().toISOString(),
+            author: prev.currentUser?.username || "admin",
+            label: `Version ${versionNum}`,
+          };
+          const merged = [newVersion, ...(prev.articleVersions || [])];
+          return { ...prev, articleVersions: capArticleVersions(merged) };
+        });
+        // Mirror the change to the server through the existing per-key
+        // sync machinery. pendingSyncRef + syncToServer pulls the latest
+        // state at flush time, so the version array PUT'd is the post-cap
+        // one we just committed above.
+        pendingSyncRef.current.add("articleVersions");
+        markSyncing(["articleVersions"]);
+        syncToServer();
+      })();
+      // Don't block saveFn on the version write — they're independent. Log
+      // any unexpected failure for debugging but don't surface to the UI
+      // (the main content save has its own error path).
+      versionWritePromise.catch((err) => {
+        console.error("Failed to record article version:", err);
+      });
       saveFn(content);
     },
     getArticleVersions: (articleKey: string) => {
+      // Trigger lazy hydration if a version sidebar opens before any save
+      // has fired. Fire-and-forget — the component re-renders when state
+      // updates. Idempotent; safe to call from every render.
+      if (!articleVersionsLoadedRef.current) {
+        ensureArticleVersionsLoaded().catch(() => {});
+      }
       return (state.articleVersions || []).filter((v) => v.articleKey === articleKey);
     },
     restoreArticleVersion: (_version: ArticleVersion) => {
       // This is handled by ArticleEditorPage setting draft state
     },
     deleteArticleVersion: (versionId: string) => {
-      update({
-        articleVersions: state.articleVersions.filter((v) => v.id !== versionId),
-      }, "articleVersions");
+      // Same hydration discipline as saveArticleWithVersion: we MUST have
+      // the full server-side slice before computing the filtered array,
+      // otherwise the PUT writes an empty list back and wipes history.
+      (async () => {
+        await ensureArticleVersionsLoaded();
+        setState((prev) => ({
+          ...prev,
+          articleVersions: prev.articleVersions.filter((v) => v.id !== versionId),
+        }));
+        pendingSyncRef.current.add("articleVersions");
+        markSyncing(["articleVersions"]);
+        syncToServer();
+      })().catch((err) => {
+        console.error("Failed to delete article version:", err);
+      });
     },
   };
 
