@@ -137,6 +137,32 @@ export function publicUrlFor(patternId: string, relativePath: string): string {
   return data.publicUrl;
 }
 
+/**
+ * Upload bytes to a fully-qualified object path inside the bucket. Used by
+ * the inline-image stripper, which stores deduplicated images under
+ * `_inline/<articleKey>/<hash>.<ext>` — outside any pattern's folder, so the
+ * bundle-upload orphan-cleanup pass (which scans `<patternId>/...`) won't
+ * touch them. The leading underscore in `_inline/` keeps the namespace
+ * disjoint from any current or future pattern id (pattern ids are generated
+ * via `Math.random().toString(36)` and never start with `_`).
+ */
+export async function uploadAtPath(
+  objectPath: string,
+  bytes: Uint8Array,
+  contentType: string,
+): Promise<{ publicUrl: string }> {
+  const supabase = client();
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(objectPath, bytes, {
+      contentType,
+      upsert: true,
+    });
+  if (error) throw new Error(`uploadAtPath(${objectPath}): ${error.message}`);
+  const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(objectPath);
+  return { publicUrl: pub.publicUrl };
+}
+
 export const ASSET_BUCKET = BUCKET;
 
 /**

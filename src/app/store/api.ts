@@ -68,6 +68,33 @@ export async function loadStateFromServer(): Promise<LoadStateResult> {
   return { status: "ok", data };
 }
 
+/**
+ * Load a single state key from the server. Used for keys that are too heavy
+ * to include in the bulk /state load (e.g. articleVersions), so the client
+ * can defer them until the corresponding UI surface actually opens.
+ *
+ * Returns the parsed value on HTTP 200 with non-null data, otherwise returns
+ * the supplied fallback. Network errors, timeouts, parse failures, and
+ * server 4xx/5xx all collapse to the fallback path — callers don't need to
+ * distinguish, the lazy-loaded keys are never required for the app to boot.
+ */
+export async function loadStateKey<T>(key: string, fallback: T): Promise<T> {
+  try {
+    const res = await fetchWithTimeout(
+      `${BASE}/state/${key}`,
+      { headers: headers() },
+      10000,
+    );
+    if (!res.ok) return fallback;
+    const json = await res.json().catch(() => null);
+    const data = json?.data;
+    if (data === undefined || data === null) return fallback;
+    return data as T;
+  } catch {
+    return fallback;
+  }
+}
+
 /** Save a single state key to the server */
 export async function saveStateKey(key: string, value: any): Promise<boolean> {
   try {

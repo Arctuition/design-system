@@ -5,6 +5,7 @@ import * as kv from "./kv_store.ts";
 import {
   ensureBucket,
   uploadAsset,
+  uploadAtPath,
   listAssetPaths,
   deleteAssets,
   publicUrlFor,
@@ -175,6 +176,201 @@ const STATE_KEYS = [
   "articleVersions",
 ];
 
+// Keys returned by the bulk GET /state. articleVersions is excluded because
+// its size is dominated by HTML snapshots of pattern content (~1 MB per
+// snapshot once images creep in) and the initial /state load is on the
+// critical path of first paint. Clients fetch articleVersions on demand via
+// GET /state/articleVersions when the Version sidebar is opened.
+const STATE_KEYS_INITIAL = STATE_KEYS.filter((k) => k !== "articleVersions");
+
+// Per-articleKey cap on stored versions. Both client and server enforce this
+// so a curl PUT or a buggy client can't grow KV without bound. Older versions
+// past the cap are dropped silently — they're not surfaced anywhere in the UI
+// once they fall off the list.
+const MAX_VERSIONS_PER_ARTICLE = 5;
+
+// HTML keys (string-valued) whose content gets the inline-image stripper
+// applied on save. These articles all go through the rich-text editor and
+// can accumulate `data:image/...` base64 inline images, which blow up the
+// KV row size and the /state payload. The stripper uploads each image to
+// Storage and rewrites the src in place.
+const HTML_KEY_NAMESPACE: Record<string, string> = {
+  homeArticle: "home",
+  typographyArticle: "typography",
+  colorArticle: "color",
+  sizeArticle: "size",
+  iconologyArticle: "iconology",
+};
+
+// ──────────────────────────────────────────────
+// Inline image stripping. Rich-text pastes and the editor's "upload image"
+// button both inline images as `data:image/...;base64,...` URLs inside the
+// saved HTML. A single saved screenshot easily adds 200 KB+ to the row, and
+// version history multiplies that 5× per cap. The stripper extracts every
+// data URL, uploads it once to Storage (deduped by content hash), and
+// rewrites the HTML to reference the public URL. Runs in every save path:
+// pattern PUT, generic /state/:key PUT for HTML article keys, articleVersion
+// POST. New saves are clean; legacy rows clean themselves up on next save.
+// ──────────────────────────────────────────────
+
+async function sha256Hex(bytes: Uint8Array, len = 12): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(buf))
+    .slice(0, Math.ceil(len / 2))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, len);
+}
+
+function extFromMime(mimeSuffix: string): { ext: string; contentType: string } {
+  const s = mimeSuffix.toLowerCase();
+  if (s === "jpeg" || s === "jpg") return { ext: "jpg", contentType: "image/jpeg" };
+  if (s === "svg+xml" || s === "svg") return { ext: "svg", contentType: "image/svg+xml" };
+  if (s === "png" || s === "gif" || s === "webp" || s === "avif" || s === "bmp") {
+    return { ext: s, contentType: `image/${s}` };
+  }
+  // Unknown — keep as png-ish blob so it still renders if the browser was lenient.
+  return { ext: "bin", contentType: "application/octet-stream" };
+}
+
+function decodeBase64(b64: string): Uint8Array {
+  // atob() on Deno handles standard base64; tolerate accidental whitespace.
+  const clean = b64.replace(/\s+/g, "");
+  const bin = atob(clean);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+/**
+ * Upload a single `data:image/...;base64,...` URL to Storage at
+ *   `_inline/<articleKey>/<contentHash>.<ext>`
+ * and return the public URL. Content-addressed so identical images across
+ * versions or articles only ever cost one row. Returns null on failure so
+ * the caller can leave the data URL in place rather than losing content.
+ */
+async function uploadInlineImage(
+  articleKey: string,
+  dataUrl: string,
+): Promise<string | null> {
+  const m = dataUrl.match(/^data:image\/([a-zA-Z0-9+.\-]+);base64,([\s\S]+)$/);
+  if (!m) return null;
+  try {
+    const bytes = decodeBase64(m[2]);
+    if (bytes.length === 0) return null;
+    const { ext, contentType } = extFromMime(m[1]);
+    const hash = await sha256Hex(bytes, 16);
+    await ensureBucket();
+    const safeKey = articleKey.replace(/[^a-zA-Z0-9_\-]/g, "_");
+    const objectPath = `_inline/${safeKey}/${hash}.${ext}`;
+    const { publicUrl } = await uploadAtPath(objectPath, bytes, contentType);
+    return publicUrl;
+  } catch (e) {
+    console.error(`uploadInlineImage(${articleKey}) failed:`, e);
+    return null;
+  }
+}
+
+/**
+ * Walk an HTML string for `data:image/...;base64,...` URLs, upload each
+ * unique one to Storage, and return HTML with the URLs swapped for their
+ * public counterparts. If any single upload fails, that data URL is left
+ * untouched in the output (no data loss) but the rest still get rewritten.
+ */
+async function stripInlineImagesFromHtml(
+  html: string,
+  articleKey: string,
+): Promise<string> {
+  if (!html || typeof html !== "string" || !html.includes("data:image/")) {
+    return html ?? "";
+  }
+  // Capture full data URLs. The base64 alphabet is [A-Za-z0-9+/=] but RTE
+  // output sometimes wraps very long URLs across attribute boundaries, so
+  // we grab greedily up to the closing quote.
+  const re = /data:image\/[a-zA-Z0-9+.\-]+;base64,[A-Za-z0-9+/=]+/g;
+  const matches = html.match(re);
+  if (!matches || matches.length === 0) return html;
+
+  // Dedup before uploading.
+  const unique = Array.from(new Set(matches));
+  const urlMap = new Map<string, string>();
+  for (const dataUrl of unique) {
+    const publicUrl = await uploadInlineImage(articleKey, dataUrl);
+    if (publicUrl) urlMap.set(dataUrl, publicUrl);
+  }
+  if (urlMap.size === 0) return html;
+
+  // Replace longest first so we don't accidentally chop a prefix of a longer
+  // URL while replacing a shorter one (unique by string, but length-sort is
+  // a cheap safety belt).
+  const sorted = Array.from(urlMap.entries()).sort(
+    (a, b) => b[0].length - a[0].length,
+  );
+  let out = html;
+  for (const [dataUrl, publicUrl] of sorted) {
+    out = out.split(dataUrl).join(publicUrl);
+  }
+  return out;
+}
+
+/**
+ * Drop the oldest entries per articleKey so each key keeps at most
+ * `MAX_VERSIONS_PER_ARTICLE`. The input array is expected to be in
+ * newest-first order (matches the client's `[newVersion, ...existing]`
+ * shape); the output preserves that order, just trimmed.
+ */
+function capArticleVersions(versions: any[]): any[] {
+  if (!Array.isArray(versions)) return versions;
+  const counts = new Map<string, number>();
+  const kept: any[] = [];
+  for (const v of versions) {
+    if (!v || typeof v !== "object") continue;
+    const key = typeof v.articleKey === "string" ? v.articleKey : "_unknown";
+    const next = (counts.get(key) ?? 0) + 1;
+    if (next > MAX_VERSIONS_PER_ARTICLE) continue;
+    counts.set(key, next);
+    kept.push(v);
+  }
+  return kept;
+}
+
+/**
+ * Run inline-image stripping over every version's content field, using the
+ * version's own articleKey for the namespace. Returns a new array.
+ */
+async function processArticleVersionsBeforeSave(
+  incoming: unknown,
+): Promise<unknown> {
+  if (!Array.isArray(incoming)) return incoming;
+  const capped = capArticleVersions(incoming);
+  const out: any[] = [];
+  for (const v of capped) {
+    if (!v || typeof v !== "object") {
+      out.push(v);
+      continue;
+    }
+    const articleKey = typeof v.articleKey === "string" ? v.articleKey : "_unknown";
+    const content = typeof v.content === "string" ? v.content : "";
+    const stripped = content ? await stripInlineImagesFromHtml(content, articleKey) : "";
+    out.push({ ...v, content: stripped });
+  }
+  return out;
+}
+
+/**
+ * Strip inline images from a top-level HTML article key (homeArticle,
+ * typographyArticle, etc). No-op for keys not in HTML_KEY_NAMESPACE.
+ */
+async function processHtmlKeyBeforeSave(
+  key: string,
+  value: unknown,
+): Promise<unknown> {
+  const ns = HTML_KEY_NAMESPACE[key];
+  if (!ns) return value;
+  if (typeof value !== "string") return value;
+  return stripInlineImagesFromHtml(value, ns);
+}
+
 // ──────────────────────────────────────────────
 // Pattern save processing — server-side gate that makes curl PUT and CMS PUT
 // functionally equivalent. Diffs incoming patterns against stored ones and
@@ -210,7 +406,17 @@ async function processPatternsBeforeSave(incoming: unknown): Promise<unknown> {
     const id = typeof p.id === "string" ? p.id : null;
     const old = id ? storedById.get(id) : null;
 
-    const newContent = typeof p.content === "string" ? p.content : "";
+    // Strip inline `data:image/...` URLs out of the HTML *before* any of the
+    // diff / turndown work below — turndown sees normal <img src> URLs and
+    // emits clean Markdown, and the KV row no longer carries hundreds of KB
+    // per pasted screenshot. The articleKey passed to the stripper is the
+    // same one the version system uses (`pattern-<id>`), so inline images
+    // from a pattern and from its version history share the dedup namespace.
+    const namespacedKey = id ? `pattern-${id}` : "pattern-unknown";
+    const rawContent = typeof p.content === "string" ? p.content : "";
+    const newContent = rawContent
+      ? await stripInlineImagesFromHtml(rawContent, namespacedKey)
+      : "";
     const newMd = typeof p.markdownContent === "string" ? p.markdownContent : "";
 
     if (!old) {
@@ -269,29 +475,49 @@ app.get("/make-server-067f252d/health", (c) => {
 });
 
 // ──────────────────────────────────────────────
-// GET /state — Load entire app state from KV
+// GET /state — Load critical app state from KV. Excludes articleVersions
+// (fetched lazily via GET /state/:key when the Version sidebar opens) so
+// the first-paint payload stays small enough to fit under the client's
+// 8-second load timeout even when version history is heavy.
 // ──────────────────────────────────────────────
 app.get("/make-server-067f252d/state", async (c) => {
   try {
     const state: Record<string, any> = {};
-    // Fetch each key individually to guarantee correct key-value mapping
     const results = await Promise.allSettled(
-      STATE_KEYS.map(async (key) => {
+      STATE_KEYS_INITIAL.map(async (key) => {
         const value = await kv.get(`${PREFIX}${key}`);
         return { key, value };
       })
     );
-    
-    // Process results even if some failed
+
     results.forEach((result) => {
       if (result.status === "fulfilled") {
         state[result.value.key] = result.value.value;
       }
     });
-    
+
     return c.json({ data: state });
   } catch (err) {
     console.error("Error loading state from KV:", err);
+    return c.json({ error: `Failed to load state: ${err}` }, 500);
+  }
+});
+
+// ──────────────────────────────────────────────
+// GET /state/:key — Load a single state key. Used by the client to lazy-fetch
+// articleVersions on demand, and as a general escape hatch for fetching any
+// single key without pulling the full /state payload.
+// ──────────────────────────────────────────────
+app.get("/make-server-067f252d/state/:key", async (c) => {
+  try {
+    const key = c.req.param("key");
+    if (!STATE_KEYS.includes(key)) {
+      return c.json({ error: `Invalid state key: ${key}` }, 400);
+    }
+    const value = await kv.get(`${PREFIX}${key}`);
+    return c.json({ data: value ?? null });
+  } catch (err) {
+    console.error("Error loading state key from KV:", err);
     return c.json({ error: `Failed to load state: ${err}` }, 500);
   }
 });
@@ -309,6 +535,10 @@ app.put("/make-server-067f252d/state/:key", async (c) => {
     let value = body.value;
     if (key === "patterns") {
       value = await processPatternsBeforeSave(value);
+    } else if (key === "articleVersions") {
+      value = await processArticleVersionsBeforeSave(value);
+    } else if (HTML_KEY_NAMESPACE[key]) {
+      value = await processHtmlKeyBeforeSave(key, value);
     }
     await kv.set(`${PREFIX}${key}`, value);
     return c.json({ ok: true });
@@ -331,6 +561,10 @@ app.put("/make-server-067f252d/state", async (c) => {
         let value = body[k];
         if (k === "patterns") {
           value = await processPatternsBeforeSave(value);
+        } else if (k === "articleVersions") {
+          value = await processArticleVersionsBeforeSave(value);
+        } else if (HTML_KEY_NAMESPACE[k]) {
+          value = await processHtmlKeyBeforeSave(k, value);
         }
         keys.push(`${PREFIX}${k}`);
         values.push(value);
