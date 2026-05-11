@@ -44,6 +44,15 @@ In dev mode, the app automatically routes API calls to `http://127.0.0.1:54321` 
 - The edge function is registered locally as `make-server-067f252d` (not `server`) to match the production URL path, so Hono routes work identically in both environments
 - `.claude/edge-main-index.ts` is the committed main service router script — mounted into the Docker container at `/root/index.ts`
 
+## Pattern doc authoring
+**See `.claude/pattern-doc-workflow.md` for the full end-to-end playbook.**
+
+When shipping visual changes to a Pattern doc (image refresh, Do/Don't pairs, new diagrams):
+- HTML mode does NOT auto-rewrite relative image paths — use absolute prod storage URLs in `<img src>`. MD mode does rewrite via `assetBaseUrl`. This is the most common foot-gun.
+- Two-column layouts use the editor's native `<div data-rte-cols="2"><div data-rte-col="true">…</div>…</div>` markup; CSS lives in `src/styles/index.css`.
+- Bundle endpoint `POST /patterns/:slug/bundle` (multipart, one zip with MD + assets) handles atomic MD update + asset upload + orphan cleanup. Use this instead of writing storage directly.
+- Figma → disk: rename frames to unique export-friendly names via `use_figma` (and set `exportSettings`), then user batch-exports. Don't try to tunnel base64 through `use_figma` output — it truncates at ~20KB.
+
 ## ChangeLog must update on every PR
 Every PR in this project that ships a user-visible change must produce a corresponding entry in the home-page Change Log. **Update both places**:
 
