@@ -59,26 +59,21 @@ Every PR in this project that ships a user-visible change must produce a corresp
 1. **Production Supabase** — write the new entry directly so the live site (`https://arctuition.github.io/design-system/`) shows it immediately. Updating only the `defaultChangeLogs` seed is not enough — the seed only applies to fresh installs, never to existing prod data.
 2. **`defaultChangeLogs`** in `src/app/store/data-store.tsx` — keeps the in-repo seed aligned and serves as a code-side record.
 
-**How to write to prod Supabase:**
+**How to write to prod Supabase — use the helper:**
 
 ```bash
-# 1. Read current state
-curl -sS "https://${projectId}.supabase.co/functions/v1/make-server-067f252d/state" \
-  -H "Authorization: Bearer ${publicAnonKey}"
-
-# 2. Build new entry: { id, date, version, title, description }
-#    - id format: Math.random().toString(36).slice(2, 11) + Date.now().toString(36)
-#    - description is Markdown — bullets, **bold**, `code`, [links] all render
-#      via MarkdownRenderer on the home timeline + CMS list
-
-# 3. PUT the merged list (new entry first, so it appears at the top)
-curl -sS -X PUT "https://${projectId}.supabase.co/functions/v1/make-server-067f252d/state/changeLogs" \
-  -H "Authorization: Bearer ${publicAnonKey}" \
-  -H "Content-Type: application/json" \
-  --data-binary '{"value": [<new entry>, ...existing entries]}'
+# Add the entry to defaultChangeLogs in src/app/store/data-store.tsx, then:
+node scripts/safe-changelog-sync.mjs            # dry-run, prints diff
+node scripts/safe-changelog-sync.mjs --apply    # PUT to prod
 ```
 
-Both `projectId` and `publicAnonKey` are in `utils/supabase/info.tsx` (anon key is the public front-end key). Show the PUT body to the user before writing — direct prod writes affect shared state.
+The script reads the seed from `defaultChangeLogs`, fetches prod, merges (matching by `version`), and PUTs. It refuses to shrink the prod list — so a stale or empty parse can't wipe history.
+
+**Why not raw curl any more:** the endpoint has asymmetric request / response shapes — `GET` returns `{"data": [...]}`, `PUT` expects `{"value": [...]}`. Reading the wrong key looks like "prod is empty" and tempts a destructive PUT. The helper handles this correctly and prints a preview before any write. See the comment at the top of [scripts/safe-changelog-sync.mjs](scripts/safe-changelog-sync.mjs) for the incident write-up.
+
+If you absolutely must write raw curl (e.g. the helper is broken or a non-changelog key needs the same treatment), follow the same pattern: GET → read `data` → prepend new → PUT `{"value": merged}`. Show the merged body to the user before executing.
+
+Both `projectId` and `publicAnonKey` are in `utils/supabase/info.tsx` (anon key is the public front-end key).
 
 Skip the ChangeLog entry only for purely-internal changes (CLAUDE.md edits, build tooling, dev-only scripts) — when in doubt, ask. Default is "always add one."
 
