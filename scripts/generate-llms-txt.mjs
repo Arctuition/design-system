@@ -177,6 +177,13 @@ URL above is a shim that \`@import\`s the live copy from this Supabase URL.
 - **Breakpoints as JS object (for matchMedia / Tailwind config / container queries):**
   https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/design-tokens/breakpoints.js
 
+- **Token reference docs (Markdown — same content as the GitHub Pages copies
+  above, mirrored to Supabase by the CMS publish so designer edits propagate
+  without a commit):**
+  https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/design-tokens/tokens-color.md
+  https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/design-tokens/tokens-size-space.md
+  https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/design-tokens/tokens-typography.md
+
 The size cascade is mobile-first: defaults are Web Mobile, with
 \`@media (min-width: ${breakpointPx.sm}px / ${breakpointPx.lg}px / ${breakpointPx.xl}px)\`
 overrides for Web Tablet / Web Desktop / Web Desktop Large. Each override
