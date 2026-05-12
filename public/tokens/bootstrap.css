@@ -466,6 +466,7 @@
   --size-global-8: 8px;
   --size-global-10: 10px;
   --size-global-12: 12px;
+  --size-global-14: 14px;
   --size-global-16: 16px;
   --size-global-18: 18px;
   --size-global-20: 20px;
@@ -479,39 +480,58 @@
   --size-global-44: 44px;
   --size-global-48: 48px;
   --size-global-50: 50px;
+  --size-global-56: 56px;
   --size-global-64: 64px;
   --size-global-80: 80px;
   --size-global-96: 96px;
   --size-global-128: 128px;
   --size-global-680: 680px;
+  --size-global-720: 720px;
+  --size-global-960: 960px;
   --size-global-1280: 1280px;
+  --size-global-1440: 1440px;
   --size-global-9999: 9999px;
 }
 
-/* ── Size & space: semantic (web desktop) ────────────────────────────────── */
+/* ── Breakpoints ─────────────────────────────────────────────────────────── */
+/* Exposed for JS / Tailwind / container queries. Media queries below use
+ * the raw pixel numbers since CSS vars don't work inside @media (). */
+:root {
+  --breakpoint-xs: 576px;
+  --breakpoint-sm: 768px;
+  --breakpoint-md: 992px;
+  --breakpoint-lg: 1200px;
+  --breakpoint-xl: 1400px;
+}
+
+/* ── Size & space: semantic, mobile-first ────────────────────────────────── */
+/* Default = Web Mobile. Each breakpoint overrides only the tokens that
+ * differ at that screen size. Device modes (mobile/tablet) live in
+ * tokens/size/device-*.json and are consumed by iOS / Android — they
+ * are deliberately not in this stylesheet. */
 :root {
   --size-spacing-inline-xs: var(--size-global-4);
   --size-spacing-inline-sm: var(--size-global-8);
-  --size-spacing-inline-md: var(--size-global-16);
-  --size-spacing-inline-lg: var(--size-global-24);
-  --size-spacing-inline-xl: var(--size-global-32);
+  --size-spacing-inline-md: var(--size-global-12);
+  --size-spacing-inline-lg: var(--size-global-16);
+  --size-spacing-inline-xl: var(--size-global-20);
   --size-spacing-stack-xs: var(--size-global-4);
   --size-spacing-stack-sm: var(--size-global-8);
-  --size-spacing-stack-md: var(--size-global-16);
-  --size-spacing-stack-lg: var(--size-global-24);
-  --size-spacing-stack-xl: var(--size-global-32);
+  --size-spacing-stack-md: var(--size-global-12);
+  --size-spacing-stack-lg: var(--size-global-20);
+  --size-spacing-stack-xl: var(--size-global-24);
   --size-padding-xs: var(--size-global-8);
-  --size-padding-sm: var(--size-global-16);
-  --size-padding-md: var(--size-global-24);
-  --size-padding-lg: var(--size-global-32);
-  --size-padding-xl: var(--size-global-48);
+  --size-padding-sm: var(--size-global-12);
+  --size-padding-md: var(--size-global-16);
+  --size-padding-lg: var(--size-global-20);
+  --size-padding-xl: var(--size-global-24);
   --size-padding-component-xs: var(--size-global-4);
   --size-padding-component-sm: var(--size-global-8);
   --size-padding-component-md: var(--size-global-12);
-  --size-padding-component-lg: var(--size-global-20);
-  --size-padding-component-xl: var(--size-global-24);
-  --size-radius-xs: var(--size-global-2);
+  --size-padding-component-lg: var(--size-global-16);
+  --size-padding-component-xl: var(--size-global-20);
   --size-radius-none: 0px;
+  --size-radius-xs: var(--size-global-2);
   --size-radius-sm: var(--size-global-4);
   --size-radius-md: var(--size-global-6);
   --size-radius-lg: var(--size-global-8);
@@ -520,13 +540,13 @@
   --size-icon-sm: var(--size-global-16);
   --size-icon-md: var(--size-global-24);
   --size-icon-lg: var(--size-global-30);
-  --size-layout-columns: 24px;
-  --size-layout-margin: var(--size-global-40);
-  --size-layout-gutter: var(--size-global-16);
-  --size-layout-column-min-width: var(--size-global-48);
-  --size-layout-max-content-width: var(--size-global-1280);
-  --size-layout-max-text-width: var(--size-global-680);
-  --size-touch-target: var(--size-global-32);
+  --size-layout-columns: 4px;
+  --size-layout-margin: var(--size-global-16);
+  --size-layout-gutter: var(--size-global-8);
+  --size-layout-column-min-width: 0px;
+  --size-layout-max-content-width: 0px;
+  --size-layout-max-text-width: 0px;
+  --size-touch-target: var(--size-global-44);
   --size-comp-button-height-xl: var(--size-global-48);
   --size-comp-button-height-lg: var(--size-global-40);
   --size-comp-button-height-md: var(--size-global-32);
@@ -593,6 +613,85 @@
   --size-comp-dialog-padding-md: var(--size-padding-md);
   --size-comp-dialog-padding-lg: var(--size-padding-lg);
   --size-comp-dialog-padding-xl: var(--size-padding-xl);
+}
+
+@media (min-width: 768px) {
+  /* Web Tablet */
+  :root {
+    --size-spacing-inline-lg: var(--size-global-20);
+    --size-spacing-inline-xl: var(--size-global-24);
+    --size-spacing-stack-md: var(--size-global-16);
+    --size-spacing-stack-lg: var(--size-global-24);
+    --size-spacing-stack-xl: var(--size-global-32);
+    --size-padding-sm: var(--size-global-16);
+    --size-padding-md: var(--size-global-20);
+    --size-padding-lg: var(--size-global-28);
+    --size-padding-xl: var(--size-global-40);
+    --size-padding-component-lg: var(--size-global-20);
+    --size-padding-component-xl: var(--size-global-24);
+    --size-layout-columns: 12px;
+    --size-layout-margin: var(--size-global-24);
+    --size-layout-gutter: var(--size-global-16);
+    --size-layout-column-min-width: var(--size-global-44);
+    --size-layout-max-content-width: var(--size-global-960);
+    --size-layout-max-text-width: var(--size-global-680);
+  }
+}
+
+@media (min-width: 1200px) {
+  /* Web Desktop */
+  :root {
+    --size-spacing-inline-md: var(--size-global-16);
+    --size-spacing-inline-lg: var(--size-global-24);
+    --size-spacing-inline-xl: var(--size-global-32);
+    --size-spacing-stack-md: var(--size-global-16);
+    --size-spacing-stack-lg: var(--size-global-24);
+    --size-spacing-stack-xl: var(--size-global-32);
+    --size-padding-sm: var(--size-global-16);
+    --size-padding-md: var(--size-global-24);
+    --size-padding-lg: var(--size-global-32);
+    --size-padding-xl: var(--size-global-48);
+    --size-padding-component-lg: var(--size-global-20);
+    --size-padding-component-xl: var(--size-global-24);
+    --size-layout-columns: 24px;
+    --size-layout-margin: var(--size-global-40);
+    --size-layout-gutter: var(--size-global-16);
+    --size-layout-column-min-width: var(--size-global-48);
+    --size-layout-max-content-width: var(--size-global-1280);
+    --size-layout-max-text-width: var(--size-global-680);
+    --size-touch-target: var(--size-global-32);
+  }
+}
+
+@media (min-width: 1400px) {
+  /* Web Desktop Large */
+  :root {
+    --size-spacing-inline-md: var(--size-global-16);
+    --size-spacing-inline-lg: var(--size-global-24);
+    --size-spacing-inline-xl: var(--size-global-40);
+    --size-spacing-stack-md: var(--size-global-20);
+    --size-spacing-stack-lg: var(--size-global-32);
+    --size-spacing-stack-xl: var(--size-global-48);
+    --size-padding-xs: var(--size-global-10);
+    --size-padding-sm: var(--size-global-20);
+    --size-padding-md: var(--size-global-32);
+    --size-padding-lg: var(--size-global-40);
+    --size-padding-xl: var(--size-global-64);
+    --size-padding-component-sm: var(--size-global-10);
+    --size-padding-component-md: var(--size-global-14);
+    --size-padding-component-lg: var(--size-global-24);
+    --size-padding-component-xl: var(--size-global-28);
+    --size-radius-md: var(--size-global-8);
+    --size-radius-lg: var(--size-global-10);
+    --size-radius-xl: var(--size-global-16);
+    --size-layout-columns: 24px;
+    --size-layout-margin: var(--size-global-80);
+    --size-layout-gutter: var(--size-global-24);
+    --size-layout-column-min-width: var(--size-global-56);
+    --size-layout-max-content-width: var(--size-global-1440);
+    --size-layout-max-text-width: var(--size-global-720);
+    --size-touch-target: var(--size-global-32);
+  }
 }
 
 /* ── Typography (web desktop) ────────────────────────────────────────────── */

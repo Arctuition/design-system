@@ -54,14 +54,31 @@ export interface SizeToken {
   aliasOf?: string;
 }
 
-export type SizeTokenMode = "deviceMobile" | "deviceTablet" | "webMobile" | "webDesktop";
+export type SizeTokenMode =
+  | "deviceMobile"
+  | "deviceTablet"
+  | "webMobile"
+  | "webTablet"
+  | "webDesktop"
+  | "webDesktopLarge";
 
 export interface SizeTokenSet {
   global: SizeToken[];
   deviceMobile: SizeToken[];
   deviceTablet: SizeToken[];
   webMobile: SizeToken[];
+  webTablet: SizeToken[];
   webDesktop: SizeToken[];
+  webDesktopLarge: SizeToken[];
+}
+
+/**
+ * Breakpoints are a separate Figma collection (mode-independent — the values
+ * themselves *define* the modes). Stored in its own slot to keep the size
+ * collection focused on per-mode dimensional values.
+ */
+export interface BreakpointTokenSet {
+  tokens: SizeToken[];  // xs / sm / md / lg / xl
 }
 
 export interface IconItem {
@@ -122,6 +139,7 @@ export interface AppState {
   typographyArticle: string;
   colorTokens: ColorTokenGroup;
   sizeTokens: SizeTokenSet;
+  breakpointTokens: BreakpointTokenSet;
   icons: IconItem[];
   patterns: PatternArticle[];
   editors: EditorAccount[];
@@ -142,6 +160,7 @@ interface AppContextType extends AppState {
   setTypographyArticle: (html: string) => void;
   setColorTokens: (tokens: ColorTokenGroup) => void;
   setSizeTokens: (tokens: SizeTokenSet) => void;
+  setBreakpointTokens: (tokens: BreakpointTokenSet) => void;
   setColorArticle: (html: string) => void;
   setSizeArticle: (html: string) => void;
   setIconologyArticle: (html: string) => void;
@@ -267,7 +286,13 @@ const defaultSizeTokens: SizeTokenSet = {
   deviceMobile: [],
   deviceTablet: [],
   webMobile: [],
+  webTablet: [],
   webDesktop: [],
+  webDesktopLarge: [],
+};
+
+const defaultBreakpointTokens: BreakpointTokenSet = {
+  tokens: [],
 };
 
 const defaultSizeArticle = `<h1>Size &amp; Space Tokens</h1><p>ArcSite's size and spacing system is built on four layers of design tokens stored in a single <strong>size</strong> variable collection in Figma. Switch the mode once on any frame and every bound token updates — padding, gaps, heights, radii, and typography — simultaneously across Device Mobile, Device Tablet, Web Mobile, and Web Desktop.</p><h2>Why tokens?</h2><p>Hard-coded numbers like <code>gap: 16px</code> drift. The same value gets typed independently in Figma frames, iOS SwiftUI layouts, and web CSS, and they diverge the moment the spec changes. Tokens give that number a single authoritative name (<code>size/spacing-inline-md</code>) that every platform reads from one source of truth.</p><h2>Architecture</h2><p><strong>Global scale</strong> (<code>size-global/***</code>) — raw numbers on an even step (2, 4, 6, 8 … 512). No meaning, just math.</p><p><strong>Semantic tokens</strong> (<code>size/***</code>) — alias global values, carry intent, and change per mode. Split into groups with clear, non-overlapping responsibilities: spacing-inline, spacing-stack, padding, padding-component, heights, icon sizes, border radius, layout, and font.</p><p><strong>Component tokens</strong> (<code>size/comp/***</code>) — alias semantic tokens and belong to one component. The final step before a designer applies a token to a layer.</p><h2>The four modes</h2><p><strong>Device Mobile</strong> — iPhone / Android phone, sized on iOS HIG (pt). <strong>Device Tablet</strong> — iPad / Android tablet, sized on iOS HIG (pt). <strong>Web Mobile</strong> — Browser ≤ 768px. <strong>Web Desktop</strong> — Browser on desktop.</p><h2>Using tokens in code</h2><p>The exported CSS VARs preserve the token architecture: leaf values are emitted with <code>px</code> units, and semantic / component tokens emit <code>var(--alias)</code> references to whichever global or semantic token they alias. This means changing a global value propagates through the cascade exactly as it does in Figma.</p><pre><code>/* Gap between items in a horizontal toolbar */
@@ -280,6 +305,30 @@ const defaultSizeArticle = `<h1>Size &amp; Space Tokens</h1><p>ArcSite's size an
 .page-content { padding: var(--size-padding-md); }</code></pre><h2>Exported files</h2><p>The CSS VAR export produces a ZIP containing five files: <code>size-global.css</code>, <code>size-device-mobile.css</code>, <code>size-device-tablet.css</code>, <code>size-web-mobile.css</code>, and <code>size-web-desktop.css</code>. Load the global file plus whichever mode file matches your target platform.</p>`;
 
 const defaultChangeLogs: ChangeLogEntry[] = [
+  {
+    id: uid(),
+    date: "2026-05-12",
+    version: "1.6.0",
+    title: "Size tokens — Web Tablet + Web Desktop Large modes, plus a Breakpoints collection",
+    description: `Added two new size modes and broke breakpoints out into their own Figma collection so the size scale and the viewport widths that switch between scales are no longer entangled.
+
+**Two new size modes**
+- \`web-tablet\` (browser 768–1199 px) — sits between Web Mobile and Web Desktop. Looser padding and a 12-column grid (matches Device Tablet) without the desktop's 24-column generosity.
+- \`web-desktop-large\` (browser ≥ 1400 px) — extends Web Desktop with one extra notch of breathing room at \`lg\` / \`xl\` and a 1440 px content cap for ultrawide monitors.
+- All 103 size variables now resolve in 6 modes. Component tokens (button, input, dialog, tag) default to the closest existing mode's value — refine per-mode later if needed.
+
+**New \`breakpoint\` collection**
+- 5 tokens: \`breakpoint/xs\` (576), \`sm\` (768), \`md\` (992), \`lg\` (1200), \`xl\` (1400). Bootstrap-style scale; \`sm\` / \`lg\` / \`xl\` are the "hard" breakpoints that trigger size-mode switches, \`xs\` / \`md\` are "soft" breakpoints for layout micro-adjustments inside a mode.
+- Each variable carries a description explaining what happens below vs. at-or-above its value.
+
+**Build pipeline — mobile-first CSS**
+- \`bootstrap.css\` now emits Web Mobile as the \`:root\` baseline, then three \`@media (min-width: …)\` overrides at 768 / 1200 / 1400 — only the tokens that *differ* are written in each block, so the cascade stays compact.
+- New \`public/tokens/breakpoints.js\` exports raw pixel values for matchMedia, Tailwind config, or container queries (CSS variables don't work inside \`@media\` queries).
+- Device Mobile / Device Tablet files are kept in \`tokens/size/\` for iOS / Android consumption but deliberately excluded from \`bootstrap.css\`.
+
+**CMS upload**
+- \`/cms/size-editor\` now accepts all 7 mode files plus the breakpoint file. Bulk upload tolerates Figma's quirk of exporting the size-global collection mis-named as \`color-global-value.tokens.json\`.`,
+  },
   {
     id: uid(),
     date: "2026-05-11",
@@ -587,6 +636,7 @@ function getDefaults(): AppState {
     typographyArticle: defaultTypographyArticle,
     colorTokens: defaultColorTokens,
     sizeTokens: defaultSizeTokens,
+    breakpointTokens: defaultBreakpointTokens,
     colorArticle: defaultColorArticle,
     sizeArticle: defaultSizeArticle,
     iconologyArticle: defaultIconologyArticle,
@@ -640,7 +690,14 @@ function buildStateFromServer(serverData: Record<string, any>): AppState {
       deviceMobile: Array.isArray(st.deviceMobile) ? st.deviceMobile : defaults.sizeTokens.deviceMobile,
       deviceTablet: Array.isArray(st.deviceTablet) ? st.deviceTablet : defaults.sizeTokens.deviceTablet,
       webMobile: Array.isArray(st.webMobile) ? st.webMobile : defaults.sizeTokens.webMobile,
+      webTablet: Array.isArray(st.webTablet) ? st.webTablet : defaults.sizeTokens.webTablet,
       webDesktop: Array.isArray(st.webDesktop) ? st.webDesktop : defaults.sizeTokens.webDesktop,
+      webDesktopLarge: Array.isArray(st.webDesktopLarge) ? st.webDesktopLarge : defaults.sizeTokens.webDesktopLarge,
+    },
+    breakpointTokens: {
+      tokens: Array.isArray(serverData.breakpointTokens?.tokens)
+        ? serverData.breakpointTokens.tokens
+        : defaults.breakpointTokens.tokens,
     },
     colorArticle: serverData.colorArticle ?? defaults.colorArticle,
     sizeArticle: serverData.sizeArticle ?? defaults.sizeArticle,
@@ -743,6 +800,7 @@ function seedDefaults(): void {
     typographyArticle: defaults.typographyArticle,
     colorTokens: defaults.colorTokens,
     sizeTokens: defaults.sizeTokens,
+    breakpointTokens: defaults.breakpointTokens,
     colorArticle: defaults.colorArticle,
     sizeArticle: defaults.sizeArticle,
     iconologyArticle: defaults.iconologyArticle,
@@ -990,6 +1048,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         typographyArticle: state.typographyArticle,
         colorTokens: state.colorTokens,
         sizeTokens: state.sizeTokens,
+        breakpointTokens: state.breakpointTokens,
         colorArticle: state.colorArticle,
         sizeArticle: state.sizeArticle,
         iconologyArticle: state.iconologyArticle,
@@ -1072,6 +1131,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           typographyArticle: "",
           colorTokens: payload.colorTokens,
           sizeTokens: payload.sizeTokens,
+          breakpointTokens: payload.breakpointTokens,
           colorArticle: "",
           sizeArticle: "",
           iconologyArticle: "",
@@ -1110,6 +1170,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           typographyArticle: currentState.typographyArticle,
           colorTokens: currentState.colorTokens,
           sizeTokens: currentState.sizeTokens,
+          breakpointTokens: currentState.breakpointTokens,
           colorArticle: currentState.colorArticle,
           sizeArticle: currentState.sizeArticle,
           iconologyArticle: currentState.iconologyArticle,
@@ -1237,10 +1298,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           deviceMobile: tokens.deviceMobile || [],
           deviceTablet: tokens.deviceTablet || [],
           webMobile: tokens.webMobile || [],
+          webTablet: tokens.webTablet || [],
           webDesktop: tokens.webDesktop || [],
+          webDesktopLarge: tokens.webDesktopLarge || [],
         },
       }));
       pendingSyncRef.current.add("sizeTokens");
+      syncToServer();
+    },
+    setBreakpointTokens: (tokens) => {
+      setState((prev) => ({
+        ...prev,
+        breakpointTokens: { tokens: tokens.tokens || [] },
+      }));
+      pendingSyncRef.current.add("breakpointTokens");
       syncToServer();
     },
     setColorArticle: (html) => update({ colorArticle: html }, "colorArticle"),
@@ -1494,7 +1565,8 @@ export function useAppData() {
       changeLogs: [],
       typographyArticle: "",
       colorTokens: { global: [], semanticLight: [], semanticDark: [] },
-      sizeTokens: { global: [], deviceMobile: [], deviceTablet: [], webMobile: [], webDesktop: [] },
+      sizeTokens: { global: [], deviceMobile: [], deviceTablet: [], webMobile: [], webTablet: [], webDesktop: [], webDesktopLarge: [] },
+      breakpointTokens: { tokens: [] },
       colorArticle: "",
       sizeArticle: "",
       iconologyArticle: "",
@@ -1510,6 +1582,7 @@ export function useAppData() {
       setTypographyArticle: () => {},
       setColorTokens: () => {},
       setSizeTokens: () => {},
+      setBreakpointTokens: () => {},
       setColorArticle: () => {},
       setSizeArticle: () => {},
       setIconologyArticle: () => {},

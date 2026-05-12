@@ -14,8 +14,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "4": {
@@ -32,8 +31,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "6": {
@@ -50,8 +48,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "8": {
@@ -68,8 +65,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "10": {
@@ -86,8 +82,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "12": {
@@ -104,8 +99,23 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
+      }
+    },
+    "14": {
+      "$type": "number",
+      "$value": 14,
+      "$extensions": {
+        "com.figma.variableId": "VariableID:10550:4888",
+        "com.figma.scopes": [
+          "TEXT_CONTENT",
+          "CORNER_RADIUS",
+          "WIDTH_HEIGHT",
+          "GAP",
+          "STROKE_FLOAT",
+          "EFFECT_FLOAT",
+          "OPACITY"
+        ]
       }
     },
     "16": {
@@ -122,8 +132,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "18": {
@@ -140,8 +149,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "20": {
@@ -158,8 +166,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "24": {
@@ -176,8 +183,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "28": {
@@ -194,8 +200,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "30": {
@@ -212,8 +217,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "32": {
@@ -230,8 +234,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "34": {
@@ -248,8 +251,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "36": {
@@ -266,8 +268,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "40": {
@@ -284,8 +285,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "44": {
@@ -302,8 +302,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "48": {
@@ -320,8 +319,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "50": {
@@ -338,8 +336,23 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
+      }
+    },
+    "56": {
+      "$type": "number",
+      "$value": 56,
+      "$extensions": {
+        "com.figma.variableId": "VariableID:10550:4889",
+        "com.figma.scopes": [
+          "TEXT_CONTENT",
+          "CORNER_RADIUS",
+          "WIDTH_HEIGHT",
+          "GAP",
+          "STROKE_FLOAT",
+          "EFFECT_FLOAT",
+          "OPACITY"
+        ]
       }
     },
     "64": {
@@ -356,8 +369,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "80": {
@@ -374,8 +386,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "96": {
@@ -392,8 +403,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "128": {
@@ -410,8 +420,7 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     },
     "680": {
@@ -428,8 +437,39 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
+      }
+    },
+    "720": {
+      "$type": "number",
+      "$value": 720,
+      "$extensions": {
+        "com.figma.variableId": "VariableID:10550:4890",
+        "com.figma.scopes": [
+          "TEXT_CONTENT",
+          "CORNER_RADIUS",
+          "WIDTH_HEIGHT",
+          "GAP",
+          "STROKE_FLOAT",
+          "EFFECT_FLOAT",
+          "OPACITY"
+        ]
+      }
+    },
+    "960": {
+      "$type": "number",
+      "$value": 960,
+      "$extensions": {
+        "com.figma.variableId": "VariableID:10550:4891",
+        "com.figma.scopes": [
+          "TEXT_CONTENT",
+          "CORNER_RADIUS",
+          "WIDTH_HEIGHT",
+          "GAP",
+          "STROKE_FLOAT",
+          "EFFECT_FLOAT",
+          "OPACITY"
+        ]
       }
     },
     "1280": {
@@ -446,8 +486,23 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
+      }
+    },
+    "1440": {
+      "$type": "number",
+      "$value": 1440,
+      "$extensions": {
+        "com.figma.variableId": "VariableID:10550:4892",
+        "com.figma.scopes": [
+          "TEXT_CONTENT",
+          "CORNER_RADIUS",
+          "WIDTH_HEIGHT",
+          "GAP",
+          "STROKE_FLOAT",
+          "EFFECT_FLOAT",
+          "OPACITY"
+        ]
       }
     },
     "9999": {
@@ -464,12 +519,11 @@
           "EFFECT_FLOAT",
           "OPACITY",
           "FONT_VARIATIONS"
-        ],
-        "com.figma.isOverride": true
+        ]
       }
     }
   },
   "$extensions": {
-    "com.figma.modeName": "global-value"
+    "com.figma.modeName": "size-global-value"
   }
 }

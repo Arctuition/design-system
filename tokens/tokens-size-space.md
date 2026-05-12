@@ -1,6 +1,8 @@
 # Size & Space Tokens
 
-ArcSite's size and spacing system is built on four layers of design tokens stored in a single **size** variable collection in Figma. Switch the mode once on any frame and every bound token updates — padding, gaps, heights, radii, and typography — simultaneously across Device Mobile, Device Tablet, Web Mobile, and Web Desktop.
+ArcSite's size and spacing system is built on four layers of design tokens stored in a single **size** variable collection in Figma. Switch the mode once on any frame and every bound token updates — padding, gaps, heights, radii, and typography — simultaneously across all six modes: Device Mobile, Device Tablet, Web Mobile, Web Tablet, Web Desktop, and Web Desktop Large.
+
+Breakpoints are stored separately in a **breakpoint** collection — they're the viewport widths that *trigger* the size-mode switches, so they're conceptually independent from the size scale itself.
 
 ---
 
@@ -36,15 +38,18 @@ Hard-coded numbers like `gap: 16px` drift. The same value gets typed independent
 
 ---
 
-## The four modes
+## The six modes
 
+| Mode              | Represents                                 | Viewport range       | Sizing basis |
+| ----------------- | ------------------------------------------ | -------------------- | ------------ |
+| Device Mobile     | iPhone / Android phone                     | native app           | iOS HIG (pt) |
+| Device Tablet     | iPad / Android tablet                      | native app           | iOS HIG (pt) |
+| Web Mobile        | Browser on phone / compact viewport        | `< 768 px`           | px           |
+| Web Tablet        | Browser on tablet / narrow laptop          | `768 – 1199 px`      | px           |
+| Web Desktop       | Browser on standard laptop / 1080p monitor | `1200 – 1399 px`     | px           |
+| Web Desktop Large | Browser on QHD / 4K / ultrawide monitor    | `≥ 1400 px`          | px           |
 
-| Mode          | Represents             | Sizing basis |
-| ------------- | ---------------------- | ------------ |
-| Device Mobile | iPhone / Android phone | iOS HIG (pt) |
-| Device Tablet | iPad / Android tablet  | iOS HIG (pt) |
-| Web Mobile    | Browser ≤ 768 px       | px           |
-| Web Desktop   | Browser on desktop     | px           |
+Web mode switches are driven by the breakpoint tokens (see [Breakpoints](#breakpoints) below). Device modes are runtime constants on their respective native platforms — they don't switch with viewport width.
 
 
 ---
@@ -57,16 +62,16 @@ Hard-coded numbers like `gap: 16px` drift. The same value gets typed independent
 Icon ↔ label in a button, chips in a row, nav tab items, action button groups, form fields side by side.
 
 
-| Token                    | Device Mobile | Device Tablet | Web Mobile | Web Desktop |
-| ------------------------ | ------------- | ------------- | ---------- | ----------- |
-| `size/spacing-inline-xs` | 4             | 4             | 4          | 4           |
-| `size/spacing-inline-sm` | 8             | 8             | 8          | 8           |
-| `size/spacing-inline-md` | 12            | 12            | 12         | 16          |
-| `size/spacing-inline-lg` | 16            | 20            | 16         | 24          |
-| `size/spacing-inline-xl` | 24            | 24            | 20         | 32          |
+| Token                    | Device Mobile | Device Tablet | Web Mobile | Web Tablet | Web Desktop | Web Desktop Large |
+| ------------------------ | ------------- | ------------- | ---------- | ---------- | ----------- | ----------------- |
+| `size/spacing-inline-xs` | 4             | 4             | 4          | 4          | 4           | 4                 |
+| `size/spacing-inline-sm` | 8             | 8             | 8          | 8          | 8           | 8                 |
+| `size/spacing-inline-md` | 12            | 12            | 12         | 12         | 16          | 16                |
+| `size/spacing-inline-lg` | 16            | 20            | 16         | 20         | 24          | 24                |
+| `size/spacing-inline-xl` | 24            | 24            | 20         | 24         | 32          | 40                |
 
 
-xs and sm are universal — icon-to-text gaps and chip spacing don't change between platforms. md–xl grow on tablet and web desktop where wider screens allow looser rhythm.
+xs and sm are universal — icon-to-text gaps and chip spacing don't change between platforms. md–xl grow as screens widen, with `xl` getting one extra notch on Web Desktop Large to give section-level toolbars more air on wide monitors.
 
 ---
 
@@ -76,16 +81,16 @@ xs and sm are universal — icon-to-text gaps and chip spacing don't change betw
 List items, stacked form fields, cards in a feed, space between content sections on a page.
 
 
-| Token                   | Device Mobile | Device Tablet | Web Mobile | Web Desktop |
-| ----------------------- | ------------- | ------------- | ---------- | ----------- |
-| `size/spacing-stack-xs` | 4             | 4             | 4          | 4           |
-| `size/spacing-stack-sm` | 8             | 8             | 8          | 8           |
-| `size/spacing-stack-md` | 16            | 16            | 12         | 16          |
-| `size/spacing-stack-lg` | 24            | 24            | 20         | 24          |
-| `size/spacing-stack-xl` | 32            | 48            | 24         | 32          |
+| Token                   | Device Mobile | Device Tablet | Web Mobile | Web Tablet | Web Desktop | Web Desktop Large |
+| ----------------------- | ------------- | ------------- | ---------- | ---------- | ----------- | ----------------- |
+| `size/spacing-stack-xs` | 4             | 4             | 4          | 4          | 4           | 4                 |
+| `size/spacing-stack-sm` | 8             | 8             | 8          | 8          | 8           | 8                 |
+| `size/spacing-stack-md` | 16            | 16            | 12         | 16         | 16          | 20                |
+| `size/spacing-stack-lg` | 24            | 24            | 20         | 24         | 24          | 32                |
+| `size/spacing-stack-xl` | 32            | 48            | 24         | 32         | 32          | 48                |
 
 
-xs/sm match inline for tight micro-spacing. md–xl diverge: Device Tablet's xl is 48pt because vertical page rhythm is more generous on large screens.
+xs/sm match inline for tight micro-spacing. md–xl diverge: Device Tablet's xl is 48pt because vertical page rhythm is more generous on large screens; Web Desktop Large bumps `md`/`lg`/`xl` for the same reason.
 
 ---
 
@@ -95,13 +100,13 @@ xs/sm match inline for tight micro-spacing. md–xl diverge: Device Tablet's xl 
 Page content areas, modal bodies, drawers, side panels, sheets. Values are intentionally larger than component padding to give surfaces breathing room. Device values respect iOS HIG (10pt compact, 20pt regular); web values follow common 8-grid multiples.
 
 
-| Token             | Device Mobile | Device Tablet | Web Mobile | Web Desktop |
-| ----------------- | ------------- | ------------- | ---------- | ----------- |
-| `size/padding-xs` | 10            | 10            | 8          | 8           |
-| `size/padding-sm` | 16            | 20            | 12         | 16          |
-| `size/padding-md` | 20            | 24            | 16         | 24          |
-| `size/padding-lg` | 24            | 32            | 20         | 32          |
-| `size/padding-xl` | 32            | 48            | 24         | 48          |
+| Token             | Device Mobile | Device Tablet | Web Mobile | Web Tablet | Web Desktop | Web Desktop Large |
+| ----------------- | ------------- | ------------- | ---------- | ---------- | ----------- | ----------------- |
+| `size/padding-xs` | 10            | 10            | 8          | 8          | 8           | 10                |
+| `size/padding-sm` | 16            | 20            | 12         | 16         | 16          | 20                |
+| `size/padding-md` | 20            | 24            | 16         | 20         | 24          | 32                |
+| `size/padding-lg` | 24            | 32            | 20         | 28         | 32          | 40                |
+| `size/padding-xl` | 32            | 48            | 24         | 40         | 48          | 64                |
 
 
 ---
@@ -112,13 +117,13 @@ Page content areas, modal bodies, drawers, side panels, sheets. Values are inten
 Button horizontal padding, input field padding, tag/chip padding. Device sizes use a 6pt base to ensure legible tap targets per iOS HIG.
 
 
-| Token                       | Device Mobile | Device Tablet | Web Mobile | Web Desktop |
-| --------------------------- | ------------- | ------------- | ---------- | ----------- |
-| `size/padding-component-xs` | 6             | 6             | 4          | 4           |
-| `size/padding-component-sm` | 12            | 12            | 8          | 8           |
-| `size/padding-component-md` | 16            | 20            | 12         | 12          |
-| `size/padding-component-lg` | 20            | 24            | 16         | 20          |
-| `size/padding-component-xl` | 24            | 28            | 20         | 24          |
+| Token                       | Device Mobile | Device Tablet | Web Mobile | Web Tablet | Web Desktop | Web Desktop Large |
+| --------------------------- | ------------- | ------------- | ---------- | ---------- | ----------- | ----------------- |
+| `size/padding-component-xs` | 6             | 6             | 4          | 4          | 4           | 4                 |
+| `size/padding-component-sm` | 12            | 12            | 8          | 8          | 8           | 10                |
+| `size/padding-component-md` | 16            | 20            | 12         | 12         | 12          | 14                |
+| `size/padding-component-lg` | 20            | 24            | 16         | 20         | 20          | 24                |
+| `size/padding-component-xl` | 24            | 28            | 20         | 24         | 24          | 28                |
 
 
 ---
@@ -138,15 +143,15 @@ Button horizontal padding, input field padding, tag/chip padding. Device sizes u
 ### Border radius
 
 
-| Token              | Device Mobile | Device Tablet | Web Mobile | Web Desktop |
-| ------------------ | ------------- | ------------- | ---------- | ----------- |
-| `size/radius-none` | 0             | 0             | 0          | 0           |
-| `size/radius-xs`   | 4             | 4             | 2          | 2           |
-| `size/radius-sm`   | 6             | 6             | 4          | 4           |
-| `size/radius-md`   | 10            | 10            | 6          | 6           |
-| `size/radius-lg`   | 16            | 20            | 8          | 8           |
-| `size/radius-xl`   | 20            | 24            | 12         | 12          |
-| `size/radius-full` | 9999          | 9999          | 9999       | 9999        |
+| Token              | Device Mobile | Device Tablet | Web Mobile | Web Tablet | Web Desktop | Web Desktop Large |
+| ------------------ | ------------- | ------------- | ---------- | ---------- | ----------- | ----------------- |
+| `size/radius-none` | 0             | 0             | 0          | 0          | 0           | 0                 |
+| `size/radius-xs`   | 4             | 4             | 2          | 2          | 2           | 2                 |
+| `size/radius-sm`   | 6             | 6             | 4          | 4          | 4           | 4                 |
+| `size/radius-md`   | 10            | 10            | 6          | 6          | 6           | 8                 |
+| `size/radius-lg`   | 16            | 20            | 8          | 8          | 8           | 10                |
+| `size/radius-xl`   | 20            | 24            | 12         | 12         | 12          | 16                |
+| `size/radius-full` | 9999          | 9999          | 9999       | 9999       | 9999        | 9999              |
 
 
 ---
@@ -183,12 +188,12 @@ Component tokens are a thin alias layer. They keep component-specific decisions 
 ### Dialog / Modal
 
 
-| Token                         | Aliases           | Web Desktop |
-| ----------------------------- | ----------------- | ----------- |
-| `size/comp/dialog/padding-sm` | `size/padding-sm` | 16 px       |
-| `size/comp/dialog/padding-md` | `size/padding-md` | 24 px       |
-| `size/comp/dialog/padding-lg` | `size/padding-lg` | 32 px       |
-| `size/comp/dialog/padding-xl` | `size/padding-xl` | 48 px       |
+| Token                         | Aliases           |
+| ----------------------------- | ----------------- |
+| `size/comp/dialog/padding-sm` | `size/padding-sm` |
+| `size/comp/dialog/padding-md` | `size/padding-md` |
+| `size/comp/dialog/padding-lg` | `size/padding-lg` |
+| `size/comp/dialog/padding-xl` | `size/padding-xl` |
 
 
 `dialog/padding-md` is the default for confirmation dialogs. Use `lg` for information-dense drawers and `xl` for full-panel workflows. All dialog padding aliases the `size/padding-*` scale directly.
@@ -275,19 +280,66 @@ Box(modifier = Modifier.padding(SizeTokens.paddingMd)) { … }
 
 ---
 
+## Breakpoints
+
+Breakpoint tokens live in their own Figma collection (`breakpoint`) — separate from `size` and `size-global`. They're mode-independent because the values themselves are what *defines* the modes: a frame becomes a "Web Tablet frame" at `≥ 768 px`, not because some other variable said so.
+
+| Token                          | Value  | Mode switch?              | Behavior                                                                                                                            |
+| ------------------------------ | ------ | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `breakpoint/xs`                | 576    | No — within Web Mobile    | `< 576`: narrow phone. `≥ 576`: standard mobile. Use for layout micro-adjustments inside Web Mobile.                               |
+| `breakpoint/sm`                | 768    | **→ Web Tablet**          | `< 768`: Web Mobile mode. `≥ 768`: Web Tablet mode activates (12-col grid, looser padding).                                         |
+| `breakpoint/md`                | 992    | No — within Web Tablet    | `< 992`: small tablet. `≥ 992`: large tablet / narrow laptop. Use for internal layout shifts; mode stays on Web Tablet.            |
+| `breakpoint/lg`                | 1200   | **→ Web Desktop**         | `< 1200`: Web Tablet mode. `≥ 1200`: Web Desktop mode activates (24-col grid, generous padding).                                    |
+| `breakpoint/xl`                | 1400   | **→ Web Desktop Large**   | `< 1400`: Web Desktop mode. `≥ 1400`: Web Desktop Large mode activates (extra breathing room).                                      |
+
+**`sm` / `lg` / `xl` are the "hard" breakpoints** — they trigger size-mode switches. **`xs` / `md` are "soft" breakpoints** — fine-grained layout shifts that happen *inside* a mode without changing the size scale.
+
+### In code
+
+CSS custom properties do **not** work inside `@media` queries — this is a longstanding browser limitation. The same value is therefore emitted in three forms by `scripts/generate-llms-txt.mjs`:
+
+```css
+/* bootstrap.css — for non-media-query use (JS reading, container queries) */
+:root {
+  --breakpoint-xs: 576px;
+  --breakpoint-sm: 768px;
+  --breakpoint-md: 992px;
+  --breakpoint-lg: 1200px;
+  --breakpoint-xl: 1400px;
+}
+
+/* Size tokens cascade as mobile-first @media overrides using the raw numbers */
+:root { --size-padding-md: 16px; }                          /* Web Mobile */
+@media (min-width: 768px)  { :root { --size-padding-md: 20px; } }   /* Web Tablet */
+@media (min-width: 1200px) { :root { --size-padding-md: 24px; } }   /* Web Desktop */
+@media (min-width: 1400px) { :root { --size-padding-md: 32px; } }   /* Web Desktop Large */
+```
+
+```js
+// breakpoints.js — for matchMedia / Tailwind config / any JS that needs raw px
+import { breakpoints } from "/tokens/breakpoints.js";
+const isDesktop = window.matchMedia(`(min-width: ${breakpoints.lg}px)`).matches;
+```
+
+Both are generated from the same `breakpoint.tokens.json` — there's no risk of drift.
+
+---
+
 ## Column grid tokens
 
 The column grid is tokenised for use in responsive layout frames. All names are prefixed with `layout-` to make it immediately clear these belong to the grid system rather than spacing or padding.
 
 
-| Token                           | Web Desktop | Device Tablet | Web Mobile | Device Mobile |
-| ------------------------------- | ----------- | ------------- | ---------- | ------------- |
-| `size/layout-columns`           | 24          | 12            | 4          | 4             |
-| `size/layout-margin`            | 40          | 24            | 16         | 20            |
-| `size/layout-gutter`            | 16          | 16            | 8          | 8             |
-| `size/layout-column-min-width`  | 48          | 48            | —          | —             |
-| `size/layout-max-content-width` | 1280        | —             | —          | —             |
-| `size/layout-max-text-width`    | 680         | 680           | —          | —             |
+| Token                           | Device Mobile | Device Tablet | Web Mobile | Web Tablet | Web Desktop | Web Desktop Large |
+| ------------------------------- | ------------- | ------------- | ---------- | ---------- | ----------- | ----------------- |
+| `size/layout-columns`           | 4             | 12            | 4          | 12         | 24          | 24                |
+| `size/layout-margin`            | 20            | 24            | 16         | 24         | 40          | 80                |
+| `size/layout-gutter`            | 8             | 16            | 8          | 16         | 16          | 24                |
+| `size/layout-column-min-width`  | —             | 48            | —          | 44         | 48          | 56                |
+| `size/layout-max-content-width` | —             | —             | —          | 960        | 1280        | 1440              |
+| `size/layout-max-text-width`    | —             | 680           | —          | 680        | 680         | 720               |
 
 
 Apply these as Figma layout grid guides on your page frames so that the grid automatically reflects the active mode.
+
+`max-content-width` and `max-text-width` are **optional caps** you choose per layout — they're not breakpoints. On a 1920 px monitor in Web Desktop Large mode, the canvas is 1920 px but `max-content-width` (1440) keeps the inner content column bounded, leaving the rest as side margin. Full-bleed surfaces like marketing heroes can ignore both caps; long-form reading uses `max-text-width` (680–720) for readable line lengths.

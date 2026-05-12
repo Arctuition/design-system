@@ -1,0 +1,62 @@
+{
+  "breakpoint": {
+    "xs": {
+      "$type": "number",
+      "$value": 576,
+      "$description": "< 576: narrow phone. ≥ 576: standard mobile. Both within Web Mobile mode — no mode change.",
+      "$extensions": {
+        "com.figma.variableId": "VariableID:10544:8794",
+        "com.figma.scopes": [
+          "WIDTH_HEIGHT"
+        ]
+      }
+    },
+    "sm": {
+      "$type": "number",
+      "$value": 768,
+      "$description": "< 768: Web Mobile mode. ≥ 768: Web Tablet mode.",
+      "$extensions": {
+        "com.figma.variableId": "VariableID:10555:4888",
+        "com.figma.scopes": [
+          "WIDTH_HEIGHT"
+        ]
+      }
+    },
+    "md": {
+      "$type": "number",
+      "$value": 992,
+      "$description": "< 992: small tablet. ≥ 992: large tablet / narrow laptop. Both within Web Tablet mode — no mode change.",
+      "$extensions": {
+        "com.figma.variableId": "VariableID:10555:4889",
+        "com.figma.scopes": [
+          "WIDTH_HEIGHT"
+        ]
+      }
+    },
+    "lg": {
+      "$type": "number",
+      "$value": 1200,
+      "$description": "< 1200: Web Tablet mode. ≥ 1200: Web Desktop mode.",
+      "$extensions": {
+        "com.figma.variableId": "VariableID:10555:4890",
+        "com.figma.scopes": [
+          "WIDTH_HEIGHT"
+        ]
+      }
+    },
+    "xl": {
+      "$type": "number",
+      "$value": 1400,
+      "$description": "< 1400: Web Desktop mode. ≥ 1400: Web Desktop Large mode.",
+      "$extensions": {
+        "com.figma.variableId": "VariableID:10555:4891",
+        "com.figma.scopes": [
+          "WIDTH_HEIGHT"
+        ]
+      }
+    }
+  },
+  "$extensions": {
+    "com.figma.modeName": "breakpoint"
+  }
+}
