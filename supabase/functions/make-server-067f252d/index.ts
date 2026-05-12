@@ -167,6 +167,7 @@ const STATE_KEYS = [
   "typographyArticle",
   "colorTokens",
   "sizeTokens",
+  "breakpointTokens",
   "colorArticle",
   "sizeArticle",
   "iconologyArticle",

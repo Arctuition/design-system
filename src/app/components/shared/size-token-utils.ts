@@ -55,18 +55,24 @@ export function parseSizeTokenFile(data: any): SizeToken[] {
   if (Object.prototype.hasOwnProperty.call(data, "size-global")) {
     return flattenSizeTokens(data["size-global"], "size-global");
   }
+  if (Object.prototype.hasOwnProperty.call(data, "breakpoint")) {
+    return flattenSizeTokens(data.breakpoint, "breakpoint");
+  }
   // Fallback: flatten everything
   return flattenSizeTokens(data);
 }
 
 // ─── File name matching for bulk upload ───
 
-export const EXPECTED_FILES: Record<SizeTokenMode | "global", string> = {
-  global: "global.tokens.json",
+export const EXPECTED_FILES: Record<SizeTokenMode | "global" | "breakpoint", string> = {
+  global: "size-global-value.tokens.json",
   deviceMobile: "device-mobile.tokens.json",
   deviceTablet: "device-tablet.tokens.json",
   webMobile: "web-mobile.tokens.json",
+  webTablet: "web-tablet.tokens.json",
   webDesktop: "web-desktop.tokens.json",
+  webDesktopLarge: "web-desktop-large.tokens.json",
+  breakpoint: "breakpoint.tokens.json",
 };
 
 export type MatchSlot = keyof typeof EXPECTED_FILES;
@@ -74,12 +80,25 @@ export type MatchSlot = keyof typeof EXPECTED_FILES;
 /**
  * Maps a file name to a SizeTokenSet slot based on known patterns.
  * Case-insensitive, tolerant of extra path segments or slight naming variants.
+ * Order matters: more-specific patterns (web-desktop-large, web-tablet) are
+ * checked before the substrings they contain (web-desktop, web).
  */
 export function matchFileToSlot(fileName: string): MatchSlot | null {
   const base = fileName.toLowerCase().split("/").pop() || "";
-  if (base === "global.tokens.json" || base === "size-global.tokens.json") return "global";
+  // Figma sometimes exports the size-global file mis-named as
+  // `color-global-value.tokens.json` (it reuses the color collection's name).
+  // Accept either name to avoid a manual rename step.
+  if (
+    base === "global.tokens.json" ||
+    base === "size-global.tokens.json" ||
+    base === "size-global-value.tokens.json" ||
+    base === "color-global-value.tokens.json"
+  ) return "global";
+  if (base.includes("breakpoint")) return "breakpoint";
   if (base.includes("device-mobile")) return "deviceMobile";
   if (base.includes("device-tablet")) return "deviceTablet";
+  if (base.includes("web-desktop-large")) return "webDesktopLarge";
+  if (base.includes("web-tablet")) return "webTablet";
   if (base.includes("web-mobile")) return "webMobile";
   if (base.includes("web-desktop")) return "webDesktop";
   return null;
@@ -119,7 +138,16 @@ export function analyzeBulkFiles(files: File[]): BulkUploadAnalysis {
     }
   }
 
-  const allSlots: MatchSlot[] = ["global", "deviceMobile", "deviceTablet", "webMobile", "webDesktop"];
+  const allSlots: MatchSlot[] = [
+    "global",
+    "deviceMobile",
+    "deviceTablet",
+    "webMobile",
+    "webTablet",
+    "webDesktop",
+    "webDesktopLarge",
+    "breakpoint",
+  ];
   const missing = allSlots.filter((s) => !bySlot.has(s));
 
   return { matched, duplicates, unmatched, missing };
@@ -139,6 +167,7 @@ export interface GroupedSizeTokens {
 export function getSizeGroupKey(name: string): string {
   // Strip leading "size/" or "size-global/"
   if (name.startsWith("size-global/")) return "Global Scale";
+  if (name.startsWith("breakpoint/")) return "Breakpoints";
   const rest = name.startsWith("size/") ? name.slice(5) : name;
 
   // Nested: font/* and comp/*
@@ -196,6 +225,7 @@ const GROUP_ORDER = [
   "Component / Dialog",
   "Component / Tag",
   "Global Scale",
+  "Breakpoints",
 ];
 
 export function groupSizeTokensStable(tokens: SizeToken[]): GroupedSizeTokens[] {
@@ -273,30 +303,42 @@ export function buildSizeCSSOutput(
   return out.join("\n");
 }
 
-const MODE_HEADERS: Record<SizeTokenMode | "global", string> = {
+const MODE_HEADERS: Record<SizeTokenMode | "global" | "breakpoint", string> = {
   global: "GLOBAL SIZE SCALE",
   deviceMobile: "DEVICE MOBILE — iPhone / Android phone",
   deviceTablet: "DEVICE TABLET — iPad / Android tablet",
-  webMobile: "WEB MOBILE — Browser ≤ 768px",
-  webDesktop: "WEB DESKTOP — Browser on desktop",
+  webMobile: "WEB MOBILE — Browser < 768px",
+  webTablet: "WEB TABLET — Browser 768–1199px",
+  webDesktop: "WEB DESKTOP — Browser 1200–1399px",
+  webDesktopLarge: "WEB DESKTOP LARGE — Browser ≥ 1400px",
+  breakpoint: "BREAKPOINTS — viewport-width thresholds (decoupled from modes)",
 };
 
-const MODE_FILENAMES: Record<SizeTokenMode | "global", string> = {
+const MODE_FILENAMES: Record<SizeTokenMode | "global" | "breakpoint", string> = {
   global: "size-global.css",
   deviceMobile: "size-device-mobile.css",
   deviceTablet: "size-device-tablet.css",
   webMobile: "size-web-mobile.css",
+  webTablet: "size-web-tablet.css",
   webDesktop: "size-web-desktop.css",
+  webDesktopLarge: "size-web-desktop-large.css",
+  breakpoint: "breakpoint.css",
 };
 
-export async function exportSizeCSSAsZip(set: SizeTokenSet): Promise<void> {
+export async function exportSizeCSSAsZip(
+  set: SizeTokenSet,
+  breakpoints?: SizeToken[]
+): Promise<void> {
   const zip = new JSZip();
-  const entries: Array<[SizeTokenMode | "global", SizeToken[]]> = [
+  const entries: Array<[SizeTokenMode | "global" | "breakpoint", SizeToken[]]> = [
     ["global", set.global],
     ["deviceMobile", set.deviceMobile],
     ["deviceTablet", set.deviceTablet],
     ["webMobile", set.webMobile],
+    ["webTablet", set.webTablet],
     ["webDesktop", set.webDesktop],
+    ["webDesktopLarge", set.webDesktopLarge],
+    ["breakpoint", breakpoints ?? []],
   ];
   for (const [key, tokens] of entries) {
     if (tokens.length === 0) continue;

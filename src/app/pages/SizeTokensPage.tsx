@@ -10,11 +10,12 @@ import {
   exportSizeCSSAsZip,
   buildGroupedSizeCss,
   buildGlobalSizeCss,
+  buildBreakpointCss,
   SIZE_MODES,
   type SizeMode,
 } from "../components/shared/size-json-token-utils";
 
-type SizeTab = SizeMode | "global";
+type SizeTab = SizeMode | "global" | "breakpoints";
 
 export function SizeTokensPage() {
   const [activeTab, setActiveTab] = useState<SizeTab>("web-desktop");
@@ -22,7 +23,7 @@ export function SizeTokensPage() {
   const handleExport = async () => {
     try {
       await exportSizeCSSAsZip();
-      toast.success("Exported size-tokens.zip (5 CSS files)");
+      toast.success("Exported size-tokens.zip");
     } catch {
       toast.error("Failed to export CSS files.");
     }
@@ -54,6 +55,7 @@ export function SizeTokensPage() {
             <TabsTrigger key={key} value={key}>{label}</TabsTrigger>
           ))}
           <TabsTrigger value="global">Global</TabsTrigger>
+          <TabsTrigger value="breakpoints">Breakpoints</TabsTrigger>
         </TabsList>
         {SIZE_MODES.map(({ key }) => (
           <TabsContent key={key} value={key} className="mt-0">
@@ -62,6 +64,9 @@ export function SizeTokensPage() {
         ))}
         <TabsContent value="global" className="mt-0">
           <CssSyntaxBlock code={buildGlobalSizeCss()} maxHeight="70vh" />
+        </TabsContent>
+        <TabsContent value="breakpoints" className="mt-0">
+          <CssSyntaxBlock code={buildBreakpointCss()} maxHeight="70vh" />
         </TabsContent>
       </Tabs>
     </div>

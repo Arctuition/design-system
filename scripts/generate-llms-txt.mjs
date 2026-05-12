@@ -106,8 +106,44 @@ const lightTokens  = flattenColor(readJson("tokens/color/light.tokens.json"));
 const darkTokens   = flattenColor(readJson("tokens/color/dark.tokens.json"));
 const globalColor  = flattenColor(readJson("tokens/color/color-global-value.tokens.json"));
 const fontDesktop  = flattenFont(readJson("tokens/font/web-desktop.tokens.json"));
-const sizeDesktop  = flattenSize(readJson("tokens/size/web-desktop.tokens.json"));
 const sizeGlobal   = flattenSize(readJson("tokens/size/size-global-value.tokens.json"));
+
+// Web modes only — Device Mobile / Device Tablet are for iOS/Android (pt units)
+// and don't belong in browser CSS. Order is mobile-first so the cascade reads:
+// :root = Web Mobile → @media tablet → @media desktop → @media desktop-large.
+const sizeWebMobile       = flattenSize(readJson("tokens/size/web-mobile.tokens.json"));
+const sizeWebTablet       = flattenSize(readJson("tokens/size/web-tablet.tokens.json"));
+const sizeWebDesktop      = flattenSize(readJson("tokens/size/web-desktop.tokens.json"));
+const sizeWebDesktopLarge = flattenSize(readJson("tokens/size/web-desktop-large.tokens.json"));
+
+// Breakpoints live in their own collection — single mode, mode-independent.
+const breakpoints = flattenSize(readJson("tokens/breakpoint/breakpoint.tokens.json"));
+
+// Extract raw breakpoint pixel values for media-query templates. CSS custom
+// properties don't work inside @media queries, so we hard-emit the numbers.
+const breakpointPx = (() => {
+  const tree = readJson("tokens/breakpoint/breakpoint.tokens.json").breakpoint ?? {};
+  const out = { xs: 0, sm: 0, md: 0, lg: 0, xl: 0 };
+  for (const [k, v] of Object.entries(tree)) {
+    if (v && typeof v === "object" && "$value" in v) {
+      const n = typeof v.$value === "number" ? v.$value : parseFloat(String(v.$value));
+      if (Number.isFinite(n)) out[k] = n;
+    }
+  }
+  return out;
+})();
+
+// Only the tokens that differ from Web Mobile need to be emitted in each
+// @media block — saves bytes and keeps the cascade legible. A token whose
+// displayValue is identical across modes only appears in the :root base.
+function diffFromBase(baseTokens, modeTokens) {
+  const baseMap = new Map(baseTokens.map(t => [t.cssVar, t.displayValue]));
+  return modeTokens.filter(t => baseMap.get(t.cssVar) !== t.displayValue);
+}
+
+const sizeTabletDiff       = diffFromBase(sizeWebMobile, sizeWebTablet);
+const sizeDesktopDiff      = diffFromBase(sizeWebMobile, sizeWebDesktop);
+const sizeDesktopLargeDiff = diffFromBase(sizeWebMobile, sizeWebDesktopLarge);
 
 const fmt = (toks, key = "displayValue") =>
   toks.map((t) => `  ${t.cssVar}: ${t[key]};`).join("\n");
@@ -236,9 +272,35 @@ ${fmt(fontDesktop, "value")}
 
 ---
 
-## Size & space — web desktop (semantic)
+## Size & space — semantic, mobile-first
+
+Web Mobile is the \`:root\` baseline. Each \`@media (min-width: …)\` block
+overrides only the tokens that change at that breakpoint. Tokens not listed
+in an override block keep their Web Mobile value.
+
 :root {
-${fmt(sizeDesktop)}
+${fmt(sizeWebMobile)}
+}
+
+@media (min-width: ${breakpointPx.sm}px) {
+  /* Web Tablet */
+  :root {
+${fmt(sizeTabletDiff).replace(/^/gm, "  ")}
+  }
+}
+
+@media (min-width: ${breakpointPx.lg}px) {
+  /* Web Desktop */
+  :root {
+${fmt(sizeDesktopDiff).replace(/^/gm, "  ")}
+  }
+}
+
+@media (min-width: ${breakpointPx.xl}px) {
+  /* Web Desktop Large */
+  :root {
+${fmt(sizeDesktopLargeDiff).replace(/^/gm, "  ")}
+  }
 }
 
 ---
@@ -246,6 +308,19 @@ ${fmt(sizeDesktop)}
 ## Size & space — global scale (raw primitives)
 :root {
 ${fmt(sizeGlobal)}
+}
+
+---
+
+## Breakpoints
+
+Decoupled from size modes. CSS custom properties **do not work inside
+\`@media\` queries** — these vars are exposed for JS (\`matchMedia\`,
+\`window.innerWidth\`), Tailwind config, or container queries. Media
+queries themselves use the raw pixel values from the same source.
+
+:root {
+${fmt(breakpoints)}
 }
 
 ---
@@ -400,9 +475,41 @@ ${fmt(darkTokens)}
 ${fmt(sizeGlobal)}
 }
 
-/* ── Size & space: semantic (web desktop) ────────────────────────────────── */
+/* ── Breakpoints ─────────────────────────────────────────────────────────── */
+/* Exposed for JS / Tailwind / container queries. Media queries below use
+ * the raw pixel numbers since CSS vars don't work inside @media (). */
 :root {
-${fmt(sizeDesktop)}
+${fmt(breakpoints)}
+}
+
+/* ── Size & space: semantic, mobile-first ────────────────────────────────── */
+/* Default = Web Mobile. Each breakpoint overrides only the tokens that
+ * differ at that screen size. Device modes (mobile/tablet) live in
+ * tokens/size/device-*.json and are consumed by iOS / Android — they
+ * are deliberately not in this stylesheet. */
+:root {
+${fmt(sizeWebMobile)}
+}
+
+@media (min-width: ${breakpointPx.sm}px) {
+  /* Web Tablet */
+  :root {
+${fmt(sizeTabletDiff).replace(/^/gm, "  ")}
+  }
+}
+
+@media (min-width: ${breakpointPx.lg}px) {
+  /* Web Desktop */
+  :root {
+${fmt(sizeDesktopDiff).replace(/^/gm, "  ")}
+  }
+}
+
+@media (min-width: ${breakpointPx.xl}px) {
+  /* Web Desktop Large */
+  :root {
+${fmt(sizeDesktopLargeDiff).replace(/^/gm, "  ")}
+  }
 }
 
 /* ── Typography (web desktop) ────────────────────────────────────────────── */
@@ -413,3 +520,21 @@ ${fmt(fontDesktop, "value")}
 const bootstrapPath = resolve(publicTokensDir, "bootstrap.css");
 writeFileSync(bootstrapPath, bootstrapCss, "utf-8");
 console.log(`[bootstrap.css] wrote ${bootstrapPath} — ${bootstrapCss.length} chars`);
+
+// Also emit a JS module so consumers can use the raw breakpoint pixels in
+// matchMedia / Tailwind / container queries (CSS vars don't work inside
+// @media). Single source of truth — generated from the same JSON.
+const breakpointsJs = `/*
+ * Arcsite Design System — breakpoint pixel values
+ * Generated from /tokens/breakpoint/breakpoint.tokens.json by
+ * scripts/generate-llms-txt.mjs. Do not edit by hand.
+ *
+ * Use these for JS conditions, matchMedia, Tailwind \`screens\`, or any
+ * place CSS custom properties cannot reach (notably @media queries).
+ */
+
+export const breakpoints = ${JSON.stringify(breakpointPx, null, 2)};
+`;
+const breakpointsJsPath = resolve(publicTokensDir, "breakpoints.js");
+writeFileSync(breakpointsJsPath, breakpointsJs, "utf-8");
+console.log(`[breakpoints.js] wrote ${breakpointsJsPath}`);

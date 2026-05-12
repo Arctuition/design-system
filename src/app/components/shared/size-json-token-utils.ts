@@ -8,28 +8,41 @@ export interface ParsedSizeToken {
   rawValue: string;      // always the resolved px value (for export CSS)
 }
 
-export type SizeMode = "web-desktop" | "web-mobile" | "device-tablet" | "device-mobile";
+export type SizeMode =
+  | "web-mobile"
+  | "web-tablet"
+  | "web-desktop"
+  | "web-desktop-large"
+  | "device-mobile"
+  | "device-tablet";
 
 export const SIZE_MODES: { key: SizeMode; label: string }[] = [
-  { key: "web-desktop",   label: "Web Desktop" },
-  { key: "web-mobile",    label: "Web Mobile" },
-  { key: "device-tablet", label: "Device Tablet" },
-  { key: "device-mobile", label: "Device Mobile" },
+  { key: "web-mobile",        label: "Web Mobile" },
+  { key: "web-tablet",        label: "Web Tablet" },
+  { key: "web-desktop",       label: "Web Desktop" },
+  { key: "web-desktop-large", label: "Web Desktop Large" },
+  { key: "device-mobile",     label: "Device Mobile" },
+  { key: "device-tablet",     label: "Device Tablet" },
 ];
 
 // ── JSON imports ───────────────────────────────────────────────────────────
 
-import globalJson      from "../../../../tokens/size/size-global-value.tokens.json";
-import webDesktopJson  from "../../../../tokens/size/web-desktop.tokens.json";
-import webMobileJson   from "../../../../tokens/size/web-mobile.tokens.json";
-import deviceTabletJson from "../../../../tokens/size/device-tablet.tokens.json";
-import deviceMobileJson from "../../../../tokens/size/device-mobile.tokens.json";
+import globalJson           from "../../../../tokens/size/size-global-value.tokens.json";
+import webMobileJson        from "../../../../tokens/size/web-mobile.tokens.json";
+import webTabletJson        from "../../../../tokens/size/web-tablet.tokens.json";
+import webDesktopJson       from "../../../../tokens/size/web-desktop.tokens.json";
+import webDesktopLargeJson  from "../../../../tokens/size/web-desktop-large.tokens.json";
+import deviceMobileJson     from "../../../../tokens/size/device-mobile.tokens.json";
+import deviceTabletJson     from "../../../../tokens/size/device-tablet.tokens.json";
+import breakpointJson       from "../../../../tokens/breakpoint/breakpoint.tokens.json";
 
 const JSON_BY_MODE: Record<SizeMode, Record<string, any>> = {
-  "web-desktop":   webDesktopJson   as Record<string, any>,
-  "web-mobile":    webMobileJson    as Record<string, any>,
-  "device-tablet": deviceTabletJson as Record<string, any>,
-  "device-mobile": deviceMobileJson as Record<string, any>,
+  "web-mobile":        webMobileJson        as Record<string, any>,
+  "web-tablet":        webTabletJson        as Record<string, any>,
+  "web-desktop":       webDesktopJson       as Record<string, any>,
+  "web-desktop-large": webDesktopLargeJson  as Record<string, any>,
+  "device-mobile":     deviceMobileJson     as Record<string, any>,
+  "device-tablet":     deviceTabletJson     as Record<string, any>,
 };
 
 // ── Value helpers ──────────────────────────────────────────────────────────
@@ -100,6 +113,29 @@ export function getSizeTokens(mode: SizeMode): ParsedSizeToken[] {
   return flattenSizeTokens(JSON_BY_MODE[mode]);
 }
 
+export function getBreakpointTokens(): ParsedSizeToken[] {
+  return flattenSizeTokens(breakpointJson as Record<string, any>);
+}
+
+/**
+ * Read breakpoint values as a typed map. Used by the build script and
+ * any runtime that needs the raw pixel numbers (matchMedia, JS conditions,
+ * Tailwind/CSS-in-JS config). Returns 0 for any missing key so callers
+ * don't have to null-check.
+ */
+export function getBreakpointValues(): Record<"xs" | "sm" | "md" | "lg" | "xl", number> {
+  const out: Record<string, number> = { xs: 0, sm: 0, md: 0, lg: 0, xl: 0 };
+  const tree = (breakpointJson as Record<string, any>).breakpoint ?? {};
+  for (const [k, v] of Object.entries(tree)) {
+    if (v && typeof v === "object" && "$value" in (v as any)) {
+      const raw = (v as any).$value;
+      const num = typeof raw === "number" ? raw : parseFloat(String(raw));
+      if (Number.isFinite(num)) out[k] = num;
+    }
+  }
+  return out as Record<"xs" | "sm" | "md" | "lg" | "xl", number>;
+}
+
 // ── CSS generation ─────────────────────────────────────────────────────────
 
 function tokensToCss(tokens: ParsedSizeToken[], selector = ":root"): string {
@@ -166,7 +202,13 @@ export function buildGlobalSizeCss(): string {
   return `:root {\n\n/* =========================================\n * Global Size Scale\n * ========================================= */\n\n${lines.join("\n")}\n\n}`;
 }
 
-// ── Export as ZIP (5 files) ────────────────────────────────────────────────
+export function buildBreakpointCss(): string {
+  const tokens = getBreakpointTokens();
+  const lines = tokens.map(t => `  ${t.cssVar}: ${t.displayValue};`);
+  return `:root {\n\n/* =========================================\n * Breakpoints — decoupled from size modes.\n * Use in JS/Tailwind/matchMedia; CSS custom\n * properties do not work inside @media queries.\n * ========================================= */\n\n${lines.join("\n")}\n\n}`;
+}
+
+// ── Export as ZIP ──────────────────────────────────────────────────────────
 
 export async function exportSizeCSSAsZip(): Promise<void> {
   const zip = new JSZip();
@@ -174,6 +216,7 @@ export async function exportSizeCSSAsZip(): Promise<void> {
   for (const { key } of SIZE_MODES) {
     zip.file(`size-${key}.css`, tokensToCss(getSizeTokens(key)));
   }
+  zip.file("breakpoint.css", tokensToCss(getBreakpointTokens()));
   const blob = await zip.generateAsync({ type: "blob" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

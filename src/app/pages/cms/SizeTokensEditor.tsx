@@ -13,7 +13,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "../../components/ui/dialog";
-import type { SizeTokenSet, SizeTokenMode, SizeToken } from "../../store/data-store";
+import type { SizeTokenSet, SizeTokenMode, SizeToken, BreakpointTokenSet } from "../../store/data-store";
 import {
   parseSizeTokenFile,
   exportSizeCSSAsZip,
@@ -23,28 +23,37 @@ import {
   groupSizeTokensStable,
 } from "../../components/shared/size-token-utils";
 
-// Ordered list of upload slots for the individual upload UI
-const SLOTS: Array<{ key: MatchSlot; label: string; stateKey: keyof SizeTokenSet }> = [
-  { key: "global", label: "Global Scale", stateKey: "global" },
-  { key: "deviceMobile", label: "Device Mobile", stateKey: "deviceMobile" },
-  { key: "deviceTablet", label: "Device Tablet", stateKey: "deviceTablet" },
-  { key: "webMobile", label: "Web Mobile", stateKey: "webMobile" },
-  { key: "webDesktop", label: "Web Desktop", stateKey: "webDesktop" },
+// Ordered list of upload slots for the individual upload UI. The Breakpoint
+// slot writes to a separate state branch (breakpointTokens), so it's handled
+// alongside but not via SizeTokenSet keys.
+type SizeSlotKey = Exclude<MatchSlot, "breakpoint">;
+
+const SIZE_SLOTS: Array<{ key: SizeSlotKey; label: string; stateKey: keyof SizeTokenSet }> = [
+  { key: "global",          label: "Global Scale",      stateKey: "global" },
+  { key: "deviceMobile",    label: "Device Mobile",     stateKey: "deviceMobile" },
+  { key: "deviceTablet",    label: "Device Tablet",     stateKey: "deviceTablet" },
+  { key: "webMobile",       label: "Web Mobile",        stateKey: "webMobile" },
+  { key: "webTablet",       label: "Web Tablet",        stateKey: "webTablet" },
+  { key: "webDesktop",      label: "Web Desktop",       stateKey: "webDesktop" },
+  { key: "webDesktopLarge", label: "Web Desktop Large", stateKey: "webDesktopLarge" },
 ];
 
-function slotToStateKey(slot: MatchSlot): keyof SizeTokenSet {
+function slotToStateKey(slot: SizeSlotKey): keyof SizeTokenSet {
   return slot as keyof SizeTokenSet;
 }
 
 export function SizeTokensEditor() {
-  const { isAuthenticated, sizeTokens, setSizeTokens } = useAppData();
+  const { isAuthenticated, sizeTokens, setSizeTokens, breakpointTokens, setBreakpointTokens } = useAppData();
   const bulkInputRef = useRef<HTMLInputElement>(null);
   const individualRefs = useRef<Record<MatchSlot, HTMLInputElement | null>>({
     global: null,
     deviceMobile: null,
     deviceTablet: null,
     webMobile: null,
+    webTablet: null,
     webDesktop: null,
+    webDesktopLarge: null,
+    breakpoint: null,
   });
 
   const [bulkPending, setBulkPending] = useState<
@@ -66,10 +75,14 @@ export function SizeTokensEditor() {
         const data = JSON.parse(ev.target?.result as string);
         const tokens = parseSizeTokenFile(data);
         if (tokens.length === 0) {
-          toast.error(`No numeric size tokens found in ${file.name}.`);
+          toast.error(`No numeric tokens found in ${file.name}.`);
           return;
         }
-        setSizeTokens({ ...sizeTokens, [slotToStateKey(slot)]: tokens });
+        if (slot === "breakpoint") {
+          setBreakpointTokens({ tokens });
+        } else {
+          setSizeTokens({ ...sizeTokens, [slotToStateKey(slot)]: tokens });
+        }
         toast.success(`${EXPECTED_FILES[slot]}: imported ${tokens.length} tokens`);
       } catch {
         toast.error(`Failed to parse ${file.name}. Check that it's valid JSON.`);
@@ -101,6 +114,7 @@ export function SizeTokensEditor() {
     }
 
     const updates: Partial<SizeTokenSet> = {};
+    let nextBreakpoints: SizeToken[] | null = null;
     const errors: string[] = [];
     let totalTokens = 0;
 
@@ -113,14 +127,23 @@ export function SizeTokensEditor() {
           errors.push(`${file.name}: no numeric tokens`);
           continue;
         }
-        updates[slotToStateKey(slot)] = tokens;
+        if (slot === "breakpoint") {
+          nextBreakpoints = tokens;
+        } else {
+          updates[slotToStateKey(slot)] = tokens;
+        }
         totalTokens += tokens.length;
       } catch (err) {
         errors.push(`${file.name}: parse error`);
       }
     }
 
-    setSizeTokens({ ...sizeTokens, ...updates });
+    if (Object.keys(updates).length > 0) {
+      setSizeTokens({ ...sizeTokens, ...updates });
+    }
+    if (nextBreakpoints) {
+      setBreakpointTokens({ tokens: nextBreakpoints });
+    }
     setBulkPending(null);
 
     if (errors.length > 0) {
@@ -132,7 +155,7 @@ export function SizeTokensEditor() {
 
   const handleExportCSS = async () => {
     try {
-      await exportSizeCSSAsZip(sizeTokens);
+      await exportSizeCSSAsZip(sizeTokens, breakpointTokens.tokens);
       toast.success("Exported size-tokens.zip");
     } catch {
       toast.error("Failed to export CSS files.");
@@ -140,6 +163,7 @@ export function SizeTokensEditor() {
   };
 
   const slotCount = (key: keyof SizeTokenSet): number => sizeTokens[key].length;
+  const breakpointCount = breakpointTokens.tokens.length;
 
   return (
     <div className="flex-1 min-w-0 max-w-[1400px] mx-auto px-8 py-10">
@@ -180,9 +204,10 @@ export function SizeTokensEditor() {
       <div className="flex items-start gap-3 p-4 mb-6 border border-primary/20 rounded-[var(--radius-card)] bg-primary/5">
         <Info className="size-4 text-primary mt-0.5 shrink-0" />
         <p className="text-card-foreground" style={{ fontSize: "var(--text-label)" }}>
-          Upload the five Figma size-token JSON exports. Tokens under the <code className="bg-secondary px-1 rounded-[var(--radius)]">size-global</code> collection
-          become the global scale; each <code className="bg-secondary px-1 rounded-[var(--radius)]">size</code> collection export becomes one mode (Device Mobile, Device Tablet, Web Mobile, Web Desktop).
-          Aliases are preserved: a semantic token that references a global value is exported as <code className="bg-secondary px-1 rounded-[var(--radius)]">var(--size-global-*)</code>.
+          Upload the Figma JSON exports. Tokens under the <code className="bg-secondary px-1 rounded-[var(--radius)]">size-global</code> collection
+          become the global scale; each <code className="bg-secondary px-1 rounded-[var(--radius)]">size</code> mode export becomes one column (Device Mobile/Tablet, Web Mobile/Tablet/Desktop/Desktop Large).
+          The <code className="bg-secondary px-1 rounded-[var(--radius)]">breakpoint</code> collection is uploaded separately — its values define which size mode is active at a given viewport width.
+          Aliases are preserved as <code className="bg-secondary px-1 rounded-[var(--radius)]">var(--size-global-*)</code>.
         </p>
       </div>
 
@@ -191,11 +216,11 @@ export function SizeTokensEditor() {
         <div className="flex items-center gap-2 mb-2">
           <Package className="size-4 text-foreground" />
           <span style={{ fontSize: "var(--text-p)", fontWeight: "var(--font-weight-medium)" }}>
-            Bulk Upload (all 5 files)
+            Bulk Upload (all 8 files)
           </span>
         </div>
         <p className="text-muted-foreground mb-4" style={{ fontSize: "var(--text-label)" }}>
-          Select all five files at once. File names are matched against <code className="bg-secondary px-1 rounded-[var(--radius)]">global.tokens.json</code>, <code className="bg-secondary px-1 rounded-[var(--radius)]">device-mobile.tokens.json</code>, <code className="bg-secondary px-1 rounded-[var(--radius)]">device-tablet.tokens.json</code>, <code className="bg-secondary px-1 rounded-[var(--radius)]">web-mobile.tokens.json</code>, and <code className="bg-secondary px-1 rounded-[var(--radius)]">web-desktop.tokens.json</code>. You'll confirm matches before anything is written.
+          Select every file at once. File names are matched against the expected names shown on each slot below — global scale, six size modes, and the breakpoint collection. You'll confirm matches before anything is written.
         </p>
         <input
           ref={bulkInputRef}
@@ -210,13 +235,13 @@ export function SizeTokensEditor() {
         </Button>
       </div>
 
-      {/* Individual upload */}
-      <div className="mb-8">
+      {/* Individual upload — size modes */}
+      <div className="mb-6">
         <h3 className="mb-3" style={{ fontSize: "var(--text-h4)", fontWeight: "var(--font-weight-medium)" }}>
-          Individual Upload
+          Individual Upload — Size Modes
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {SLOTS.map((s) => {
+          {SIZE_SLOTS.map((s) => {
             const count = slotCount(s.stateKey);
             return (
               <div key={s.key} className="p-4 border border-border rounded-[var(--radius-card)] bg-secondary/10">
@@ -251,6 +276,43 @@ export function SizeTokensEditor() {
         </div>
       </div>
 
+      {/* Individual upload — breakpoints (separate collection) */}
+      <div className="mb-8">
+        <h3 className="mb-1" style={{ fontSize: "var(--text-h4)", fontWeight: "var(--font-weight-medium)" }}>
+          Breakpoints
+        </h3>
+        <p className="text-muted-foreground mb-3" style={{ fontSize: "var(--text-label)" }}>
+          The breakpoint collection is mode-independent — its values are the viewport widths that trigger size-mode switches (Web Mobile → Tablet → Desktop → Desktop Large).
+        </p>
+        <div className="p-4 border border-border rounded-[var(--radius-card)] bg-secondary/10 max-w-md">
+          <div className="flex items-center justify-between mb-1">
+            <span style={{ fontSize: "var(--text-p)", fontWeight: "var(--font-weight-medium)" }}>
+              Breakpoint Collection
+            </span>
+            <span className="text-muted-foreground" style={{ fontSize: "var(--text-label)" }}>
+              {breakpointCount > 0 ? `${breakpointCount} tokens` : "empty"}
+            </span>
+          </div>
+          <p className="text-muted-foreground mb-3" style={{ fontSize: "var(--text-label)" }}>
+            Expects <code className="bg-secondary px-1 rounded-[var(--radius)]">{EXPECTED_FILES.breakpoint}</code>
+          </p>
+          <input
+            ref={(el) => { individualRefs.current.breakpoint = el; }}
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={handleIndividualUpload("breakpoint")}
+          />
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => individualRefs.current.breakpoint?.click()}
+          >
+            <Upload className="size-4 mr-1.5" /> Upload
+          </Button>
+        </div>
+      </div>
+
       {/* Export */}
       <div className="flex flex-wrap items-center gap-3 p-4 mb-8 border border-border rounded-[var(--radius-card)] bg-secondary/10">
         <span className="text-foreground mr-2" style={{ fontSize: "var(--text-p)", fontWeight: "var(--font-weight-medium)" }}>
@@ -262,7 +324,7 @@ export function SizeTokensEditor() {
       </div>
 
       {/* Preview */}
-      <PreviewSection sizeTokens={sizeTokens} />
+      <PreviewSection sizeTokens={sizeTokens} breakpointTokens={breakpointTokens} />
         </TabsContent>
       </Tabs>
 
@@ -278,7 +340,13 @@ export function SizeTokensEditor() {
 
 // ─── Preview ───
 
-function PreviewSection({ sizeTokens }: { sizeTokens: SizeTokenSet }) {
+function PreviewSection({
+  sizeTokens,
+  breakpointTokens,
+}: {
+  sizeTokens: SizeTokenSet;
+  breakpointTokens: BreakpointTokenSet;
+}) {
   // Build alias resolution map for display (alias target name → value)
   const globalMap = useMemo(() => {
     const m = new Map<string, number>();
@@ -291,7 +359,10 @@ function PreviewSection({ sizeTokens }: { sizeTokens: SizeTokenSet }) {
       sizeTokens.deviceMobile.length +
       sizeTokens.deviceTablet.length +
       sizeTokens.webMobile.length +
-      sizeTokens.webDesktop.length >
+      sizeTokens.webTablet.length +
+      sizeTokens.webDesktop.length +
+      sizeTokens.webDesktopLarge.length +
+      breakpointTokens.tokens.length >
     0;
 
   if (!hasAny) {
@@ -310,7 +381,10 @@ function PreviewSection({ sizeTokens }: { sizeTokens: SizeTokenSet }) {
     { label: "Device Mobile", tokens: sizeTokens.deviceMobile },
     { label: "Device Tablet", tokens: sizeTokens.deviceTablet },
     { label: "Web Mobile", tokens: sizeTokens.webMobile },
+    { label: "Web Tablet", tokens: sizeTokens.webTablet },
     { label: "Web Desktop", tokens: sizeTokens.webDesktop },
+    { label: "Web Desktop Large", tokens: sizeTokens.webDesktopLarge },
+    { label: "Breakpoints", tokens: breakpointTokens.tokens },
   ];
 
   return (
@@ -404,7 +478,10 @@ const SLOT_LABELS: Record<MatchSlot, string> = {
   deviceMobile: "Device Mobile",
   deviceTablet: "Device Tablet",
   webMobile: "Web Mobile",
+  webTablet: "Web Tablet",
   webDesktop: "Web Desktop",
+  webDesktopLarge: "Web Desktop Large",
+  breakpoint: "Breakpoints",
 };
 
 function BulkConfirmDialog({
