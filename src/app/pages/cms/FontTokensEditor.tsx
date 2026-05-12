@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo } from "react";
+import React, { useRef, useState } from "react";
 import { Navigate, Link } from "react-router";
 import { useAppData } from "../../store/data-store";
 import { Button } from "../../components/ui/button";
@@ -12,55 +12,46 @@ import {
   DialogDescription,
   DialogFooter,
 } from "../../components/ui/dialog";
-import type { SizeTokenSet, SizeTokenMode, SizeToken, BreakpointTokenSet } from "../../store/data-store";
+import type { FontTokenSet, FontToken } from "../../store/data-store";
 import {
-  parseSizeTokenFile,
-  exportSizeCSSAsZip,
+  parseFontTokenFile,
+  exportFontCSSAsZip,
   analyzeBulkFiles,
   EXPECTED_FILES,
+  formatFontValueForCss,
+  groupFontTokensStable,
   type MatchSlot,
-  groupSizeTokensStable,
-} from "../../components/shared/size-token-utils";
+} from "../../components/shared/font-token-cms-utils";
 import { PublishTokensButton } from "../../components/shared/PublishTokensButton";
 
-// Ordered list of upload slots for the individual upload UI. The Breakpoint
-// slot writes to a separate state branch (breakpointTokens), so it's handled
-// alongside but not via SizeTokenSet keys.
-type SizeSlotKey = Exclude<MatchSlot, "breakpoint">;
-
-const SIZE_SLOTS: Array<{ key: SizeSlotKey; label: string; stateKey: keyof SizeTokenSet }> = [
-  { key: "global",          label: "Global Scale",      stateKey: "global" },
-  { key: "deviceMobile",    label: "Device Mobile",     stateKey: "deviceMobile" },
-  { key: "deviceTablet",    label: "Device Tablet",     stateKey: "deviceTablet" },
-  { key: "webMobile",       label: "Web Mobile",        stateKey: "webMobile" },
-  { key: "webTablet",       label: "Web Tablet",        stateKey: "webTablet" },
-  { key: "webDesktop",      label: "Web Desktop",       stateKey: "webDesktop" },
-  { key: "webDesktopLarge", label: "Web Desktop Large", stateKey: "webDesktopLarge" },
+const FONT_SLOTS: Array<{ key: MatchSlot; label: string; stateKey: keyof FontTokenSet }> = [
+  { key: "deviceMobile", label: "Device Mobile", stateKey: "deviceMobile" },
+  { key: "deviceTablet", label: "Device Tablet", stateKey: "deviceTablet" },
+  { key: "webMobile",    label: "Web Mobile",    stateKey: "webMobile" },
+  { key: "webDesktop",   label: "Web Desktop",   stateKey: "webDesktop" },
 ];
 
-function slotToStateKey(slot: SizeSlotKey): keyof SizeTokenSet {
-  return slot as keyof SizeTokenSet;
+function slotToStateKey(slot: MatchSlot): keyof FontTokenSet {
+  return slot as keyof FontTokenSet;
 }
 
-export function SizeTokensEditor() {
-  const { isAuthenticated, sizeTokens, setSizeTokens, breakpointTokens, setBreakpointTokens } = useAppData();
+export function FontTokensEditor() {
+  const { isAuthenticated, fontTokens, setFontTokens } = useAppData();
   const bulkInputRef = useRef<HTMLInputElement>(null);
   const individualRefs = useRef<Record<MatchSlot, HTMLInputElement | null>>({
-    global: null,
     deviceMobile: null,
     deviceTablet: null,
     webMobile: null,
-    webTablet: null,
     webDesktop: null,
-    webDesktopLarge: null,
-    breakpoint: null,
   });
 
   const [bulkPending, setBulkPending] = useState<
-    | { matched: Array<{ slot: MatchSlot; file: File; expected: string }>;
+    | {
+        matched: Array<{ slot: MatchSlot; file: File; expected: string }>;
         duplicates: Array<{ slot: MatchSlot; files: File[] }>;
         unmatched: File[];
-        missing: MatchSlot[]; }
+        missing: MatchSlot[];
+      }
     | null
   >(null);
 
@@ -73,16 +64,12 @@ export function SizeTokensEditor() {
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target?.result as string);
-        const tokens = parseSizeTokenFile(data);
+        const tokens = parseFontTokenFile(data);
         if (tokens.length === 0) {
-          toast.error(`No numeric tokens found in ${file.name}.`);
+          toast.error(`No font tokens found in ${file.name}.`);
           return;
         }
-        if (slot === "breakpoint") {
-          setBreakpointTokens({ tokens });
-        } else {
-          setSizeTokens({ ...sizeTokens, [slotToStateKey(slot)]: tokens });
-        }
+        setFontTokens({ ...fontTokens, [slotToStateKey(slot)]: tokens });
         toast.success(`${EXPECTED_FILES[slot]}: imported ${tokens.length} tokens`);
       } catch {
         toast.error(`Failed to parse ${file.name}. Check that it's valid JSON.`);
@@ -113,8 +100,7 @@ export function SizeTokensEditor() {
       return;
     }
 
-    const updates: Partial<SizeTokenSet> = {};
-    let nextBreakpoints: SizeToken[] | null = null;
+    const updates: Partial<FontTokenSet> = {};
     const errors: string[] = [];
     let totalTokens = 0;
 
@@ -122,27 +108,20 @@ export function SizeTokensEditor() {
       try {
         const text = await file.text();
         const data = JSON.parse(text);
-        const tokens = parseSizeTokenFile(data);
+        const tokens = parseFontTokenFile(data);
         if (tokens.length === 0) {
-          errors.push(`${file.name}: no numeric tokens`);
+          errors.push(`${file.name}: no font tokens`);
           continue;
         }
-        if (slot === "breakpoint") {
-          nextBreakpoints = tokens;
-        } else {
-          updates[slotToStateKey(slot)] = tokens;
-        }
+        updates[slotToStateKey(slot)] = tokens;
         totalTokens += tokens.length;
-      } catch (err) {
+      } catch {
         errors.push(`${file.name}: parse error`);
       }
     }
 
     if (Object.keys(updates).length > 0) {
-      setSizeTokens({ ...sizeTokens, ...updates });
-    }
-    if (nextBreakpoints) {
-      setBreakpointTokens({ tokens: nextBreakpoints });
+      setFontTokens({ ...fontTokens, ...updates });
     }
     setBulkPending(null);
 
@@ -155,15 +134,14 @@ export function SizeTokensEditor() {
 
   const handleExportCSS = async () => {
     try {
-      await exportSizeCSSAsZip(sizeTokens, breakpointTokens.tokens);
-      toast.success("Exported size-tokens.zip");
+      await exportFontCSSAsZip(fontTokens);
+      toast.success("Exported font-tokens.zip");
     } catch {
       toast.error("Failed to export CSS files.");
     }
   };
 
-  const slotCount = (key: keyof SizeTokenSet): number => sizeTokens[key].length;
-  const breakpointCount = breakpointTokens.tokens.length;
+  const slotCount = (key: keyof FontTokenSet): number => fontTokens[key].length;
 
   return (
     <div className="flex-1 min-w-0 max-w-[1400px] mx-auto px-8 py-10">
@@ -175,19 +153,21 @@ export function SizeTokensEditor() {
         <ArrowLeft className="size-4" /> Back to CMS
       </Link>
       <h1 style={{ fontSize: "var(--text-h2)", fontWeight: "var(--font-weight-normal)" }}>
-        Size &amp; Space Tokens Manager
+        Font Tokens Manager
       </h1>
       <div className="h-px bg-border mt-3 mb-6" />
-
 
       {/* Info banner */}
       <div className="flex items-start gap-3 p-4 mb-6 border border-primary/20 rounded-[var(--radius-card)] bg-primary/5">
         <Info className="size-4 text-primary mt-0.5 shrink-0" />
         <p className="text-card-foreground" style={{ fontSize: "var(--text-label)" }}>
-          Upload the Figma JSON exports. Tokens under the <code className="bg-secondary px-1 rounded-[var(--radius)]">size-global</code> collection
-          become the global scale; each <code className="bg-secondary px-1 rounded-[var(--radius)]">size</code> mode export becomes one column (Device Mobile/Tablet, Web Mobile/Tablet/Desktop/Desktop Large).
-          The <code className="bg-secondary px-1 rounded-[var(--radius)]">breakpoint</code> collection is uploaded separately — its values define which size mode is active at a given viewport width.
-          Aliases are preserved as <code className="bg-secondary px-1 rounded-[var(--radius)]">var(--size-global-*)</code>.
+          Upload the four Figma <code className="bg-secondary px-1 rounded-[var(--radius)]">font</code> collection
+          JSON exports — one per mode (device-mobile, device-tablet, web-mobile, web-desktop).
+          Each file's typeface / size / line-height / font-weight / letter-spacing tokens
+          become CSS variables. The Figma scope hint
+          (<code className="bg-secondary px-1 rounded-[var(--radius)]">FONT_SIZE</code>,{" "}
+          <code className="bg-secondary px-1 rounded-[var(--radius)]">FONT_STYLE</code>,
+          etc.) decides the unit on export.
         </p>
       </div>
 
@@ -196,11 +176,11 @@ export function SizeTokensEditor() {
         <div className="flex items-center gap-2 mb-2">
           <Package className="size-4 text-foreground" />
           <span style={{ fontSize: "var(--text-p)", fontWeight: "var(--font-weight-medium)" }}>
-            Bulk Upload (all 8 files)
+            Bulk Upload (all 4 files)
           </span>
         </div>
         <p className="text-muted-foreground mb-4" style={{ fontSize: "var(--text-label)" }}>
-          Select every file at once. File names are matched against the expected names shown on each slot below — global scale, six size modes, and the breakpoint collection. You'll confirm matches before anything is written.
+          Select every file at once. File names are matched against the expected names shown on each slot below. You'll confirm matches before anything is written.
         </p>
         <input
           ref={bulkInputRef}
@@ -215,13 +195,13 @@ export function SizeTokensEditor() {
         </Button>
       </div>
 
-      {/* Individual upload — size modes */}
+      {/* Individual upload */}
       <div className="mb-6">
         <h3 className="mb-3" style={{ fontSize: "var(--text-h4)", fontWeight: "var(--font-weight-medium)" }}>
-          Individual Upload — Size Modes
+          Individual Upload — Font Modes
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {SIZE_SLOTS.map((s) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {FONT_SLOTS.map((s) => {
             const count = slotCount(s.stateKey);
             return (
               <div key={s.key} className="p-4 border border-border rounded-[var(--radius-card)] bg-secondary/10">
@@ -256,43 +236,6 @@ export function SizeTokensEditor() {
         </div>
       </div>
 
-      {/* Individual upload — breakpoints (separate collection) */}
-      <div className="mb-8">
-        <h3 className="mb-1" style={{ fontSize: "var(--text-h4)", fontWeight: "var(--font-weight-medium)" }}>
-          Breakpoints
-        </h3>
-        <p className="text-muted-foreground mb-3" style={{ fontSize: "var(--text-label)" }}>
-          The breakpoint collection is mode-independent — its values are the viewport widths that trigger size-mode switches (Web Mobile → Tablet → Desktop → Desktop Large).
-        </p>
-        <div className="p-4 border border-border rounded-[var(--radius-card)] bg-secondary/10 max-w-md">
-          <div className="flex items-center justify-between mb-1">
-            <span style={{ fontSize: "var(--text-p)", fontWeight: "var(--font-weight-medium)" }}>
-              Breakpoint Collection
-            </span>
-            <span className="text-muted-foreground" style={{ fontSize: "var(--text-label)" }}>
-              {breakpointCount > 0 ? `${breakpointCount} tokens` : "empty"}
-            </span>
-          </div>
-          <p className="text-muted-foreground mb-3" style={{ fontSize: "var(--text-label)" }}>
-            Expects <code className="bg-secondary px-1 rounded-[var(--radius)]">{EXPECTED_FILES.breakpoint}</code>
-          </p>
-          <input
-            ref={(el) => { individualRefs.current.breakpoint = el; }}
-            type="file"
-            accept=".json"
-            className="hidden"
-            onChange={handleIndividualUpload("breakpoint")}
-          />
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => individualRefs.current.breakpoint?.click()}
-          >
-            <Upload className="size-4 mr-1.5" /> Upload
-          </Button>
-        </div>
-      </div>
-
       {/* Export + Publish */}
       <div className="flex flex-wrap items-center gap-3 p-4 mb-8 border border-border rounded-[var(--radius-card)] bg-secondary/10">
         <span className="text-foreground mr-2" style={{ fontSize: "var(--text-p)", fontWeight: "var(--font-weight-medium)" }}>
@@ -307,7 +250,7 @@ export function SizeTokensEditor() {
       </div>
 
       {/* Preview */}
-      <PreviewSection sizeTokens={sizeTokens} breakpointTokens={breakpointTokens} />
+      <PreviewSection fontTokens={fontTokens} />
 
       {/* Confirmation modal */}
       <BulkConfirmDialog
@@ -321,29 +264,12 @@ export function SizeTokensEditor() {
 
 // ─── Preview ───
 
-function PreviewSection({
-  sizeTokens,
-  breakpointTokens,
-}: {
-  sizeTokens: SizeTokenSet;
-  breakpointTokens: BreakpointTokenSet;
-}) {
-  // Build alias resolution map for display (alias target name → value)
-  const globalMap = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const t of sizeTokens.global) m.set(t.name, t.value);
-    return m;
-  }, [sizeTokens.global]);
-
+function PreviewSection({ fontTokens }: { fontTokens: FontTokenSet }) {
   const hasAny =
-    sizeTokens.global.length +
-      sizeTokens.deviceMobile.length +
-      sizeTokens.deviceTablet.length +
-      sizeTokens.webMobile.length +
-      sizeTokens.webTablet.length +
-      sizeTokens.webDesktop.length +
-      sizeTokens.webDesktopLarge.length +
-      breakpointTokens.tokens.length >
+    fontTokens.deviceMobile.length +
+      fontTokens.deviceTablet.length +
+      fontTokens.webMobile.length +
+      fontTokens.webDesktop.length >
     0;
 
   if (!hasAny) {
@@ -357,15 +283,11 @@ function PreviewSection({
     );
   }
 
-  const modeSets: Array<{ label: string; tokens: SizeToken[] }> = [
-    { label: "Global", tokens: sizeTokens.global },
-    { label: "Device Mobile", tokens: sizeTokens.deviceMobile },
-    { label: "Device Tablet", tokens: sizeTokens.deviceTablet },
-    { label: "Web Mobile", tokens: sizeTokens.webMobile },
-    { label: "Web Tablet", tokens: sizeTokens.webTablet },
-    { label: "Web Desktop", tokens: sizeTokens.webDesktop },
-    { label: "Web Desktop Large", tokens: sizeTokens.webDesktopLarge },
-    { label: "Breakpoints", tokens: breakpointTokens.tokens },
+  const modeSets: Array<{ label: string; tokens: FontToken[] }> = [
+    { label: "Device Mobile", tokens: fontTokens.deviceMobile },
+    { label: "Device Tablet", tokens: fontTokens.deviceTablet },
+    { label: "Web Mobile", tokens: fontTokens.webMobile },
+    { label: "Web Desktop", tokens: fontTokens.webDesktop },
   ];
 
   return (
@@ -374,24 +296,14 @@ function PreviewSection({
         Preview
       </h3>
       {modeSets.map((m) =>
-        m.tokens.length > 0 ? (
-          <ModePreview key={m.label} label={m.label} tokens={m.tokens} globalMap={globalMap} />
-        ) : null
+        m.tokens.length > 0 ? <ModePreview key={m.label} label={m.label} tokens={m.tokens} /> : null
       )}
     </div>
   );
 }
 
-function ModePreview({
-  label,
-  tokens,
-  globalMap,
-}: {
-  label: string;
-  tokens: SizeToken[];
-  globalMap: Map<string, number>;
-}) {
-  const groups = groupSizeTokensStable(tokens);
+function ModePreview({ label, tokens }: { label: string; tokens: FontToken[] }) {
+  const groups = groupFontTokensStable(tokens);
   return (
     <div>
       <h4 className="mb-3" style={{ fontSize: "var(--text-p)", fontWeight: "var(--font-weight-medium)" }}>
@@ -409,7 +321,7 @@ function ModePreview({
               </span>
             </div>
             {g.tokens.map((t) => (
-              <TokenRow key={t.name} token={t} globalMap={globalMap} />
+              <TokenRow key={t.name} token={t} />
             ))}
           </div>
         ))}
@@ -418,34 +330,24 @@ function ModePreview({
   );
 }
 
-function TokenRow({ token, globalMap }: { token: SizeToken; globalMap: Map<string, number> }) {
-  const aliasValue = token.aliasOf ? globalMap.get(token.aliasOf) : undefined;
-  const displayValue = token.value;
-  // Scale bar to 200px max. Cap "full" radius values for readability.
-  const cappedValue = Math.min(token.value, 200);
-  const barPct = Math.min(100, (cappedValue / 48) * 100);
-
+function TokenRow({ token }: { token: FontToken }) {
   return (
     <div className="flex items-center gap-3 px-4 py-2 border-b border-border/50 last:border-b-0 hover:bg-secondary/20 transition-colors">
       <span className="text-foreground flex-1 min-w-0 truncate" style={{ fontSize: "var(--text-label)" }}>
         {token.name}
       </span>
-      <div className="w-[160px] h-2 bg-secondary rounded-full overflow-hidden shrink-0">
-        <div className="h-full bg-primary" style={{ width: `${barPct}%` }} />
-      </div>
       <code
         className="text-card-foreground bg-secondary px-2 py-0.5 rounded-[var(--radius)] shrink-0 text-right min-w-[56px]"
         style={{ fontSize: "var(--text-label)" }}
       >
-        {displayValue}px
+        {token.aliasOf ? `→ ${token.aliasOf}` : formatFontValueForCss(token)}
       </code>
-      {token.aliasOf && (
+      {token.scope && (
         <code
           className="text-muted-foreground bg-secondary/50 px-2 py-0.5 rounded-[var(--radius)] shrink-0"
           style={{ fontSize: "var(--text-label)" }}
-          title={aliasValue !== undefined ? `${token.aliasOf} = ${aliasValue}px` : token.aliasOf}
         >
-          → {token.aliasOf}
+          {token.scope}
         </code>
       )}
     </div>
@@ -455,14 +357,10 @@ function TokenRow({ token, globalMap }: { token: SizeToken; globalMap: Map<strin
 // ─── Bulk confirm dialog ───
 
 const SLOT_LABELS: Record<MatchSlot, string> = {
-  global: "Global Scale",
   deviceMobile: "Device Mobile",
   deviceTablet: "Device Tablet",
   webMobile: "Web Mobile",
-  webTablet: "Web Tablet",
   webDesktop: "Web Desktop",
-  webDesktopLarge: "Web Desktop Large",
-  breakpoint: "Breakpoints",
 };
 
 function BulkConfirmDialog({

@@ -238,3 +238,52 @@ export async function uploadPatternBundle(
     return { ok: false, error: `network: ${(err as Error)?.message ?? "unknown"}` };
   }
 }
+
+export type PublishDesignTokensResult =
+  | {
+      ok: true;
+      /** Map of artifact key → public URL. Always includes `bootstrap` and
+       *  `breakpoints`; the three `tokens-*` keys appear only when the
+       *  corresponding MD slot has been populated in the CMS. */
+      urls: Record<string, string>;
+      /** Byte count per artifact key, same shape as `urls`. */
+      bytes: Record<string, number>;
+      publishedAt: string;
+    }
+  | { ok: false; error: string };
+
+/**
+ * Trigger the server-side publish of design-token artifacts (bootstrap.css +
+ * breakpoints.js) from the current KV state to Supabase Storage. The
+ * regeneration happens server-side so a stale browser can't ship outdated
+ * token values — the edge function reads KV and rebuilds the files via the
+ * same shared module the prebuild script uses.
+ */
+export async function publishDesignTokens(): Promise<PublishDesignTokensResult> {
+  try {
+    const res = await fetchWithTimeout(
+      `${BASE}/design-tokens/publish`,
+      {
+        method: "POST",
+        headers: headers(),
+      },
+      30000,
+    );
+    if (!res.ok) {
+      const body = await res.json().catch(() => null) as { error?: string } | null;
+      return { ok: false, error: body?.error || `HTTP ${res.status}` };
+    }
+    const json = await res.json().catch(() => null);
+    if (!json || !json.ok || !json.urls) {
+      return { ok: false, error: "Malformed server response" };
+    }
+    return {
+      ok: true,
+      urls: json.urls,
+      bytes: json.bytes ?? {},
+      publishedAt: json.publishedAt ?? new Date().toISOString(),
+    };
+  } catch (err) {
+    return { ok: false, error: `network: ${(err as Error)?.message ?? "unknown"}` };
+  }
+}

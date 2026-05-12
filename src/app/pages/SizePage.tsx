@@ -2,9 +2,13 @@ import React from "react";
 import { Link } from "react-router";
 import { MarkdownRenderer } from "../components/shared/MarkdownRenderer";
 import { ArrowRight, Layers } from "lucide-react";
-import sizeMd from "../../../tokens/tokens-size-space.md?raw";
+import { useAppData } from "../store/data-store";
 
 export function SizePage() {
+  const { tokenDocs } = useAppData();
+  // Same pattern as ColorPage — seeded from the bundled `?raw` import, then
+  // overridden by the CMS-edited copy once /state lands.
+  const sizeMd = tokenDocs.size;
   return (
     <div className="max-w-[800px] mx-auto px-8 py-10">
       {/* Entry point */}

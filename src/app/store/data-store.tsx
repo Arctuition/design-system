@@ -81,6 +81,47 @@ export interface BreakpointTokenSet {
   tokens: SizeToken[];  // xs / sm / md / lg / xl
 }
 
+/**
+ * Font tokens. Unlike size tokens, the underlying Figma values mix strings
+ * (typeface — "Inter") and numbers (font-size px, font-weight unitless,
+ * letter-spacing px). The `scope` is the Figma com.figma.scopes hint
+ * (FONT_SIZE / LINE_HEIGHT / FONT_STYLE / FONT_FAMILY / ALL_SCOPES) which
+ * drives the unit when emitting CSS.
+ */
+export interface FontToken {
+  name: string;
+  value: string | number;
+  scope?: string;
+  aliasOf?: string;
+}
+
+export type FontTokenMode =
+  | "deviceMobile"
+  | "deviceTablet"
+  | "webMobile"
+  | "webDesktop";
+
+export interface FontTokenSet {
+  deviceMobile: FontToken[];
+  deviceTablet: FontToken[];
+  webMobile: FontToken[];
+  webDesktop: FontToken[];
+}
+
+/**
+ * Markdown reference docs for the public /color, /size, /typography pages.
+ * The repo's `tokens/tokens-*.md` files are the build-time seed; once the CMS
+ * Markdown editor writes into KV, the runtime fetch overrides the seed for
+ * visitors. Server-side publish also mirrors these to Supabase Storage so
+ * AI agents can fetch the canonical version without going through the React
+ * SPA.
+ */
+export interface TokenDocs {
+  color: string;
+  size: string;
+  typography: string;
+}
+
 export interface IconItem {
   id: string;
   name: string;
@@ -139,6 +180,8 @@ export interface AppState {
   colorTokens: ColorTokenGroup;
   sizeTokens: SizeTokenSet;
   breakpointTokens: BreakpointTokenSet;
+  fontTokens: FontTokenSet;
+  tokenDocs: TokenDocs;
   icons: IconItem[];
   patterns: PatternArticle[];
   editors: EditorAccount[];
@@ -157,6 +200,8 @@ interface AppContextType extends AppState {
   setColorTokens: (tokens: ColorTokenGroup) => void;
   setSizeTokens: (tokens: SizeTokenSet) => void;
   setBreakpointTokens: (tokens: BreakpointTokenSet) => void;
+  setFontTokens: (tokens: FontTokenSet) => void;
+  setTokenDoc: (key: keyof TokenDocs, markdown: string) => void;
   setIconologyArticle: (html: string) => void;
   addIcon: (icon: Omit<IconItem, "id">) => void;
   updateIcon: (id: string, icon: Partial<IconItem>) => void;
@@ -289,7 +334,55 @@ const defaultBreakpointTokens: BreakpointTokenSet = {
   tokens: [],
 };
 
+const defaultFontTokens: FontTokenSet = {
+  deviceMobile: [],
+  deviceTablet: [],
+  webMobile: [],
+  webDesktop: [],
+};
+
+// Seed the token reference docs from the repo files at build time. Once a
+// CMS editor saves into `tokenDocs.<slot>`, the live KV value overrides the
+// seed for both the public pages and AI-agent consumers.
+import seedColorMd from "../../../tokens/tokens-color.md?raw";
+import seedSizeMd from "../../../tokens/tokens-size-space.md?raw";
+import seedTypographyMd from "../../../tokens/tokens-typography.md?raw";
+
+const defaultTokenDocs: TokenDocs = {
+  color: seedColorMd,
+  size: seedSizeMd,
+  typography: seedTypographyMd,
+};
+
 const defaultChangeLogs: ChangeLogEntry[] = [
+  {
+    id: uid(),
+    date: "2026-05-12",
+    version: "1.7.0",
+    title: "CMS-driven publish — token uploads go live without a git commit",
+    description: `Designers can now ship token changes end-to-end through the CMS. Upload Figma JSON, hit **Publish**, and prototypes that reference \`bootstrap.css\` pick up the new values within ~1 minute — no PR, no merge, no deploy.
+
+**Font tokens — full CMS uploader (was build-time only)**
+- New \`/cms/font-editor\` accepts the four \`font\` mode files (\`device-mobile\`, \`device-tablet\`, \`web-mobile\`, \`web-desktop\`) with bulk + individual upload, scope-aware CSS output (FONT_SIZE → \`px\`, FONT_STYLE → unitless, ALL_SCOPES → 2-decimal \`px\`, FONT_FAMILY → raw string), and a grouped preview by Typeface / Font Size / Line Height / Font Weight / Letter Spacing. Adds the matching \`fontTokens\` KV slot.
+
+**Server-side publish**
+- New \`POST /design-tokens/publish\` reads every token slot from Supabase KV, regenerates \`bootstrap.css\` + \`breakpoints.js\` (+ the three \`tokens-*.md\` reference docs when present) via the same template the prebuild script uses, and uploads them to a new \`design-tokens\` Storage bucket with \`cache-control: max-age=60\`. Authoritative regen runs server-side — a stale browser tab can't ship outdated values.
+- "Publish to Production" button + dialog wired into Color, Size, and Font token editors. Success state shows clickable URLs and byte counts; failure surfaces the server error inline with a Retry.
+
+**Shared token-generation module**
+- The flatten / diff / build logic moved out of \`scripts/generate-llms-txt.mjs\` into \`supabase/functions/_shared/token-generators.mjs\` so the Node prebuild, browser CMS, and Deno edge function all run the *exact same code*. \`bootstrap.css\` regenerated on Publish is byte-identical to the one \`npm run build\` produces (verified MD5).
+
+**GitHub Pages \`bootstrap.css\` shim**
+- Production builds now emit a 1-line \`@import url("https://…/design-tokens/bootstrap.css")\` shim at \`https://arctuition.github.io/design-system/tokens/bootstrap.css\` — existing prototypes that hardcode that URL keep working unchanged and auto-pick-up CMS publishes. Local dev builds still emit the full inline content for offline use.
+
+**Token reference docs (color/size/typography) move to CMS**
+- New \`tokenDocs\` KV slot stores the Markdown source for \`/color\`, \`/size\`, and \`/typography\`. Three Markdown editors in CMS (\`/cms/color-editor/doc\`, \`/cms/size-editor/doc\`, \`/cms/typography-editor\`) — split-pane textarea + live preview, Discard / Save, no version history yet.
+- Public pages \`ColorPage\` / \`SizePage\` / \`TypographyPage\` read the live KV value (seed from the bundled repo MD covers first paint).
+- Publish mirrors the MDs to Supabase Storage too, so AI agents fetch the canonical version without going through the React SPA.
+
+**\`llms.txt\` slim-down**
+- Dropped ~700 lines of inline token blocks; replaced with a single "Token values — fetch live from Supabase" pointer section. File size **52,763 → 13,102 chars** (75% smaller, 39.6 KB). AI agents that only need names + principles read the index and stop; agents that need numeric values follow the URL.`,
+  },
   {
     id: uid(),
     date: "2026-05-12",
@@ -617,6 +710,8 @@ function getDefaults(): AppState {
     colorTokens: defaultColorTokens,
     sizeTokens: defaultSizeTokens,
     breakpointTokens: defaultBreakpointTokens,
+    fontTokens: defaultFontTokens,
+    tokenDocs: defaultTokenDocs,
     iconologyArticle: defaultIconologyArticle,
     icons: defaultIcons,
     patterns: defaultPatterns,
@@ -675,6 +770,34 @@ function buildStateFromServer(serverData: Record<string, any>): AppState {
       tokens: Array.isArray(serverData.breakpointTokens?.tokens)
         ? serverData.breakpointTokens.tokens
         : defaults.breakpointTokens.tokens,
+    },
+    fontTokens: {
+      deviceMobile: Array.isArray(serverData.fontTokens?.deviceMobile)
+        ? serverData.fontTokens.deviceMobile
+        : defaults.fontTokens.deviceMobile,
+      deviceTablet: Array.isArray(serverData.fontTokens?.deviceTablet)
+        ? serverData.fontTokens.deviceTablet
+        : defaults.fontTokens.deviceTablet,
+      webMobile: Array.isArray(serverData.fontTokens?.webMobile)
+        ? serverData.fontTokens.webMobile
+        : defaults.fontTokens.webMobile,
+      webDesktop: Array.isArray(serverData.fontTokens?.webDesktop)
+        ? serverData.fontTokens.webDesktop
+        : defaults.fontTokens.webDesktop,
+    },
+    tokenDocs: {
+      color:
+        typeof serverData.tokenDocs?.color === "string" && serverData.tokenDocs.color.length > 0
+          ? serverData.tokenDocs.color
+          : defaults.tokenDocs.color,
+      size:
+        typeof serverData.tokenDocs?.size === "string" && serverData.tokenDocs.size.length > 0
+          ? serverData.tokenDocs.size
+          : defaults.tokenDocs.size,
+      typography:
+        typeof serverData.tokenDocs?.typography === "string" && serverData.tokenDocs.typography.length > 0
+          ? serverData.tokenDocs.typography
+          : defaults.tokenDocs.typography,
     },
     iconologyArticle: serverData.iconologyArticle ?? defaults.iconologyArticle,
     icons: ensureChromeIcons(
@@ -775,6 +898,8 @@ function seedDefaults(): void {
     colorTokens: defaults.colorTokens,
     sizeTokens: defaults.sizeTokens,
     breakpointTokens: defaults.breakpointTokens,
+    fontTokens: defaults.fontTokens,
+    tokenDocs: defaults.tokenDocs,
     iconologyArticle: defaults.iconologyArticle,
     icons: defaults.icons,
     patterns: defaults.patterns,
@@ -1020,6 +1145,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         colorTokens: state.colorTokens,
         sizeTokens: state.sizeTokens,
         breakpointTokens: state.breakpointTokens,
+        fontTokens: state.fontTokens,
+        tokenDocs: state.tokenDocs,
         iconologyArticle: state.iconologyArticle,
         icons: state.icons,
         patterns: state.patterns,
@@ -1100,6 +1227,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           colorTokens: payload.colorTokens,
           sizeTokens: payload.sizeTokens,
           breakpointTokens: payload.breakpointTokens,
+          fontTokens: payload.fontTokens,
+          tokenDocs: payload.tokenDocs,
           iconologyArticle: "",
           icons: [],
           patterns: [],
@@ -1136,6 +1265,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           colorTokens: currentState.colorTokens,
           sizeTokens: currentState.sizeTokens,
           breakpointTokens: currentState.breakpointTokens,
+          fontTokens: currentState.fontTokens,
+          tokenDocs: currentState.tokenDocs,
           iconologyArticle: currentState.iconologyArticle,
           icons: currentState.icons,
           patterns: currentState.patterns,
@@ -1274,6 +1405,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         breakpointTokens: { tokens: tokens.tokens || [] },
       }));
       pendingSyncRef.current.add("breakpointTokens");
+      syncToServer();
+    },
+    setFontTokens: (tokens) => {
+      setState((prev) => ({
+        ...prev,
+        fontTokens: {
+          deviceMobile: tokens.deviceMobile || [],
+          deviceTablet: tokens.deviceTablet || [],
+          webMobile: tokens.webMobile || [],
+          webDesktop: tokens.webDesktop || [],
+        },
+      }));
+      pendingSyncRef.current.add("fontTokens");
+      syncToServer();
+    },
+    setTokenDoc: (key, markdown) => {
+      setState((prev) => ({
+        ...prev,
+        tokenDocs: { ...prev.tokenDocs, [key]: markdown },
+      }));
+      pendingSyncRef.current.add("tokenDocs");
       syncToServer();
     },
     setIconologyArticle: (html) => update({ iconologyArticle: html }, "iconologyArticle"),
@@ -1523,6 +1675,8 @@ export function useAppData() {
       colorTokens: { global: [], semanticLight: [], semanticDark: [] },
       sizeTokens: { global: [], deviceMobile: [], deviceTablet: [], webMobile: [], webTablet: [], webDesktop: [], webDesktopLarge: [] },
       breakpointTokens: { tokens: [] },
+      fontTokens: { deviceMobile: [], deviceTablet: [], webMobile: [], webDesktop: [] },
+      tokenDocs: { color: "", size: "", typography: "" },
       iconologyArticle: "",
       icons: [],
       patternsArticle: "",
@@ -1536,6 +1690,8 @@ export function useAppData() {
       setColorTokens: () => {},
       setSizeTokens: () => {},
       setBreakpointTokens: () => {},
+      setFontTokens: () => {},
+      setTokenDoc: () => {},
       setIconologyArticle: () => {},
       addIcon: () => {},
       updateIcon: () => {},

@@ -11,6 +11,18 @@ import { copyFileSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  flattenColor,
+  flattenSize,
+  flattenFont,
+  extractBreakpointPx,
+  diffFromBase,
+  formatTokenLines,
+  buildBootstrapCss,
+  buildBootstrapShim,
+  buildBreakpointsJs,
+} from "../supabase/functions/_shared/token-generators.mjs";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 
@@ -18,89 +30,13 @@ function readJson(rel) {
   return JSON.parse(readFileSync(resolve(ROOT, rel), "utf-8"));
 }
 
-// ── Token flatteners (mirror the React utilities) ─────────────────────────
-
-function toVarRef(alias) {
-  if (alias.startsWith("{") && alias.endsWith("}")) {
-    return `var(--${alias.slice(1, -1).replace(/\./g, "-")})`;
-  }
-  return `var(--${alias.replace(/\//g, "-")})`;
-}
-
-// The Figma export ships the RGB hex separately from the alpha. Stitch them
-// into an 8-digit `#RRGGBBAA` so transparency tokens survive the trip into
-// CSS — without this, every transparency-on-* token collapsed to its solid
-// base color in the generated bootstrap.css.
-function colorHex(raw) {
-  const base = (raw.hex || "").toUpperCase();
-  const alpha = typeof raw.alpha === "number" ? raw.alpha : 1;
-  if (alpha >= 1 || !/^#[0-9A-F]{6}$/.test(base)) return base;
-  const aa = Math.round(alpha * 255).toString(16).padStart(2, "0").toUpperCase();
-  return `${base}${aa}`;
-}
-
-function flattenColor(obj, prefix = "") {
-  const out = [];
-  for (const [k, v] of Object.entries(obj)) {
-    if (k.startsWith("$")) continue;
-    const path = prefix ? `${prefix}-${k}` : k;
-    if (v && typeof v === "object" && "$value" in v) {
-      const raw = v.$value;
-      const hex = raw && typeof raw === "object" && "hex" in raw ? colorHex(raw) : String(raw);
-      const aliasName = v.$extensions?.["com.figma.aliasData"]?.targetVariableName;
-      const display = aliasName ? `var(--${aliasName.replace(/\//g, "-")})` : hex;
-      out.push({ cssVar: `--${path}`, displayValue: display });
-    } else if (v && typeof v === "object") {
-      out.push(...flattenColor(v, path));
-    }
-  }
-  return out;
-}
-
-function flattenSize(obj, prefix = "") {
-  const out = [];
-  for (const [k, v] of Object.entries(obj)) {
-    if (k.startsWith("$")) continue;
-    const path = prefix ? `${prefix}-${k}` : k;
-    if (v && typeof v === "object" && "$value" in v) {
-      const raw = v.$value;
-      const aliasName = v.$extensions?.["com.figma.aliasData"]?.targetVariableName;
-      let display;
-      if (typeof raw === "string") display = toVarRef(raw);
-      else if (aliasName) display = toVarRef(aliasName);
-      else {
-        const n = typeof raw === "number" ? raw : parseFloat(String(raw));
-        display = `${n}px`;
-      }
-      out.push({ cssVar: `--${path}`, displayValue: display });
-    } else if (v && typeof v === "object") {
-      out.push(...flattenSize(v, path));
-    }
-  }
-  return out;
-}
-
-function flattenFont(obj, prefix = "") {
-  // Font tokens are simpler — values are already strings/numbers and we don't
-  // try to rewrite aliases (font tokens rarely alias each other).
-  const out = [];
-  for (const [k, v] of Object.entries(obj)) {
-    if (k.startsWith("$")) continue;
-    const path = prefix ? `${prefix}-${k}` : k;
-    if (v && typeof v === "object" && "$value" in v) {
-      const raw = v.$value;
-      let value;
-      if (typeof raw === "number") value = `${raw}px`;
-      else value = String(raw);
-      out.push({ cssVar: `--${path}`, value });
-    } else if (v && typeof v === "object") {
-      out.push(...flattenFont(v, path));
-    }
-  }
-  return out;
-}
-
 // ── Build llms.txt ─────────────────────────────────────────────────────────
+
+// Supabase project + emission mode. The same constants drive both the
+// `## Token values` pointers in llms.txt below AND the bootstrap.css
+// shim emission further down. The project id mirrors utils/supabase/info.tsx.
+const SUPABASE_PROJECT_ID = "qcqtnrrprgqlckzywnkt";
+const PRODUCTION_BUILD = process.env.npm_lifecycle_event === "prebuild";
 
 const lightTokens  = flattenColor(readJson("tokens/color/light.tokens.json"));
 const darkTokens   = flattenColor(readJson("tokens/color/dark.tokens.json"));
@@ -121,32 +57,16 @@ const breakpoints = flattenSize(readJson("tokens/breakpoint/breakpoint.tokens.js
 
 // Extract raw breakpoint pixel values for media-query templates. CSS custom
 // properties don't work inside @media queries, so we hard-emit the numbers.
-const breakpointPx = (() => {
-  const tree = readJson("tokens/breakpoint/breakpoint.tokens.json").breakpoint ?? {};
-  const out = { xs: 0, sm: 0, md: 0, lg: 0, xl: 0 };
-  for (const [k, v] of Object.entries(tree)) {
-    if (v && typeof v === "object" && "$value" in v) {
-      const n = typeof v.$value === "number" ? v.$value : parseFloat(String(v.$value));
-      if (Number.isFinite(n)) out[k] = n;
-    }
-  }
-  return out;
-})();
+const breakpointPx = extractBreakpointPx(readJson("tokens/breakpoint/breakpoint.tokens.json"));
 
 // Only the tokens that differ from Web Mobile need to be emitted in each
 // @media block — saves bytes and keeps the cascade legible. A token whose
 // displayValue is identical across modes only appears in the :root base.
-function diffFromBase(baseTokens, modeTokens) {
-  const baseMap = new Map(baseTokens.map(t => [t.cssVar, t.displayValue]));
-  return modeTokens.filter(t => baseMap.get(t.cssVar) !== t.displayValue);
-}
-
 const sizeTabletDiff       = diffFromBase(sizeWebMobile, sizeWebTablet);
 const sizeDesktopDiff      = diffFromBase(sizeWebMobile, sizeWebDesktop);
 const sizeDesktopLargeDiff = diffFromBase(sizeWebMobile, sizeWebDesktopLarge);
 
-const fmt = (toks, key = "displayValue") =>
-  toks.map((t) => `  ${t.cssVar}: ${t[key]};`).join("\n");
+const fmt = formatTokenLines;
 
 const content = `# Arcsite Design System
 Single source of truth for Arcsite product UI.
@@ -244,84 +164,28 @@ them directly inside the design system itself, never in product UI.
 
 ---
 
-## Color — light mode (semantic)
-:root {
-${fmt(lightTokens)}
-}
+## Token values — fetch live from Supabase
 
----
+All CSS-variable definitions live in the published stylesheet, regenerated
+by the CMS on every token upload. Don't paste numeric values inline; reference
+tokens by name and import the stylesheet. The GitHub Pages \`bootstrap.css\`
+URL above is a shim that \`@import\`s the live copy from this Supabase URL.
 
-## Color — dark mode (semantic)
-:root.dark, [data-theme='dark'] {
-${fmt(darkTokens)}
-}
+- **Tokens CSS (color + size + font + breakpoint vars, mobile-first cascade):**
+  https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/design-tokens/bootstrap.css
 
----
+- **Breakpoints as JS object (for matchMedia / Tailwind config / container queries):**
+  https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/design-tokens/breakpoints.js
 
-## Color — global palette (raw primitives)
-:root {
-${fmt(globalColor)}
-}
+The size cascade is mobile-first: defaults are Web Mobile, with
+\`@media (min-width: ${breakpointPx.sm}px / ${breakpointPx.lg}px / ${breakpointPx.xl}px)\`
+overrides for Web Tablet / Web Desktop / Web Desktop Large. Each override
+block lists only tokens that differ from Web Mobile — parse \`bootstrap.css\`
+directly for the full set.
 
----
-
-## Typography — web desktop
-:root {
-${fmt(fontDesktop, "value")}
-}
-
----
-
-## Size & space — semantic, mobile-first
-
-Web Mobile is the \`:root\` baseline. Each \`@media (min-width: …)\` block
-overrides only the tokens that change at that breakpoint. Tokens not listed
-in an override block keep their Web Mobile value.
-
-:root {
-${fmt(sizeWebMobile)}
-}
-
-@media (min-width: ${breakpointPx.sm}px) {
-  /* Web Tablet */
-  :root {
-${fmt(sizeTabletDiff).replace(/^/gm, "  ")}
-  }
-}
-
-@media (min-width: ${breakpointPx.lg}px) {
-  /* Web Desktop */
-  :root {
-${fmt(sizeDesktopDiff).replace(/^/gm, "  ")}
-  }
-}
-
-@media (min-width: ${breakpointPx.xl}px) {
-  /* Web Desktop Large */
-  :root {
-${fmt(sizeDesktopLargeDiff).replace(/^/gm, "  ")}
-  }
-}
-
----
-
-## Size & space — global scale (raw primitives)
-:root {
-${fmt(sizeGlobal)}
-}
-
----
-
-## Breakpoints
-
-Decoupled from size modes. CSS custom properties **do not work inside
-\`@media\` queries** — these vars are exposed for JS (\`matchMedia\`,
-\`window.innerWidth\`), Tailwind config, or container queries. Media
-queries themselves use the raw pixel values from the same source.
-
-:root {
-${fmt(breakpoints)}
-}
+CSS custom properties **do not work inside \`@media\` queries** — the
+\`breakpoints.js\` module above exists for JS (\`matchMedia\`,
+\`window.innerWidth\`), Tailwind config, or container queries.
 
 ---
 
@@ -432,109 +296,49 @@ for (const name of TOKEN_DOCS) {
 }
 console.log(`[llms.txt] mirrored ${TOKEN_DOCS.length} token docs to public/tokens/`);
 
-// Generate bootstrap.css — the paste-ready stylesheet that loads Inter and
-// defines every token referenced in llms.txt. Standalone UI (prototypes,
-// demos, marketing pages) imports this once and gets all tokens + dark-mode
-// for free. Same source data as llms.txt — there is no risk of drift.
-const bootstrapCss = `/*
- * Arcsite Design System — token bootstrap
- * Generated from /tokens/*.json by scripts/generate-llms-txt.mjs.
- * Do not edit by hand — changes will be overwritten on next build.
- *
- * Usage: import once at the root of any new prototype or standalone UI.
- *   <link rel="stylesheet"
- *         href="https://arctuition.github.io/design-system/tokens/bootstrap.css">
- *
- * Then reference tokens via CSS custom properties:
- *   color: var(--color-label-primary);
- *   padding: var(--size-spacing-md);
- *   font: var(--text-body-medium);
- *
- * Dark mode: add class="dark" or data-theme="dark" to <html> (or any subtree).
- */
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap');
-
-/* ── Color: global primitives ────────────────────────────────────────────── */
-:root {
-${fmt(globalColor)}
-}
-
-/* ── Color: semantic, light mode ─────────────────────────────────────────── */
-:root {
-${fmt(lightTokens)}
-}
-
-/* ── Color: semantic, dark mode ──────────────────────────────────────────── */
-:root.dark, [data-theme='dark'] {
-${fmt(darkTokens)}
-}
-
-/* ── Size & space: global primitives ─────────────────────────────────────── */
-:root {
-${fmt(sizeGlobal)}
-}
-
-/* ── Breakpoints ─────────────────────────────────────────────────────────── */
-/* Exposed for JS / Tailwind / container queries. Media queries below use
- * the raw pixel numbers since CSS vars don't work inside @media (). */
-:root {
-${fmt(breakpoints)}
-}
-
-/* ── Size & space: semantic, mobile-first ────────────────────────────────── */
-/* Default = Web Mobile. Each breakpoint overrides only the tokens that
- * differ at that screen size. Device modes (mobile/tablet) live in
- * tokens/size/device-*.json and are consumed by iOS / Android — they
- * are deliberately not in this stylesheet. */
-:root {
-${fmt(sizeWebMobile)}
-}
-
-@media (min-width: ${breakpointPx.sm}px) {
-  /* Web Tablet */
-  :root {
-${fmt(sizeTabletDiff).replace(/^/gm, "  ")}
-  }
-}
-
-@media (min-width: ${breakpointPx.lg}px) {
-  /* Web Desktop */
-  :root {
-${fmt(sizeDesktopDiff).replace(/^/gm, "  ")}
-  }
-}
-
-@media (min-width: ${breakpointPx.xl}px) {
-  /* Web Desktop Large */
-  :root {
-${fmt(sizeDesktopLargeDiff).replace(/^/gm, "  ")}
-  }
-}
-
-/* ── Typography (web desktop) ────────────────────────────────────────────── */
-:root {
-${fmt(fontDesktop, "value")}
-}
-`;
+// Generate bootstrap.css. Two emission modes:
+//
+//   - Production build (`npm run build`, lifecycle = "prebuild") emits a
+//     1-line `@import` shim forwarding to the live Supabase Storage copy
+//     the CMS regenerates on every Publish. Designers hit Publish and
+//     prototypes referencing the historical GitHub Pages URL pick up the
+//     new values within ~1 minute, with no commit or rebuild.
+//
+//   - Local dev (`npm run dev`, lifecycle = "predev") and one-off runs
+//     (`npm run generate:llms`) emit the full inlined token block. Lets
+//     local development keep working without a live network round-trip to
+//     Supabase, and ensures the file is meaningful when a contributor
+//     opens it directly out of `public/tokens/`.
+//
+// The shim is the production target because that's the only emission that
+// reaches consumers via the canonical GitHub Pages URL. Dev builds never
+// ship to that URL, so the inlined copy is purely a local-quality-of-life
+// artifact — it's never the source of truth for prototypes.
+const bootstrapCss = PRODUCTION_BUILD
+  ? buildBootstrapShim(SUPABASE_PROJECT_ID)
+  : buildBootstrapCss({
+      globalColor,
+      lightTokens,
+      darkTokens,
+      sizeGlobal,
+      breakpoints,
+      sizeWebMobile,
+      sizeTabletDiff,
+      sizeDesktopDiff,
+      sizeDesktopLargeDiff,
+      fontDesktop,
+      breakpointPx,
+    });
 const bootstrapPath = resolve(publicTokensDir, "bootstrap.css");
 writeFileSync(bootstrapPath, bootstrapCss, "utf-8");
-console.log(`[bootstrap.css] wrote ${bootstrapPath} — ${bootstrapCss.length} chars`);
+console.log(
+  `[bootstrap.css] wrote ${bootstrapPath} — ${bootstrapCss.length} chars (${PRODUCTION_BUILD ? "shim" : "inline"})`
+);
 
 // Also emit a JS module so consumers can use the raw breakpoint pixels in
 // matchMedia / Tailwind / container queries (CSS vars don't work inside
 // @media). Single source of truth — generated from the same JSON.
-const breakpointsJs = `/*
- * Arcsite Design System — breakpoint pixel values
- * Generated from /tokens/breakpoint/breakpoint.tokens.json by
- * scripts/generate-llms-txt.mjs. Do not edit by hand.
- *
- * Use these for JS conditions, matchMedia, Tailwind \`screens\`, or any
- * place CSS custom properties cannot reach (notably @media queries).
- */
-
-export const breakpoints = ${JSON.stringify(breakpointPx, null, 2)};
-`;
+const breakpointsJs = buildBreakpointsJs(breakpointPx);
 const breakpointsJsPath = resolve(publicTokensDir, "breakpoints.js");
 writeFileSync(breakpointsJsPath, breakpointsJs, "utf-8");
 console.log(`[breakpoints.js] wrote ${breakpointsJsPath}`);

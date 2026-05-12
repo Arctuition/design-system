@@ -2,9 +2,15 @@ import React from "react";
 import { Link } from "react-router";
 import { MarkdownRenderer } from "../components/shared/MarkdownRenderer";
 import { ArrowRight, Palette, Layers } from "lucide-react";
-import colorMd from "../../../tokens/tokens-color.md?raw";
+import { useAppData } from "../store/data-store";
 
 export function ColorPage() {
+  const { tokenDocs } = useAppData();
+  // `tokenDocs.color` is seeded at boot from the build-time `?raw` import of
+  // tokens/tokens-color.md, then overridden once the server load merges in
+  // whatever the CMS editor most recently saved. So this is "live by default,
+  // bundled fallback on first paint" without any explicit fetch in this file.
+  const colorMd = tokenDocs.color;
   return (
     <div className="max-w-[800px] mx-auto px-8 py-10">
       {/* Entry points */}
