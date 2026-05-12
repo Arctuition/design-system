@@ -10,11 +10,11 @@ interface ArticleEditorPageProps {
   title: string;
   backTo: string;
   backLabel?: string;
-  /** Identifier used for version history. Caller-defined (e.g. "size", "color"). */
+  /** Identifier used for version history. Caller-defined (e.g. "home", "iconology"). */
   articleKey: string;
   /**
    * The data-store key the server actually persists this article under
-   * (e.g. "sizeArticle", "colorArticle"). Required so we can show real
+   * (e.g. "homeArticle", "iconologyArticle"). Required so we can show real
    * "Saving…" state and confirm the server actually accepted the write
    * before telling the user "Saved".
    */

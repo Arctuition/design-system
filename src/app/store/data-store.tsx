@@ -136,15 +136,12 @@ export interface ArticleVersion {
 export interface AppState {
   homeArticle: string;
   changeLogs: ChangeLogEntry[];
-  typographyArticle: string;
   colorTokens: ColorTokenGroup;
   sizeTokens: SizeTokenSet;
   breakpointTokens: BreakpointTokenSet;
   icons: IconItem[];
   patterns: PatternArticle[];
   editors: EditorAccount[];
-  colorArticle: string;
-  sizeArticle: string;
   iconologyArticle: string;
   isAuthenticated: boolean;
   currentUser: EditorAccount | null;
@@ -157,12 +154,9 @@ interface AppContextType extends AppState {
   addChangeLog: (entry: Omit<ChangeLogEntry, "id">) => void;
   updateChangeLog: (id: string, entry: Partial<ChangeLogEntry>) => void;
   removeChangeLog: (id: string) => void;
-  setTypographyArticle: (html: string) => void;
   setColorTokens: (tokens: ColorTokenGroup) => void;
   setSizeTokens: (tokens: SizeTokenSet) => void;
   setBreakpointTokens: (tokens: BreakpointTokenSet) => void;
-  setColorArticle: (html: string) => void;
-  setSizeArticle: (html: string) => void;
   setIconologyArticle: (html: string) => void;
   addIcon: (icon: Omit<IconItem, "id">) => void;
   updateIcon: (id: string, icon: Partial<IconItem>) => void;
@@ -294,15 +288,6 @@ const defaultSizeTokens: SizeTokenSet = {
 const defaultBreakpointTokens: BreakpointTokenSet = {
   tokens: [],
 };
-
-const defaultSizeArticle = `<h1>Size &amp; Space Tokens</h1><p>ArcSite's size and spacing system is built on four layers of design tokens stored in a single <strong>size</strong> variable collection in Figma. Switch the mode once on any frame and every bound token updates — padding, gaps, heights, radii, and typography — simultaneously across Device Mobile, Device Tablet, Web Mobile, and Web Desktop.</p><h2>Why tokens?</h2><p>Hard-coded numbers like <code>gap: 16px</code> drift. The same value gets typed independently in Figma frames, iOS SwiftUI layouts, and web CSS, and they diverge the moment the spec changes. Tokens give that number a single authoritative name (<code>size/spacing-inline-md</code>) that every platform reads from one source of truth.</p><h2>Architecture</h2><p><strong>Global scale</strong> (<code>size-global/***</code>) — raw numbers on an even step (2, 4, 6, 8 … 512). No meaning, just math.</p><p><strong>Semantic tokens</strong> (<code>size/***</code>) — alias global values, carry intent, and change per mode. Split into groups with clear, non-overlapping responsibilities: spacing-inline, spacing-stack, padding, padding-component, heights, icon sizes, border radius, layout, and font.</p><p><strong>Component tokens</strong> (<code>size/comp/***</code>) — alias semantic tokens and belong to one component. The final step before a designer applies a token to a layer.</p><h2>The four modes</h2><p><strong>Device Mobile</strong> — iPhone / Android phone, sized on iOS HIG (pt). <strong>Device Tablet</strong> — iPad / Android tablet, sized on iOS HIG (pt). <strong>Web Mobile</strong> — Browser ≤ 768px. <strong>Web Desktop</strong> — Browser on desktop.</p><h2>Using tokens in code</h2><p>The exported CSS VARs preserve the token architecture: leaf values are emitted with <code>px</code> units, and semantic / component tokens emit <code>var(--alias)</code> references to whichever global or semantic token they alias. This means changing a global value propagates through the cascade exactly as it does in Figma.</p><pre><code>/* Gap between items in a horizontal toolbar */
-.toolbar { gap: var(--size-spacing-inline-md); }
-
-/* Vertical gap between stacked form fields */
-.form { gap: var(--size-spacing-stack-md); }
-
-/* Padding inside a page content area */
-.page-content { padding: var(--size-padding-md); }</code></pre><h2>Exported files</h2><p>The CSS VAR export produces a ZIP containing five files: <code>size-global.css</code>, <code>size-device-mobile.css</code>, <code>size-device-tablet.css</code>, <code>size-web-mobile.css</code>, and <code>size-web-desktop.css</code>. Load the global file plus whichever mode file matches your target platform.</p>`;
 
 const defaultChangeLogs: ChangeLogEntry[] = [
   {
@@ -621,10 +606,6 @@ const defaultEditors: EditorAccount[] = [
 
 const defaultHomeArticle = `<h1>Design System</h1><p>Welcome to our Design System. This is a living documentation that provides guidelines, components, and patterns for building consistent user experiences across all our products.</p><p>Our design system helps teams work more efficiently by providing reusable components, clear guidelines, and a shared design language. Explore the sections below to learn about typography, color tokens, iconology, and UI patterns.</p><h2>Getting Started</h2><p>Start by exploring our foundational elements - Typography and Color Tokens. These form the building blocks of every component and pattern in the system. Then dive into our Icon Library and Patterns for more complex implementations.</p>`;
 
-const defaultTypographyArticle = `<h1>Typography</h1><p>Typography is the foundation of our design system's visual language. Consistent use of type helps establish hierarchy, improve readability, and create a cohesive user experience across all platforms.</p><h2>Type Scale</h2><p>Our type scale is based on a modular approach that ensures consistent sizing across all applications. We use Inter as our primary typeface.</p><h2>Heading Styles</h2><p><strong>H1 - Page Title:</strong> 34px / Normal weight / Line height 1.5</p><p><strong>H2 - Section Title:</strong> 28px / Normal weight / Line height 1.5</p><p><strong>H3 - Subsection Title:</strong> 22px / Normal weight / Line height 1.5</p><p><strong>H4 - Group Title:</strong> 16px / Medium weight / Line height 1.5</p><h2>Body Text</h2><p><strong>Body (P):</strong> 17px / Normal weight / Line height 1.5 - Used for general content and descriptions.</p><p><strong>Label:</strong> 13px / Normal weight / Line height 1.5 - Used for form labels, captions, and metadata.</p><h2>Font Weights</h2><p><strong>Normal (400):</strong> Used for body text, descriptions, and general content.</p><p><strong>Medium (600):</strong> Used for emphasis, headings, and interactive elements that need to stand out.</p>`;
-
-const defaultColorArticle = `<h1>Color Tokens</h1><p>Color tokens are the building blocks of our color system. They provide a consistent and maintainable way to manage colors across all platforms and themes. Our system uses semantic tokens that map to global color values, making theme switching seamless.</p><h2>Token Architecture</h2><p>We use a two-tier token system: <strong>Global Tokens</strong> define the raw color palette, while <strong>Semantic Tokens</strong> assign meaning to those colors based on their usage context. This separation allows us to support multiple themes (light/dark) without changing component code.</p>`;
-
 const defaultIconologyArticle = `<h1>Iconology</h1><p>Our icon library provides a comprehensive set of icons designed for consistency across all products. Each icon follows strict grid and sizing guidelines to ensure visual harmony.</p><h2>Usage Guidelines</h2><p>Icons should be used at their designed sizes (16px, 20px, or 24px). Always use the provided SVG files to ensure crisp rendering at any resolution. Icons use <code>currentColor</code> for stroke so they automatically inherit the text color of their container.</p>`;
 
 const STORAGE_KEY = "ds-app-state";
@@ -633,12 +614,9 @@ function getDefaults(): AppState {
   return {
     homeArticle: defaultHomeArticle,
     changeLogs: defaultChangeLogs,
-    typographyArticle: defaultTypographyArticle,
     colorTokens: defaultColorTokens,
     sizeTokens: defaultSizeTokens,
     breakpointTokens: defaultBreakpointTokens,
-    colorArticle: defaultColorArticle,
-    sizeArticle: defaultSizeArticle,
     iconologyArticle: defaultIconologyArticle,
     icons: defaultIcons,
     patterns: defaultPatterns,
@@ -670,7 +648,6 @@ function buildStateFromServer(serverData: Record<string, any>): AppState {
   return {
     homeArticle: serverData.homeArticle ?? defaults.homeArticle,
     changeLogs: Array.isArray(serverData.changeLogs) ? serverData.changeLogs : defaults.changeLogs,
-    typographyArticle: serverData.typographyArticle ?? defaults.typographyArticle,
     colorTokens: {
       // Migrate legacy schema: old payloads stored `globalLight` (and a duplicate
       // `globalDark`). Globals are mode-independent, so collapse to a single
@@ -699,8 +676,6 @@ function buildStateFromServer(serverData: Record<string, any>): AppState {
         ? serverData.breakpointTokens.tokens
         : defaults.breakpointTokens.tokens,
     },
-    colorArticle: serverData.colorArticle ?? defaults.colorArticle,
-    sizeArticle: serverData.sizeArticle ?? defaults.sizeArticle,
     iconologyArticle: serverData.iconologyArticle ?? defaults.iconologyArticle,
     icons: ensureChromeIcons(
       Array.isArray(serverData.icons)
@@ -797,12 +772,9 @@ function seedDefaults(): void {
   const toSave: Record<string, any> = {
     homeArticle: defaults.homeArticle,
     changeLogs: defaults.changeLogs,
-    typographyArticle: defaults.typographyArticle,
     colorTokens: defaults.colorTokens,
     sizeTokens: defaults.sizeTokens,
     breakpointTokens: defaults.breakpointTokens,
-    colorArticle: defaults.colorArticle,
-    sizeArticle: defaults.sizeArticle,
     iconologyArticle: defaults.iconologyArticle,
     icons: defaults.icons,
     patterns: defaults.patterns,
@@ -1045,12 +1017,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const stateKeyMap: Record<string, any> = {
         homeArticle: state.homeArticle,
         changeLogs: state.changeLogs,
-        typographyArticle: state.typographyArticle,
         colorTokens: state.colorTokens,
         sizeTokens: state.sizeTokens,
         breakpointTokens: state.breakpointTokens,
-        colorArticle: state.colorArticle,
-        sizeArticle: state.sizeArticle,
         iconologyArticle: state.iconologyArticle,
         icons: state.icons,
         patterns: state.patterns,
@@ -1128,12 +1097,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const minimal = {
           homeArticle: "",
           changeLogs: [],
-          typographyArticle: "",
           colorTokens: payload.colorTokens,
           sizeTokens: payload.sizeTokens,
           breakpointTokens: payload.breakpointTokens,
-          colorArticle: "",
-          sizeArticle: "",
           iconologyArticle: "",
           icons: [],
           patterns: [],
@@ -1167,12 +1133,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const stateKeyMap: Record<string, any> = {
           homeArticle: currentState.homeArticle,
           changeLogs: currentState.changeLogs,
-          typographyArticle: currentState.typographyArticle,
           colorTokens: currentState.colorTokens,
           sizeTokens: currentState.sizeTokens,
           breakpointTokens: currentState.breakpointTokens,
-          colorArticle: currentState.colorArticle,
-          sizeArticle: currentState.sizeArticle,
           iconologyArticle: currentState.iconologyArticle,
           icons: currentState.icons,
           patterns: currentState.patterns,
@@ -1277,7 +1240,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       update({ changeLogs: state.changeLogs.map((c) => (c.id === id ? { ...c, ...entry } : c)) }, "changeLogs"),
     removeChangeLog: (id) =>
       update({ changeLogs: state.changeLogs.filter((c) => c.id !== id) }, "changeLogs"),
-    setTypographyArticle: (html) => update({ typographyArticle: html }, "typographyArticle"),
     setColorTokens: (tokens) => {
       setState((prev) => ({
         ...prev,
@@ -1314,8 +1276,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       pendingSyncRef.current.add("breakpointTokens");
       syncToServer();
     },
-    setColorArticle: (html) => update({ colorArticle: html }, "colorArticle"),
-    setSizeArticle: (html) => update({ sizeArticle: html }, "sizeArticle"),
     setIconologyArticle: (html) => update({ iconologyArticle: html }, "iconologyArticle"),
     addIcon: (icon) => {
       const now = new Date().toISOString();
@@ -1474,9 +1434,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setState((prev) => {
           const currentContentMap: Record<string, string> = {
             home: prev.homeArticle,
-            typography: prev.typographyArticle,
-            color: prev.colorArticle,
-            size: prev.sizeArticle,
             iconology: prev.iconologyArticle,
           };
           let currentContent = currentContentMap[articleKey];
@@ -1563,12 +1520,9 @@ export function useAppData() {
       saveKeyNow: async () => false,
       homeArticle: "",
       changeLogs: [],
-      typographyArticle: "",
       colorTokens: { global: [], semanticLight: [], semanticDark: [] },
       sizeTokens: { global: [], deviceMobile: [], deviceTablet: [], webMobile: [], webTablet: [], webDesktop: [], webDesktopLarge: [] },
       breakpointTokens: { tokens: [] },
-      colorArticle: "",
-      sizeArticle: "",
       iconologyArticle: "",
       icons: [],
       patternsArticle: "",
@@ -1579,12 +1533,9 @@ export function useAppData() {
       addChangeLog: () => {},
       updateChangeLog: () => {},
       removeChangeLog: () => {},
-      setTypographyArticle: () => {},
       setColorTokens: () => {},
       setSizeTokens: () => {},
       setBreakpointTokens: () => {},
-      setColorArticle: () => {},
-      setSizeArticle: () => {},
       setIconologyArticle: () => {},
       addIcon: () => {},
       updateIcon: () => {},

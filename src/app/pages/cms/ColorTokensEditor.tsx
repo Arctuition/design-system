@@ -8,7 +8,6 @@ import {
   Download,
   Sun,
   Moon,
-  Pencil,
   Info,
   Copy,
   Package,
@@ -122,7 +121,6 @@ export function ColorTokensEditor() {
     semanticLight: null,
     semanticDark: null,
   });
-  const [activeTab, setActiveTab] = useState("tokens");
   const [tokenDisplayTab, setTokenDisplayTab] = useState("light");
   const [bulkPending, setBulkPending] = useState<
     | {
@@ -260,7 +258,7 @@ export function ColorTokensEditor() {
     [semanticGroups, globalGroups]
   );
 
-  const showOutline = activeTab === "tokens" && outlineSections.length > 0;
+  const showOutline = outlineSections.length > 0;
 
   return (
     <div className="flex">
@@ -278,26 +276,6 @@ export function ColorTokensEditor() {
         </h1>
         <div className="h-px bg-border mt-3 mb-6" />
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="tokens">Token Management</TabsTrigger>
-            <TabsTrigger value="article">Article</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="article" className="mt-6">
-            <div className="border border-border rounded-[var(--radius-card)] p-5 bg-secondary/10">
-              <p className="text-card-foreground mb-3" style={{ fontSize: "var(--text-p)" }}>
-                Edit the Color Tokens article content in the full-page editor.
-              </p>
-              <Link to="/cms/color-editor/article">
-                <Button type="button">
-                  <Pencil className="size-4 mr-1.5" /> Open Article Editor
-                </Button>
-              </Link>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="tokens" className="mt-6">
             {/* Info banner */}
             <div className="flex items-start gap-3 p-4 mb-6 border border-primary/20 rounded-[var(--radius-card)] bg-primary/5">
               <Info className="size-4 text-primary mt-0.5 shrink-0" />
@@ -490,8 +468,6 @@ export function ColorTokensEditor() {
                 />
               </TabsContent>
             </Tabs>
-          </TabsContent>
-        </Tabs>
       </div>
 
       {/* Outline sidebar (right) */}

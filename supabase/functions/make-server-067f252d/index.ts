@@ -164,12 +164,9 @@ const PREFIX = "ds:";
 const STATE_KEYS = [
   "homeArticle",
   "changeLogs",
-  "typographyArticle",
   "colorTokens",
   "sizeTokens",
   "breakpointTokens",
-  "colorArticle",
-  "sizeArticle",
   "iconologyArticle",
   "icons",
   "patterns",
@@ -197,9 +194,6 @@ const MAX_VERSIONS_PER_ARTICLE = 5;
 // Storage and rewrites the src in place.
 const HTML_KEY_NAMESPACE: Record<string, string> = {
   homeArticle: "home",
-  typographyArticle: "typography",
-  colorArticle: "color",
-  sizeArticle: "size",
   iconologyArticle: "iconology",
 };
 
@@ -360,7 +354,7 @@ async function processArticleVersionsBeforeSave(
 
 /**
  * Strip inline images from a top-level HTML article key (homeArticle,
- * typographyArticle, etc). No-op for keys not in HTML_KEY_NAMESPACE.
+ * iconologyArticle). No-op for keys not in HTML_KEY_NAMESPACE.
  */
 async function processHtmlKeyBeforeSave(
   key: string,
