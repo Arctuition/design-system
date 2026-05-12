@@ -11,6 +11,20 @@ import {
   publicUrlFor,
   guessContentType,
 } from "./storage.ts";
+import {
+  ensureDesignTokensBucket,
+  uploadDesignTokenArtifact,
+} from "./design-tokens-storage.ts";
+// @ts-ignore — pure JS module, no .d.ts; Deno bundles it via relative path.
+import {
+  colorRowsToFlat,
+  sizeRowsToFlat,
+  fontRowsToFlat,
+  extractBreakpointPxFromRows,
+  diffFromBase,
+  buildBootstrapCss,
+  buildBreakpointsJs,
+} from "../_shared/token-generators.mjs";
 
 // HTML→MD converter for Pattern saves. Markdown is the canonical source of
 // truth (Agents fetch it via /patterns/:filename.md); when a user edits a
@@ -167,6 +181,8 @@ const STATE_KEYS = [
   "colorTokens",
   "sizeTokens",
   "breakpointTokens",
+  "fontTokens",
+  "tokenDocs",
   "iconologyArticle",
   "icons",
   "patterns",
@@ -900,6 +916,126 @@ app.post("/make-server-067f252d/patterns/:slug/bundle", async (c) => {
   } catch (err) {
     console.error("Error processing bundle upload:", err);
     return c.json({ error: `Bundle upload failed: ${(err as Error).message}` }, 500);
+  }
+});
+
+// ──────────────────────────────────────────────
+// POST /design-tokens/publish — Regenerate bootstrap.css + breakpoints.js
+// from the current KV token slots and upload them to the design-tokens
+// Storage bucket. This is Option B's publish step — runs server-side so a
+// stale browser can't ship outdated token values.
+//
+// Returns `{ urls: { bootstrap, breakpoints } }` on success.
+// ──────────────────────────────────────────────
+app.post("/make-server-067f252d/design-tokens/publish", async (c) => {
+  try {
+    await ensureDesignTokensBucket();
+
+    // 1. Fetch every token slot from KV in parallel.
+    const [colorTokens, sizeTokens, fontTokens, breakpointTokens, tokenDocs] = await Promise.all([
+      kv.get(`${PREFIX}colorTokens`),
+      kv.get(`${PREFIX}sizeTokens`),
+      kv.get(`${PREFIX}fontTokens`),
+      kv.get(`${PREFIX}breakpointTokens`),
+      kv.get(`${PREFIX}tokenDocs`),
+    ]);
+
+    if (!colorTokens || !sizeTokens || !breakpointTokens) {
+      return c.json(
+        { error: "Missing token data in KV — upload color / size / breakpoint slots before publishing." },
+        400,
+      );
+    }
+
+    // 2. Flatten each client-normalized slot into the {cssVar, displayValue}
+    //    shape the bootstrap.css template expects. Font slot is optional —
+    //    if absent we publish bootstrap.css without the typography block.
+    const globalColor = colorRowsToFlat(colorTokens.global);
+    const lightTokens = colorRowsToFlat(colorTokens.semanticLight);
+    const darkTokens  = colorRowsToFlat(colorTokens.semanticDark);
+
+    const sizeGlobal          = sizeRowsToFlat(sizeTokens.global);
+    const sizeWebMobile       = sizeRowsToFlat(sizeTokens.webMobile);
+    const sizeWebTablet       = sizeRowsToFlat(sizeTokens.webTablet);
+    const sizeWebDesktop      = sizeRowsToFlat(sizeTokens.webDesktop);
+    const sizeWebDesktopLarge = sizeRowsToFlat(sizeTokens.webDesktopLarge);
+
+    const breakpoints   = sizeRowsToFlat(breakpointTokens.tokens);
+    const breakpointPx  = extractBreakpointPxFromRows(breakpointTokens.tokens);
+
+    // Typography: prefer web-desktop slot, fall back to web-mobile if the
+    // designer only uploaded one mode. Build script only emits desktop — we
+    // mirror that here. Future: emit per-mode @media blocks too.
+    const fontDesktop = fontRowsToFlat(
+      fontTokens?.webDesktop?.length ? fontTokens.webDesktop : fontTokens?.webMobile ?? []
+    );
+
+    // 3. Build the @media diff blocks (only tokens that differ from Web Mobile).
+    const sizeTabletDiff       = diffFromBase(sizeWebMobile, sizeWebTablet);
+    const sizeDesktopDiff      = diffFromBase(sizeWebMobile, sizeWebDesktop);
+    const sizeDesktopLargeDiff = diffFromBase(sizeWebMobile, sizeWebDesktopLarge);
+
+    // 4. Render both artifacts via the shared template — byte-identical to
+    //    the prebuild script for the same logical input.
+    const bootstrapCss = buildBootstrapCss({
+      globalColor,
+      lightTokens,
+      darkTokens,
+      sizeGlobal,
+      breakpoints,
+      sizeWebMobile,
+      sizeTabletDiff,
+      sizeDesktopDiff,
+      sizeDesktopLargeDiff,
+      fontDesktop,
+      breakpointPx,
+    });
+    const breakpointsJs = buildBreakpointsJs(breakpointPx);
+
+    // 5. Upload bootstrap.css + breakpoints.js to the design-tokens bucket.
+    //    Also mirror the Markdown reference docs (color / size / typography)
+    //    if the CMS has populated them — AI agents fetch these directly from
+    //    Storage to bypass the React SPA. Missing slots are silently skipped
+    //    (publish stays partially successful).
+    const md: Record<string, string> = {
+      "tokens-color.md": tokenDocs?.color || "",
+      "tokens-size-space.md": tokenDocs?.size || "",
+      "tokens-typography.md": tokenDocs?.typography || "",
+    };
+
+    const uploads: Promise<{ key: string; publicUrl: string; bytes: number } | null>[] = [
+      uploadDesignTokenArtifact("bootstrap.css", bootstrapCss, "text/css; charset=utf-8")
+        .then((r) => ({ key: "bootstrap", publicUrl: r.publicUrl, bytes: bootstrapCss.length })),
+      uploadDesignTokenArtifact("breakpoints.js", breakpointsJs, "application/javascript; charset=utf-8")
+        .then((r) => ({ key: "breakpoints", publicUrl: r.publicUrl, bytes: breakpointsJs.length })),
+    ];
+    for (const [filename, body] of Object.entries(md)) {
+      if (!body) continue;
+      const key = filename.replace(/\.md$/, "");
+      uploads.push(
+        uploadDesignTokenArtifact(filename, body, "text/markdown; charset=utf-8")
+          .then((r) => ({ key, publicUrl: r.publicUrl, bytes: body.length })),
+      );
+    }
+    const results = await Promise.all(uploads);
+
+    const urls: Record<string, string> = {};
+    const bytes: Record<string, number> = {};
+    for (const r of results) {
+      if (!r) continue;
+      urls[r.key] = r.publicUrl;
+      bytes[r.key] = r.bytes;
+    }
+
+    return c.json({
+      ok: true,
+      urls,
+      bytes,
+      publishedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Error publishing design tokens:", err);
+    return c.json({ error: `Publish failed: ${(err as Error).message}` }, 500);
   }
 });
 

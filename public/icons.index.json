@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "generatedAt": "2026-05-10T13:21:49.941Z",
+  "generatedAt": "2026-05-12T11:30:04.283Z",
   "count": 534,
   "note": "Slim search index — no SVG bytes. After picking by name/tag, fetch `svgContent` from /icons.json (look up by `name`).",
   "sizeFormat": "Icon `size` is encoded as `{height}x{width}` (e.g. \"16x10\" = 16px tall, 10px wide). Height is the canonical grouping dimension — icons in the same height bucket may have varying widths.",
@@ -189,7 +189,13 @@
       "fileName": "signature-24x24.svg",
       "tags": [
         "signature",
-        "24x24"
+        "24x24",
+        "sign",
+        "autograph",
+        "esign",
+        "signoff",
+        "signed",
+        "endorse"
       ],
       "size": "24x24",
       "height": 24,
@@ -254,7 +260,13 @@
       "tags": [
         "sign",
         "proposal",
-        "24x24"
+        "24x24",
+        "document",
+        "quote",
+        "estimate",
+        "offer",
+        "bid",
+        "deal"
       ],
       "size": "24x24",
       "height": 24,
@@ -541,7 +553,12 @@
       "fileName": "company-24x24.svg",
       "tags": [
         "company",
-        "24x24"
+        "24x24",
+        "business",
+        "office",
+        "corporate",
+        "organization",
+        "firm"
       ],
       "size": "24x24",
       "height": 24,
@@ -639,6 +656,11 @@
         "company",
         "fill",
         "24x24",
+        "business",
+        "office",
+        "corporate",
+        "organization",
+        "firm",
         "solid",
         "filled"
       ],
@@ -837,6 +859,12 @@
         "proposal",
         "solid",
         "16x16",
+        "document",
+        "quote",
+        "estimate",
+        "offer",
+        "bid",
+        "deal",
         "fill",
         "filled",
         "small"
@@ -938,6 +966,12 @@
       "tags": [
         "grip",
         "16x16",
+        "handle",
+        "drag",
+        "reorder",
+        "dots",
+        "move",
+        "rearrange",
         "small"
       ],
       "size": "16x16",
@@ -1104,6 +1138,11 @@
         "dots",
         "16x16",
         "dot",
+        "handle",
+        "drag",
+        "reorder",
+        "move",
+        "rearrange",
         "more",
         "ellipsis",
         "options",
@@ -1127,6 +1166,8 @@
         "page",
         "paper",
         "sheet",
+        "acrobat",
+        "export",
         "fill",
         "filled",
         "small"
@@ -1141,6 +1182,11 @@
       "tags": [
         "unread",
         "16x16",
+        "new",
+        "notification",
+        "badge",
+        "fresh",
+        "pending",
         "small"
       ],
       "size": "16x16",
@@ -1206,6 +1252,11 @@
       "tags": [
         "annotation",
         "16x16",
+        "comment",
+        "note",
+        "label",
+        "markup",
+        "remark",
         "small"
       ],
       "size": "16x16",
@@ -1333,6 +1384,12 @@
         "circle",
         "fill",
         "16x16",
+        "x",
+        "close",
+        "cancel",
+        "dismiss",
+        "remove",
+        "cross",
         "round",
         "dot",
         "ring",
@@ -1352,6 +1409,12 @@
       "tags": [
         "xmark",
         "16x16",
+        "x",
+        "close",
+        "cancel",
+        "dismiss",
+        "remove",
+        "cross",
         "small"
       ],
       "size": "16x16",
@@ -1508,6 +1571,11 @@
       "tags": [
         "company",
         "16x16",
+        "business",
+        "office",
+        "corporate",
+        "organization",
+        "firm",
         "small"
       ],
       "size": "16x16",
@@ -1641,6 +1709,12 @@
         "xmark",
         "large",
         "16x16",
+        "x",
+        "close",
+        "cancel",
+        "dismiss",
+        "remove",
+        "cross",
         "small"
       ],
       "size": "16x16",
@@ -1706,6 +1780,12 @@
       "tags": [
         "adjust",
         "16x16",
+        "modify",
+        "tune",
+        "tweak",
+        "set",
+        "configure",
+        "fine tune",
         "small"
       ],
       "size": "16x16",
@@ -1769,6 +1849,12 @@
       "tags": [
         "proposal",
         "16x16",
+        "document",
+        "quote",
+        "estimate",
+        "offer",
+        "bid",
+        "deal",
         "small"
       ],
       "size": "16x16",
@@ -1801,7 +1887,12 @@
       "fileName": "drawing-24x24.svg",
       "tags": [
         "drawing",
-        "24x24"
+        "24x24",
+        "draw",
+        "sketch",
+        "blueprint",
+        "illustration",
+        "art"
       ],
       "size": "24x24",
       "height": 24,
@@ -1831,7 +1922,11 @@
       "fileName": "magnet-24x24.svg",
       "tags": [
         "magnet",
-        "24x24"
+        "24x24",
+        "magnetic",
+        "attract",
+        "snap",
+        "pull"
       ],
       "size": "24x24",
       "height": 24,
@@ -1953,7 +2048,12 @@
       "fileName": "variable-24x24.svg",
       "tags": [
         "variable",
-        "24x24"
+        "24x24",
+        "var",
+        "parameter",
+        "value",
+        "placeholder",
+        "dynamic"
       ],
       "size": "24x24",
       "height": 24,
@@ -2044,7 +2144,12 @@
       "fileName": "unread-24x16.svg",
       "tags": [
         "unread",
-        "24x16"
+        "24x16",
+        "new",
+        "notification",
+        "badge",
+        "fresh",
+        "pending"
       ],
       "size": "24x16",
       "height": 24,
@@ -2103,6 +2208,10 @@
       "tags": [
         "deselect",
         "16x16",
+        "unselect",
+        "clear selection",
+        "uncheck",
+        "unmark",
         "small"
       ],
       "size": "16x16",
@@ -2145,7 +2254,11 @@
       "tags": [
         "deselect",
         "large",
-        "24x24"
+        "24x24",
+        "unselect",
+        "clear selection",
+        "uncheck",
+        "unmark"
       ],
       "size": "24x24",
       "height": 24,
@@ -2399,7 +2512,13 @@
       "fileName": "approve-24x24.svg",
       "tags": [
         "approve",
-        "24x24"
+        "24x24",
+        "approval",
+        "accept",
+        "signoff",
+        "confirm",
+        "ok",
+        "stamp"
       ],
       "size": "24x24",
       "height": 24,
@@ -2412,6 +2531,12 @@
         "xmark",
         "square",
         "24x24",
+        "x",
+        "close",
+        "cancel",
+        "dismiss",
+        "remove",
+        "cross",
         "rectangle",
         "box",
         "shape"
@@ -2622,7 +2747,12 @@
       "fileName": "calibrate-24x24.svg",
       "tags": [
         "calibrate",
-        "24x24"
+        "24x24",
+        "calibration",
+        "tune",
+        "adjust",
+        "align",
+        "configure"
       ],
       "size": "24x24",
       "height": 24,
@@ -2662,7 +2792,13 @@
       "fileName": "grip-24x24.svg",
       "tags": [
         "grip",
-        "24x24"
+        "24x24",
+        "handle",
+        "drag",
+        "reorder",
+        "dots",
+        "move",
+        "rearrange"
       ],
       "size": "24x24",
       "height": 24,
@@ -2771,7 +2907,12 @@
       "fileName": "handshake-24x24.svg",
       "tags": [
         "handshake",
-        "24x24"
+        "24x24",
+        "agreement",
+        "deal",
+        "partnership",
+        "trust",
+        "greet"
       ],
       "size": "24x24",
       "height": 24,
@@ -2805,6 +2946,11 @@
         "template",
         "solid",
         "filled",
+        "input",
+        "fields",
+        "questionnaire",
+        "survey",
+        "data entry",
         "layout",
         "blueprint",
         "pattern",
@@ -2822,6 +2968,11 @@
         "dots",
         "24x24",
         "dot",
+        "handle",
+        "drag",
+        "reorder",
+        "move",
+        "rearrange",
         "more",
         "ellipsis",
         "options",
@@ -3145,7 +3296,10 @@
       "tags": [
         "mirror",
         "large",
-        "24x24"
+        "24x24",
+        "flip",
+        "reverse",
+        "reflect"
       ],
       "size": "24x24",
       "height": 24,
@@ -3156,7 +3310,11 @@
       "fileName": "screenshot-24x24.svg",
       "tags": [
         "screenshot",
-        "24x24"
+        "24x24",
+        "capture",
+        "snapshot",
+        "screen",
+        "screen grab"
       ],
       "size": "24x24",
       "height": 24,
@@ -3167,7 +3325,12 @@
       "fileName": "support-24x24.svg",
       "tags": [
         "support",
-        "24x24"
+        "24x24",
+        "help",
+        "assistance",
+        "service",
+        "customer",
+        "ticket"
       ],
       "size": "24x24",
       "height": 24,
@@ -3253,6 +3416,9 @@
         "mirror",
         "bold",
         "24x24",
+        "flip",
+        "reverse",
+        "reflect",
         "thick",
         "heavy",
         "strong"
@@ -3367,6 +3533,12 @@
         "circle",
         "fill",
         "24x24",
+        "x",
+        "close",
+        "cancel",
+        "dismiss",
+        "remove",
+        "cross",
         "round",
         "dot",
         "ring",
@@ -3417,7 +3589,12 @@
         "24x24",
         "download",
         "save",
-        "send out"
+        "send out",
+        "draw",
+        "sketch",
+        "blueprint",
+        "illustration",
+        "art"
       ],
       "size": "24x24",
       "height": 24,
@@ -3428,7 +3605,11 @@
       "fileName": "unstar-24x24.svg",
       "tags": [
         "unstar",
-        "24x24"
+        "24x24",
+        "unfavorite",
+        "unbookmark",
+        "remove favorite",
+        "deselect"
       ],
       "size": "24x24",
       "height": 24,
@@ -3440,7 +3621,12 @@
       "tags": [
         "calibrate",
         "2",
-        "24x24"
+        "24x24",
+        "calibration",
+        "tune",
+        "adjust",
+        "align",
+        "configure"
       ],
       "size": "24x24",
       "height": 24,
@@ -3524,7 +3710,13 @@
       "fileName": "spreadsheet-24x24.svg",
       "tags": [
         "spreadsheet",
-        "24x24"
+        "24x24",
+        "excel",
+        "sheet",
+        "table",
+        "rows",
+        "columns",
+        "grid"
       ],
       "size": "24x24",
       "height": 24,
@@ -3607,7 +3799,12 @@
       "fileName": "angle-24x24.svg",
       "tags": [
         "angle",
-        "24x24"
+        "24x24",
+        "measurement",
+        "degree",
+        "corner",
+        "geometry",
+        "rotation"
       ],
       "size": "24x24",
       "height": 24,
@@ -3635,7 +3832,12 @@
       "fileName": "saved-24x24.svg",
       "tags": [
         "saved",
-        "24x24"
+        "24x24",
+        "bookmarked",
+        "stored",
+        "kept",
+        "favorite",
+        "preserved"
       ],
       "size": "24x24",
       "height": 24,
@@ -3648,7 +3850,11 @@
         "takeoff",
         "estimate",
         "large",
-        "24x24"
+        "24x24",
+        "quote",
+        "proposal",
+        "appraisal",
+        "approximation"
       ],
       "size": "24x24",
       "height": 24,
@@ -3742,7 +3948,10 @@
       "fileName": "mirror-24x24.svg",
       "tags": [
         "mirror",
-        "24x24"
+        "24x24",
+        "flip",
+        "reverse",
+        "reflect"
       ],
       "size": "24x24",
       "height": 24,
@@ -3789,7 +3998,12 @@
       "fileName": "quantity-24x24.svg",
       "tags": [
         "quantity",
-        "24x24"
+        "24x24",
+        "amount",
+        "count",
+        "number",
+        "measure",
+        "qty"
       ],
       "size": "24x24",
       "height": 24,
@@ -3854,7 +4068,13 @@
       "fileName": "adjust-24x24.svg",
       "tags": [
         "adjust",
-        "24x24"
+        "24x24",
+        "modify",
+        "tune",
+        "tweak",
+        "set",
+        "configure",
+        "fine tune"
       ],
       "size": "24x24",
       "height": 24,
@@ -3897,7 +4117,11 @@
       "tags": [
         "pdf",
         "large",
-        "24x24"
+        "24x24",
+        "document",
+        "file",
+        "acrobat",
+        "export"
       ],
       "size": "24x24",
       "height": 24,
@@ -3925,7 +4149,11 @@
       "tags": [
         "takeoff",
         "estimate",
-        "24x24"
+        "24x24",
+        "quote",
+        "proposal",
+        "appraisal",
+        "approximation"
       ],
       "size": "24x24",
       "height": 24,
@@ -4025,7 +4253,11 @@
       "fileName": "pdf-24x24.svg",
       "tags": [
         "pdf",
-        "24x24"
+        "24x24",
+        "document",
+        "file",
+        "acrobat",
+        "export"
       ],
       "size": "24x24",
       "height": 24,
@@ -4103,6 +4335,10 @@
         "pdf",
         "fill",
         "24x24",
+        "document",
+        "file",
+        "acrobat",
+        "export",
         "solid",
         "filled"
       ],
@@ -4254,7 +4490,11 @@
       "fileName": "address-24x24.svg",
       "tags": [
         "address",
-        "24x24"
+        "24x24",
+        "location",
+        "place",
+        "street",
+        "contact"
       ],
       "size": "24x24",
       "height": 24,
@@ -4352,7 +4592,12 @@
       "fileName": "annotation-24x24.svg",
       "tags": [
         "annotation",
-        "24x24"
+        "24x24",
+        "comment",
+        "note",
+        "label",
+        "markup",
+        "remark"
       ],
       "size": "24x24",
       "height": 24,
@@ -4407,7 +4652,12 @@
       "fileName": "perimeter-24x24.svg",
       "tags": [
         "perimeter",
-        "24x24"
+        "24x24",
+        "measurement",
+        "outline",
+        "boundary",
+        "edge",
+        "circumference"
       ],
       "size": "24x24",
       "height": 24,
@@ -4498,7 +4748,12 @@
       "fileName": "exclamation-24x24.svg",
       "tags": [
         "exclamation",
-        "24x24"
+        "24x24",
+        "alert",
+        "warning",
+        "important",
+        "attention",
+        "bang"
       ],
       "size": "24x24",
       "height": 24,
@@ -4558,7 +4813,12 @@
       "fileName": "void-24x24.svg",
       "tags": [
         "void",
-        "24x24"
+        "24x24",
+        "empty",
+        "null",
+        "blank",
+        "cancel",
+        "invalidate"
       ],
       "size": "24x24",
       "height": 24,
@@ -4755,7 +5015,11 @@
       "tags": [
         "magnet",
         "large",
-        "24x24"
+        "24x24",
+        "magnetic",
+        "attract",
+        "snap",
+        "pull"
       ],
       "size": "24x24",
       "height": 24,
@@ -4818,7 +5082,12 @@
       "fileName": "community-24x24.svg",
       "tags": [
         "community",
-        "24x24"
+        "24x24",
+        "group",
+        "people",
+        "users",
+        "members",
+        "society"
       ],
       "size": "24x24",
       "height": 24,
@@ -5080,6 +5349,12 @@
         "signature",
         "duotone",
         "24x24",
+        "sign",
+        "autograph",
+        "esign",
+        "signoff",
+        "signed",
+        "endorse",
         "two tone",
         "dual",
         "layered"
@@ -5143,7 +5418,11 @@
         "alert",
         "alarm",
         "ring",
-        "reminder"
+        "reminder",
+        "new",
+        "badge",
+        "fresh",
+        "pending"
       ],
       "size": "24x24",
       "height": 24,
@@ -5253,6 +5532,11 @@
         "saved",
         "duotone",
         "24x24",
+        "bookmarked",
+        "stored",
+        "kept",
+        "favorite",
+        "preserved",
         "two tone",
         "dual",
         "layered"
@@ -5387,6 +5671,10 @@
         "estimate",
         "duotone",
         "24x24",
+        "quote",
+        "proposal",
+        "appraisal",
+        "approximation",
         "two tone",
         "dual",
         "layered"
@@ -5403,6 +5691,12 @@
         "circle",
         "duotone",
         "24x24",
+        "x",
+        "close",
+        "cancel",
+        "dismiss",
+        "remove",
+        "cross",
         "round",
         "dot",
         "ring",
@@ -5444,6 +5738,12 @@
         "approve",
         "duotone",
         "24x24",
+        "approval",
+        "accept",
+        "signoff",
+        "confirm",
+        "ok",
+        "stamp",
         "two tone",
         "dual",
         "layered"
@@ -5461,6 +5761,12 @@
         "duotone",
         "large",
         "24x24",
+        "x",
+        "close",
+        "cancel",
+        "dismiss",
+        "remove",
+        "cross",
         "round",
         "dot",
         "ring",
@@ -5481,6 +5787,12 @@
         "xmark",
         "filter",
         "24x24",
+        "x",
+        "close",
+        "cancel",
+        "dismiss",
+        "remove",
+        "cross",
         "funnel",
         "refine",
         "sort",
@@ -5556,6 +5868,11 @@
         "exclamation",
         "duotone",
         "16x16",
+        "alert",
+        "warning",
+        "important",
+        "attention",
+        "bang",
         "two tone",
         "dual",
         "layered",
@@ -5591,6 +5908,12 @@
         "xmark",
         "duotone",
         "16x16",
+        "x",
+        "close",
+        "cancel",
+        "dismiss",
+        "remove",
+        "cross",
         "two tone",
         "dual",
         "layered",
@@ -5607,6 +5930,12 @@
         "integration",
         "fill",
         "24x24",
+        "integrate",
+        "connect",
+        "api",
+        "plugin",
+        "link",
+        "sync",
         "solid",
         "filled"
       ],
@@ -5807,7 +6136,13 @@
       "fileName": "integration-24x24.svg",
       "tags": [
         "integration",
-        "24x24"
+        "24x24",
+        "integrate",
+        "connect",
+        "api",
+        "plugin",
+        "link",
+        "sync"
       ],
       "size": "24x24",
       "height": 24,
@@ -5862,6 +6197,11 @@
         "duotone",
         "2",
         "24x24",
+        "alert",
+        "warning",
+        "important",
+        "attention",
+        "bang",
         "two tone",
         "dual",
         "layered"
@@ -5878,7 +6218,12 @@
         "clear",
         "duotone",
         "16x16",
+        "x",
+        "close",
+        "cancel",
+        "dismiss",
         "remove",
+        "cross",
         "empty",
         "reset",
         "clean",
@@ -5963,7 +6308,12 @@
       "fileName": "bundle-24x24.svg",
       "tags": [
         "bundle",
-        "24x24"
+        "24x24",
+        "package",
+        "group",
+        "collection",
+        "set",
+        "kit"
       ],
       "size": "24x24",
       "height": 24,
@@ -5974,7 +6324,12 @@
       "fileName": "media-24x24.svg",
       "tags": [
         "media",
-        "24x24"
+        "24x24",
+        "content",
+        "image",
+        "video",
+        "photo",
+        "asset"
       ],
       "size": "24x24",
       "height": 24,
@@ -6028,6 +6383,11 @@
         "circle",
         "fill",
         "16x16",
+        "alert",
+        "warning",
+        "important",
+        "attention",
+        "bang",
         "round",
         "dot",
         "ring",
@@ -6157,6 +6517,11 @@
         "exclamation",
         "duotone",
         "24x24",
+        "alert",
+        "warning",
+        "important",
+        "attention",
+        "bang",
         "two tone",
         "dual",
         "layered"
@@ -6189,6 +6554,11 @@
         "media",
         "duotone",
         "24x24",
+        "content",
+        "image",
+        "video",
+        "photo",
+        "asset",
         "two tone",
         "dual",
         "layered"
@@ -6205,6 +6575,11 @@
         "triangle",
         "fill",
         "24x24",
+        "alert",
+        "warning",
+        "important",
+        "attention",
+        "bang",
         "shape",
         "play",
         "delta",
@@ -6224,6 +6599,11 @@
         "triangle",
         "fill",
         "16x16",
+        "alert",
+        "warning",
+        "important",
+        "attention",
+        "bang",
         "shape",
         "play",
         "delta",
@@ -6268,6 +6648,11 @@
         "circle",
         "duotone",
         "16x16",
+        "alert",
+        "warning",
+        "important",
+        "attention",
+        "bang",
         "round",
         "dot",
         "ring",
@@ -6403,6 +6788,11 @@
         "exclamation",
         "triangle",
         "24x24",
+        "alert",
+        "warning",
+        "important",
+        "attention",
+        "bang",
         "shape",
         "play",
         "delta",
@@ -6515,7 +6905,12 @@
       "fileName": "block-24x24.svg",
       "tags": [
         "block",
-        "24x24"
+        "24x24",
+        "section",
+        "chunk",
+        "module",
+        "stop",
+        "prevent"
       ],
       "size": "24x24",
       "height": 24,
@@ -6545,6 +6940,11 @@
         "large",
         "duotone",
         "16x16",
+        "alert",
+        "warning",
+        "important",
+        "attention",
+        "bang",
         "round",
         "dot",
         "ring",
@@ -6593,6 +6993,11 @@
         "block",
         "toggle",
         "16x16",
+        "section",
+        "chunk",
+        "module",
+        "stop",
+        "prevent",
         "switch",
         "on off",
         "boolean",
@@ -6688,7 +7093,12 @@
       "fileName": "calculation-24x24.svg",
       "tags": [
         "calculation",
-        "24x24"
+        "24x24",
+        "calculate",
+        "math",
+        "compute",
+        "formula",
+        "arithmetic"
       ],
       "size": "24x24",
       "height": 24,
@@ -6764,7 +7174,12 @@
       "fileName": "calculator-24x24.svg",
       "tags": [
         "calculator",
-        "24x24"
+        "24x24",
+        "calculate",
+        "math",
+        "compute",
+        "arithmetic",
+        "numeric"
       ],
       "size": "24x24",
       "height": 24,
@@ -6778,6 +7193,12 @@
         "circle",
         "duotone",
         "16x16",
+        "x",
+        "close",
+        "cancel",
+        "dismiss",
+        "remove",
+        "cross",
         "round",
         "dot",
         "ring",
@@ -6879,6 +7300,12 @@
         "large",
         "duotone",
         "16x16",
+        "x",
+        "close",
+        "cancel",
+        "dismiss",
+        "remove",
+        "cross",
         "round",
         "dot",
         "ring",
@@ -6931,7 +7358,12 @@
         "quantity",
         "modifiers",
         "24x24",
-        "modifier"
+        "modifier",
+        "amount",
+        "count",
+        "number",
+        "measure",
+        "qty"
       ],
       "size": "24x24",
       "height": 24,
@@ -6942,7 +7374,11 @@
       "fileName": "pdf-40x40.svg",
       "tags": [
         "pdf",
-        "40x40"
+        "40x40",
+        "document",
+        "file",
+        "acrobat",
+        "export"
       ],
       "size": "40x40",
       "height": 40,
@@ -6994,6 +7430,11 @@
         "bundle",
         "badge",
         "16x16",
+        "package",
+        "group",
+        "collection",
+        "set",
+        "kit",
         "tag",
         "label",
         "count",
@@ -7010,7 +7451,12 @@
       "fileName": "business-40x40.svg",
       "tags": [
         "business",
-        "40x40"
+        "40x40",
+        "office",
+        "company",
+        "corporate",
+        "professional",
+        "enterprise"
       ],
       "size": "40x40",
       "height": 40,
@@ -7022,7 +7468,11 @@
       "tags": [
         "takeoff",
         "estimate",
-        "40x40"
+        "40x40",
+        "quote",
+        "proposal",
+        "appraisal",
+        "approximation"
       ],
       "size": "40x40",
       "height": 40,
@@ -7174,6 +7624,11 @@
         "excel",
         "duotone",
         "40x40",
+        "spreadsheet",
+        "xls",
+        "xlsx",
+        "sheets",
+        "microsoft",
         "two tone",
         "dual",
         "layered"
@@ -7256,7 +7711,12 @@
       "fileName": "excel-40x40.svg",
       "tags": [
         "excel",
-        "40x40"
+        "40x40",
+        "spreadsheet",
+        "xls",
+        "xlsx",
+        "sheets",
+        "microsoft"
       ],
       "size": "40x40",
       "height": 40,
@@ -7269,6 +7729,10 @@
         "pdf",
         "duotone",
         "40x40",
+        "document",
+        "file",
+        "acrobat",
+        "export",
         "two tone",
         "dual",
         "layered"
@@ -7346,7 +7810,13 @@
       "fileName": "xmark-40x40.svg",
       "tags": [
         "xmark",
-        "40x40"
+        "40x40",
+        "x",
+        "close",
+        "cancel",
+        "dismiss",
+        "remove",
+        "cross"
       ],
       "size": "40x40",
       "height": 40,
@@ -7375,6 +7845,12 @@
         "proposal",
         "duotone",
         "40x40",
+        "document",
+        "quote",
+        "estimate",
+        "offer",
+        "bid",
+        "deal",
         "two tone",
         "dual",
         "layered"
@@ -7391,6 +7867,10 @@
         "estimate",
         "duotone",
         "40x40",
+        "quote",
+        "proposal",
+        "appraisal",
+        "approximation",
         "two tone",
         "dual",
         "layered"
@@ -7424,7 +7904,12 @@
       "fileName": "tax-24x24.svg",
       "tags": [
         "tax",
-        "24x24"
+        "24x24",
+        "finance",
+        "money",
+        "duty",
+        "vat",
+        "taxation"
       ],
       "size": "24x24",
       "height": 24,
@@ -7448,7 +7933,13 @@
       "fileName": "proposal-40x40.svg",
       "tags": [
         "proposal",
-        "40x40"
+        "40x40",
+        "document",
+        "quote",
+        "estimate",
+        "offer",
+        "bid",
+        "deal"
       ],
       "size": "40x40",
       "height": 40,
@@ -7568,7 +8059,12 @@
       "tags": [
         "support",
         "bubble",
-        "24x24"
+        "24x24",
+        "help",
+        "assistance",
+        "service",
+        "customer",
+        "ticket"
       ],
       "size": "24x24",
       "height": 24,
@@ -7651,7 +8147,12 @@
       "fileName": "cash-48x48.svg",
       "tags": [
         "cash",
-        "48x48"
+        "48x48",
+        "money",
+        "currency",
+        "payment",
+        "bills",
+        "coins"
       ],
       "size": "48x48",
       "height": 48,
@@ -7662,7 +8163,13 @@
       "fileName": "wire-48x48.svg",
       "tags": [
         "wire",
-        "48x48"
+        "48x48",
+        "transfer",
+        "payment",
+        "bank",
+        "wiring",
+        "remittance",
+        "ach"
       ],
       "size": "48x48",
       "height": 48,
@@ -7958,7 +8465,9 @@
         "document",
         "page",
         "paper",
-        "sheet"
+        "sheet",
+        "acrobat",
+        "export"
       ],
       "size": "30x30",
       "height": 30,
@@ -8004,7 +8513,12 @@
       "fileName": "legend-30x30.svg",
       "tags": [
         "legend",
-        "30x30"
+        "30x30",
+        "key",
+        "guide",
+        "labels",
+        "reference",
+        "explanation"
       ],
       "size": "30x30",
       "height": 30,
@@ -8015,7 +8529,11 @@
       "fileName": "deselect-30x30.svg",
       "tags": [
         "deselect",
-        "30x30"
+        "30x30",
+        "unselect",
+        "clear selection",
+        "uncheck",
+        "unmark"
       ],
       "size": "30x30",
       "height": 30,
@@ -8128,7 +8646,9 @@
         "alert",
         "badge",
         "update",
-        "new"
+        "new",
+        "fresh",
+        "pending"
       ],
       "size": "30x30",
       "height": 30,
@@ -8193,6 +8713,11 @@
         "fill",
         "circle",
         "30x30",
+        "alert",
+        "warning",
+        "important",
+        "attention",
+        "bang",
         "solid",
         "filled",
         "round",
@@ -8376,7 +8901,13 @@
         "plus",
         "new",
         "create",
-        "insert"
+        "insert",
+        "sign",
+        "autograph",
+        "esign",
+        "signoff",
+        "signed",
+        "endorse"
       ],
       "size": "30x30",
       "height": 30,
@@ -8387,7 +8918,13 @@
       "fileName": "signature-30x30.svg",
       "tags": [
         "signature",
-        "30x30"
+        "30x30",
+        "sign",
+        "autograph",
+        "esign",
+        "signoff",
+        "signed",
+        "endorse"
       ],
       "size": "30x30",
       "height": 30,
@@ -8605,7 +9142,12 @@
       "fileName": "form-30x30.svg",
       "tags": [
         "form",
-        "30x30"
+        "30x30",
+        "input",
+        "fields",
+        "questionnaire",
+        "survey",
+        "data entry"
       ],
       "size": "30x30",
       "height": 30,
@@ -8616,7 +9158,13 @@
       "fileName": "grip-30x22.svg",
       "tags": [
         "grip",
-        "30x22"
+        "30x22",
+        "handle",
+        "drag",
+        "reorder",
+        "dots",
+        "move",
+        "rearrange"
       ],
       "size": "30x22",
       "height": 30,
@@ -8633,7 +9181,12 @@
         "sync",
         "update",
         "rotate",
-        "retry"
+        "retry",
+        "alert",
+        "warning",
+        "important",
+        "attention",
+        "bang"
       ],
       "size": "30x30",
       "height": 30,
@@ -8751,7 +9304,12 @@
       "fileName": "recycle-30x30.svg",
       "tags": [
         "recycle",
-        "30x30"
+        "30x30",
+        "reuse",
+        "repeat",
+        "cycle",
+        "renew",
+        "sustainable"
       ],
       "size": "30x30",
       "height": 30,
@@ -8780,7 +9338,11 @@
       "fileName": "estimate-30x30.svg",
       "tags": [
         "estimate",
-        "30x30"
+        "30x30",
+        "quote",
+        "proposal",
+        "appraisal",
+        "approximation"
       ],
       "size": "30x30",
       "height": 30,
@@ -9080,7 +9642,13 @@
       "fileName": "approve-30x30.svg",
       "tags": [
         "approve",
-        "30x30"
+        "30x30",
+        "approval",
+        "accept",
+        "signoff",
+        "confirm",
+        "ok",
+        "stamp"
       ],
       "size": "30x30",
       "height": 30,
@@ -9368,7 +9936,12 @@
       "fileName": "computer-24x24.svg",
       "tags": [
         "computer",
-        "24x24"
+        "24x24",
+        "desktop",
+        "pc",
+        "machine",
+        "workstation",
+        "laptop"
       ],
       "size": "24x24",
       "height": 24,

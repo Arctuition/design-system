@@ -49,6 +49,7 @@ import {
   slugify,
 } from "../../components/shared/TokenOutlineSidebar";
 import { copyToClipboard } from "../../utils/clipboard";
+import { PublishTokensButton } from "../../components/shared/PublishTokensButton";
 
 // ─── Slot config ───
 
@@ -388,7 +389,7 @@ export function ColorTokensEditor() {
               </div>
             </div>
 
-            {/* Export */}
+            {/* Export + Publish */}
             <div className="flex flex-wrap items-center gap-3 p-4 mb-8 border border-border rounded-[var(--radius-card)] bg-secondary/10">
               <span
                 className="text-foreground mr-2"
@@ -399,6 +400,9 @@ export function ColorTokensEditor() {
               <Button variant="outline" onClick={handleExportCSS}>
                 <Download className="size-4 mr-1.5" /> Export CSS VAR (.zip)
               </Button>
+              <div className="ml-auto">
+                <PublishTokensButton />
+              </div>
             </div>
 
             {/* Token Preview */}
