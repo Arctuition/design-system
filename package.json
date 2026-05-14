@@ -9,7 +9,8 @@
     "predev": "node scripts/generate-llms-txt.mjs && node scripts/generate-icons-json.mjs && node scripts/generate-icon-files.mjs",
     "prebuild": "node scripts/generate-llms-txt.mjs && node scripts/generate-icons-json.mjs && node scripts/generate-icon-files.mjs",
     "generate:llms": "node scripts/generate-llms-txt.mjs",
-    "generate:icons": "node scripts/generate-icons-json.mjs && node scripts/generate-icon-files.mjs"
+    "generate:icons": "node scripts/generate-icons-json.mjs && node scripts/generate-icon-files.mjs",
+    "test:bootstrap": "node scripts/test-bootstrap-byte-identical.mjs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
