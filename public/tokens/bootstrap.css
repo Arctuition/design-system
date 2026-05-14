@@ -13,6 +13,12 @@
  *   font: var(--text-body-medium);
  *
  * Dark mode: add class="dark" or data-theme="dark" to <html> (or any subtree).
+ *
+ * Device emulation: add class="device-mobile" or class="device-tablet" to
+ * <html> to mimic the iOS / Android token set inside a desktop browser
+ * (for prototyping device-specific UI). These override the viewport-driven
+ * web cascade — resizing the window won't change values once a device
+ * class is set.
  */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap');
@@ -506,9 +512,8 @@
 
 /* ── Size & space: semantic, mobile-first ────────────────────────────────── */
 /* Default = Web Mobile. Each breakpoint overrides only the tokens that
- * differ at that screen size. Device modes (mobile/tablet) live in
- * tokens/size/device-*.json and are consumed by iOS / Android — they
- * are deliberately not in this stylesheet. */
+ * differ at that screen size. The :not() guard keeps device-emulation
+ * classes (see bottom) from being trampled by the viewport cascade. */
 :root {
   --size-spacing-inline-xs: var(--size-global-4);
   --size-spacing-inline-sm: var(--size-global-8);
@@ -617,7 +622,7 @@
 
 @media (min-width: 768px) {
   /* Web Tablet */
-  :root {
+  :root:not(.device-mobile):not(.device-tablet) {
     --size-spacing-inline-lg: var(--size-global-20);
     --size-spacing-inline-xl: var(--size-global-24);
     --size-spacing-stack-md: var(--size-global-16);
@@ -640,7 +645,7 @@
 
 @media (min-width: 1200px) {
   /* Web Desktop */
-  :root {
+  :root:not(.device-mobile):not(.device-tablet) {
     --size-spacing-inline-md: var(--size-global-16);
     --size-spacing-inline-lg: var(--size-global-24);
     --size-spacing-inline-xl: var(--size-global-32);
@@ -665,7 +670,7 @@
 
 @media (min-width: 1400px) {
   /* Web Desktop Large */
-  :root {
+  :root:not(.device-mobile):not(.device-tablet) {
     --size-spacing-inline-md: var(--size-global-16);
     --size-spacing-inline-lg: var(--size-global-24);
     --size-spacing-inline-xl: var(--size-global-40);
@@ -723,4 +728,129 @@
   --font-font-weight-black: 900px;
   --font-letter-spacing-title-large: -1.0499999523162842px;
   --font-letter-spacing-title-medium: -0.44999998807907104px;
+}
+
+/* ── Device emulation: Mobile (iOS / Android phone) ─────────────────────── */
+/* Activate with class="device-mobile" on <html>. Higher specificity than
+ * the @media queries above, so the responsive cascade is bypassed. */
+:root.device-mobile {
+  --size-spacing-inline-xl: var(--size-global-24);
+  --size-spacing-stack-md: var(--size-global-16);
+  --size-spacing-stack-lg: var(--size-global-24);
+  --size-spacing-stack-xl: var(--size-global-32);
+  --size-padding-xs: var(--size-global-10);
+  --size-padding-sm: var(--size-global-16);
+  --size-padding-md: var(--size-global-20);
+  --size-padding-lg: var(--size-global-24);
+  --size-padding-xl: var(--size-global-32);
+  --size-padding-component-xs: var(--size-global-6);
+  --size-padding-component-sm: var(--size-global-12);
+  --size-padding-component-md: var(--size-global-16);
+  --size-padding-component-lg: var(--size-global-20);
+  --size-padding-component-xl: var(--size-global-24);
+  --size-radius-xs: var(--size-global-4);
+  --size-radius-sm: var(--size-global-6);
+  --size-radius-md: var(--size-global-10);
+  --size-radius-lg: var(--size-global-16);
+  --size-radius-xl: var(--size-global-20);
+  --size-layout-margin: var(--size-global-20);
+  --size-comp-button-height-xl: var(--size-global-50);
+  --size-comp-button-height-lg: var(--size-global-44);
+  --size-comp-button-height-md: var(--size-global-34);
+  --size-comp-button-height-sm: var(--size-global-28);
+  --size-comp-button-radius-default: var(--size-radius-md);
+  --size-comp-input-height-xl: var(--size-global-50);
+  --size-comp-input-height-lg: var(--size-global-44);
+  --size-comp-input-height-md: var(--size-global-34);
+  --size-comp-input-height-sm: var(--size-global-28);
+  --size-comp-input-padding-horizontal: var(--size-padding-component-sm);
+  --size-comp-tag-radius-default: var(--size-radius-xs);
+  --size-comp-tag-padding-h-tiny: var(--size-global-4);
+  --size-comp-tab-height-md: var(--size-global-32);
+  --size-comp-tab-container-radius: var(--size-global-8);
+  --size-comp-tab-container-padding: var(--size-global-2);
+  --size-comp-tab-button-padding-horizontal: var(--size-global-8);
+  --size-comp-tab-padding: 0px;
+  --size-comp-tab-height-sm: var(--size-global-28);
+  --size-comp-table-cell-height: var(--size-global-36);
+  --size-comp-list-item-height-lg: var(--size-global-44);
+  --size-comp-list-item-height-sm: 0px;
+  --font-typeface-text: SF Pro Text;
+  --font-typeface-display: SF Pro Display;
+  --font-size-body-medium: 15px;
+  --font-size-body-large: 17px;
+  --font-size-body-small: 13px;
+  --font-size-body-line-height-medium: 20px;
+  --font-size-body-line-height-small: 18px;
+  --font-size-body-line-height-tiny: 12px;
+  --font-size-title-large: 28px;
+  --font-size-title-medium: 22px;
+  --font-size-title-small: 17px;
+  --font-size-title-line-height-medium: 34px;
+  --font-letter-spacing-title-large: 0px;
+  --font-letter-spacing-title-medium: 0px;
+}
+
+/* ── Device emulation: Tablet (iPad / Android tablet) ───────────────────── */
+:root.device-tablet {
+  --size-spacing-inline-lg: var(--size-global-20);
+  --size-spacing-inline-xl: var(--size-global-24);
+  --size-spacing-stack-md: var(--size-global-16);
+  --size-spacing-stack-lg: var(--size-global-24);
+  --size-spacing-stack-xl: var(--size-global-48);
+  --size-padding-xs: var(--size-global-10);
+  --size-padding-sm: var(--size-global-20);
+  --size-padding-md: var(--size-global-24);
+  --size-padding-lg: var(--size-global-32);
+  --size-padding-xl: var(--size-global-48);
+  --size-padding-component-xs: var(--size-global-6);
+  --size-padding-component-sm: var(--size-global-12);
+  --size-padding-component-md: var(--size-global-20);
+  --size-padding-component-lg: var(--size-global-24);
+  --size-padding-component-xl: var(--size-global-28);
+  --size-radius-xs: var(--size-global-4);
+  --size-radius-sm: var(--size-global-6);
+  --size-radius-md: var(--size-global-10);
+  --size-radius-lg: var(--size-global-20);
+  --size-radius-xl: var(--size-global-24);
+  --size-layout-columns: 12px;
+  --size-layout-margin: var(--size-global-24);
+  --size-layout-gutter: var(--size-global-16);
+  --size-layout-column-min-width: var(--size-global-48);
+  --size-layout-max-text-width: var(--size-global-680);
+  --size-comp-button-height-xl: var(--size-global-50);
+  --size-comp-button-height-lg: var(--size-global-44);
+  --size-comp-button-height-md: var(--size-global-34);
+  --size-comp-button-height-sm: var(--size-global-28);
+  --size-comp-button-radius-default: var(--size-radius-md);
+  --size-comp-input-height-xl: var(--size-global-50);
+  --size-comp-input-height-lg: var(--size-global-44);
+  --size-comp-input-height-md: var(--size-global-34);
+  --size-comp-input-height-sm: var(--size-global-28);
+  --size-comp-input-padding-horizontal: var(--size-padding-component-sm);
+  --size-comp-tag-radius-default: var(--size-radius-xs);
+  --size-comp-tag-padding-h-tiny: var(--size-global-4);
+  --size-comp-tab-height-md: var(--size-global-32);
+  --size-comp-tab-container-radius: var(--size-global-8);
+  --size-comp-tab-container-padding: var(--size-global-2);
+  --size-comp-tab-button-padding-horizontal: var(--size-global-8);
+  --size-comp-tab-padding: 0px;
+  --size-comp-tab-height-sm: var(--size-global-28);
+  --size-comp-table-cell-height: var(--size-global-36);
+  --size-comp-list-item-height-lg: var(--size-global-44);
+  --size-comp-list-item-height-sm: 0px;
+  --font-typeface-text: SF Pro Text;
+  --font-typeface-display: SF Pro Display;
+  --font-size-body-medium: 15px;
+  --font-size-body-large: 17px;
+  --font-size-body-small: 13px;
+  --font-size-body-line-height-medium: 20px;
+  --font-size-body-line-height-small: 18px;
+  --font-size-body-line-height-tiny: 12px;
+  --font-size-title-large: 34px;
+  --font-size-title-medium: 28px;
+  --font-size-title-small: 17px;
+  --font-size-title-line-height-medium: 34px;
+  --font-letter-spacing-title-large: 0px;
+  --font-letter-spacing-title-medium: 0px;
 }

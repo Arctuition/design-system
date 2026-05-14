@@ -44,13 +44,19 @@ const globalColor  = flattenColor(readJson("tokens/color/color-global-value.toke
 const fontDesktop  = flattenFont(readJson("tokens/font/web-desktop.tokens.json"));
 const sizeGlobal   = flattenSize(readJson("tokens/size/size-global-value.tokens.json"));
 
-// Web modes only — Device Mobile / Device Tablet are for iOS/Android (pt units)
-// and don't belong in browser CSS. Order is mobile-first so the cascade reads:
-// :root = Web Mobile → @media tablet → @media desktop → @media desktop-large.
+// Web modes drive the responsive cascade. Order is mobile-first so the
+// CSS reads: :root = Web Mobile → @media tablet → @media desktop → @media
+// desktop-large. Device modes (mobile/tablet) are *also* emitted now —
+// see the device-* diffs below. They're triggered explicitly by a class
+// on <html> for prototypes that need to emulate native iOS / Android.
 const sizeWebMobile       = flattenSize(readJson("tokens/size/web-mobile.tokens.json"));
 const sizeWebTablet       = flattenSize(readJson("tokens/size/web-tablet.tokens.json"));
 const sizeWebDesktop      = flattenSize(readJson("tokens/size/web-desktop.tokens.json"));
 const sizeWebDesktopLarge = flattenSize(readJson("tokens/size/web-desktop-large.tokens.json"));
+const sizeDeviceMobile    = flattenSize(readJson("tokens/size/device-mobile.tokens.json"));
+const sizeDeviceTablet    = flattenSize(readJson("tokens/size/device-tablet.tokens.json"));
+const fontDeviceMobile    = flattenFont(readJson("tokens/font/device-mobile.tokens.json"));
+const fontDeviceTablet    = flattenFont(readJson("tokens/font/device-tablet.tokens.json"));
 
 // Breakpoints live in their own collection — single mode, mode-independent.
 const breakpoints = flattenSize(readJson("tokens/breakpoint/breakpoint.tokens.json"));
@@ -59,12 +65,18 @@ const breakpoints = flattenSize(readJson("tokens/breakpoint/breakpoint.tokens.js
 // properties don't work inside @media queries, so we hard-emit the numbers.
 const breakpointPx = extractBreakpointPx(readJson("tokens/breakpoint/breakpoint.tokens.json"));
 
-// Only the tokens that differ from Web Mobile need to be emitted in each
-// @media block — saves bytes and keeps the cascade legible. A token whose
-// displayValue is identical across modes only appears in the :root base.
+// Only the tokens that differ from the :root base need to be emitted in
+// each mode block — saves bytes and keeps the cascade legible. Web modes
+// diff against web-mobile (since that's what :root holds for size).
+// Device modes also diff against web-mobile for size; device fonts diff
+// against fontDesktop because that's what :root holds for font.
 const sizeTabletDiff       = diffFromBase(sizeWebMobile, sizeWebTablet);
 const sizeDesktopDiff      = diffFromBase(sizeWebMobile, sizeWebDesktop);
 const sizeDesktopLargeDiff = diffFromBase(sizeWebMobile, sizeWebDesktopLarge);
+const sizeDeviceMobileDiff = diffFromBase(sizeWebMobile, sizeDeviceMobile);
+const sizeDeviceTabletDiff = diffFromBase(sizeWebMobile, sizeDeviceTablet);
+const fontDeviceMobileDiff = diffFromBase(fontDesktop, fontDeviceMobile, "value");
+const fontDeviceTabletDiff = diffFromBase(fontDesktop, fontDeviceTablet, "value");
 
 const fmt = formatTokenLines;
 
@@ -335,6 +347,10 @@ const bootstrapCss = PRODUCTION_BUILD
       sizeDesktopLargeDiff,
       fontDesktop,
       breakpointPx,
+      sizeDeviceMobileDiff,
+      sizeDeviceTabletDiff,
+      fontDeviceMobileDiff,
+      fontDeviceTabletDiff,
     });
 const bootstrapPath = resolve(publicTokensDir, "bootstrap.css");
 writeFileSync(bootstrapPath, bootstrapCss, "utf-8");

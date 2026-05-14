@@ -127,9 +127,12 @@ export function extractBreakpointPx(breakpointJson) {
 
 /** Return only the tokens whose value differs from the baseline (Web Mobile).
  *  Used to keep the `@media` override blocks minimal. */
-export function diffFromBase(baseTokens, modeTokens) {
-  const baseMap = new Map(baseTokens.map((t) => [t.cssVar, t.displayValue]));
-  return modeTokens.filter((t) => baseMap.get(t.cssVar) !== t.displayValue);
+export function diffFromBase(baseTokens, modeTokens, key = "displayValue") {
+  // `key` is `"displayValue"` for color/size rows, `"value"` for font rows.
+  // The two row shapes never overlap on a single call, so passing the right
+  // key per-call keeps this generic without a runtime type discriminator.
+  const baseMap = new Map(baseTokens.map((t) => [t.cssVar, t[key]]));
+  return modeTokens.filter((t) => baseMap.get(t.cssVar) !== t[key]);
 }
 
 /** Format a list of flattened tokens as CSS-property lines.
@@ -155,8 +158,50 @@ export function buildBootstrapCss({
   sizeDesktopLargeDiff,
   fontDesktop,
   breakpointPx,
+  // Device emulation tokens. Diffs against the :root base (web mobile for
+  // size, web desktop for font) — only listing tokens that differ. Default
+  // empty so the function stays backward-compatible with callers that
+  // haven't been updated yet.
+  sizeDeviceMobileDiff = [],
+  sizeDeviceTabletDiff = [],
+  fontDeviceMobileDiff = [],
+  fontDeviceTabletDiff = [],
 }) {
   const fmt = formatTokenLines;
+
+  // Device-mode @media exclusion. When a prototype opts into device
+  // emulation via `class="device-mobile"` on <html>, the viewport-driven
+  // @media queries must NOT also fire — otherwise resizing the browser
+  // would silently mutate "device" values. Scoping each @media :root with
+  // :not(.device-mobile):not(.device-tablet) keeps web-responsive and
+  // device-emulation modes orthogonal.
+  const NOT_DEVICE = ":root:not(.device-mobile):not(.device-tablet)";
+
+  // Device-mode blocks. Empty diff arrays produce empty blocks; we still
+  // emit them so the section appears in the file (useful for designers
+  // grepping bootstrap.css to confirm a device mode exists).
+  const deviceMobileBlock = sizeDeviceMobileDiff.length || fontDeviceMobileDiff.length
+    ? `
+
+/* ── Device emulation: Mobile (iOS / Android phone) ─────────────────────── */
+/* Activate with class="device-mobile" on <html>. Higher specificity than
+ * the @media queries above, so the responsive cascade is bypassed. */
+:root.device-mobile {
+${fmt(sizeDeviceMobileDiff)}
+${fmt(fontDeviceMobileDiff, "value")}
+}`
+    : "";
+
+  const deviceTabletBlock = sizeDeviceTabletDiff.length || fontDeviceTabletDiff.length
+    ? `
+
+/* ── Device emulation: Tablet (iPad / Android tablet) ───────────────────── */
+:root.device-tablet {
+${fmt(sizeDeviceTabletDiff)}
+${fmt(fontDeviceTabletDiff, "value")}
+}`
+    : "";
+
   return `/*
  * Arcsite Design System — token bootstrap
  * Generated from /tokens/*.json by scripts/generate-llms-txt.mjs.
@@ -172,6 +217,12 @@ export function buildBootstrapCss({
  *   font: var(--text-body-medium);
  *
  * Dark mode: add class="dark" or data-theme="dark" to <html> (or any subtree).
+ *
+ * Device emulation: add class="device-mobile" or class="device-tablet" to
+ * <html> to mimic the iOS / Android token set inside a desktop browser
+ * (for prototyping device-specific UI). These override the viewport-driven
+ * web cascade — resizing the window won't change values once a device
+ * class is set.
  */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap');
@@ -205,30 +256,29 @@ ${fmt(breakpoints)}
 
 /* ── Size & space: semantic, mobile-first ────────────────────────────────── */
 /* Default = Web Mobile. Each breakpoint overrides only the tokens that
- * differ at that screen size. Device modes (mobile/tablet) live in
- * tokens/size/device-*.json and are consumed by iOS / Android — they
- * are deliberately not in this stylesheet. */
+ * differ at that screen size. The :not() guard keeps device-emulation
+ * classes (see bottom) from being trampled by the viewport cascade. */
 :root {
 ${fmt(sizeWebMobile)}
 }
 
 @media (min-width: ${breakpointPx.sm}px) {
   /* Web Tablet */
-  :root {
+  ${NOT_DEVICE} {
 ${fmt(sizeTabletDiff).replace(/^/gm, "  ")}
   }
 }
 
 @media (min-width: ${breakpointPx.lg}px) {
   /* Web Desktop */
-  :root {
+  ${NOT_DEVICE} {
 ${fmt(sizeDesktopDiff).replace(/^/gm, "  ")}
   }
 }
 
 @media (min-width: ${breakpointPx.xl}px) {
   /* Web Desktop Large */
-  :root {
+  ${NOT_DEVICE} {
 ${fmt(sizeDesktopLargeDiff).replace(/^/gm, "  ")}
   }
 }
@@ -236,7 +286,7 @@ ${fmt(sizeDesktopLargeDiff).replace(/^/gm, "  ")}
 /* ── Typography (web desktop) ────────────────────────────────────────────── */
 :root {
 ${fmt(fontDesktop, "value")}
-}
+}${deviceMobileBlock}${deviceTabletBlock}
 `;
 }
 
