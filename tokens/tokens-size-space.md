@@ -162,15 +162,21 @@ Component tokens are a thin alias layer. They keep component-specific decisions 
 
 ### Button
 
+| Token                                       | Web (mobile/tablet/desktop/large) | Device (mobile/tablet)        |
+| ------------------------------------------- | --------------------------------- | ----------------------------- |
+| `size/comp/button/height-xl`                | `size-global/48`                  | `size-global/50`              |
+| `size/comp/button/height-lg`                | `size-global/40`                  | `size-global/44`              |
+| `size/comp/button/height-md`                | `size-global/32`                  | `size-global/36`              |
+| `size/comp/button/height-sm`                | `size-global/24`                  | `size-global/28`              |
+| `size/comp/button/padding-horizontal-xl`    | `size/padding-component-lg`       | `size/padding-component-lg` (mobile uses `size/padding-lg`) |
+| `size/comp/button/padding-horizontal-lg`    | `size/padding-component-lg`       | `size-global/18`              |
+| `size/comp/button/padding-horizontal-md`    | `size/padding-component-md`       | `size-global/12`              |
+| `size/comp/button/padding-horizontal-sm`    | `size/padding-component-sm`       | `size/padding-component-sm`   |
+| `size/comp/button/radius-default`           | `size/radius-sm`                  | `size/radius-md`              |
+| `size/comp/button/radius-rounded`           | `size/radius-full`                | `size/radius-full`            |
+| `size/comp/button/gap`                      | `size/spacing-inline-sm`          | `size/spacing-inline-sm`      |
 
-| Token                                    | Aliases                     |
-| ---------------------------------------- | --------------------------- |
-| `size/comp/button/height-xs` … `xl`      | `size/height-xs` … `xl`     |
-| `size/comp/button/padding-horizontal-sm` | `size/padding-component-sm` |
-| `size/comp/button/padding-horizontal-md` | `size/padding-component-md` |
-| `size/comp/button/padding-horizontal-lg` | `size/padding-component-lg` |
-| `size/comp/button/radius-default`        | `size/radius-md`            |
-| `size/comp/button/radius-rounded`        | `size/radius-full`          |
+**Per-mode alias note**: Most button comp tokens alias to the same semantic across all modes, but `radius-default`, `height-*`, and `padding-horizontal-{lg,md}` deliberately diverge between web and device platforms — native iOS/Android conventions prefer slightly larger touch targets and softer corners. The CMS round-trip preserves per-mode alias differences faithfully (see PR #29). When you switch mode in Figma, the bound layer recomputes against that mode's alias chain.
 
 
 ### Input / Text field

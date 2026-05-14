@@ -223,6 +223,7 @@ Note: intent labels skip `primary-increased-contrast` (the regular `primary` is 
 | `color/fill/bright`                   | `gray/00` `#ffffff`         | `gray/90` `#1a1a1a`         |
 | `color/fill/brand/primary`            | `brand-orange/60` `#e3571c` | `brand-orange/50` `#f06326` |
 | `color/fill/brand/secondary`          | `brand-orange/20` `#fadacc` | `brand-orange/90` `#421b0a` |
+| `color/fill/brand/tertiary`           | `brand-orange/10` `#fff1eb` | `brand-orange/95` `#352b27` |
 | `color/fill/action/primary`           | `blue/60` `#398ae7`         | `blue/50` `#479eff`         |
 | `color/fill/action/primary-hover`     | `blue/70` `#407fc7`         | `blue/40` `#8fc3ff`         |
 | `color/fill/action/secondary`         | `blue/20` `#d1e7ff`         | `blue/90` `#2e4157`         |
@@ -230,12 +231,16 @@ Note: intent labels skip `primary-increased-contrast` (the regular `primary` is 
 | `color/fill/action/tertiary`          | `blue/10` `#ebf4ff`         | `blue/95` `#1e252b`         |
 | `color/fill/success/primary`          | `green/60` `#04b50b`        | `green/50` `#04c20c`        |
 | `color/fill/success/secondary`        | `green/20` `#d0f5d1`        | `green/90` `#223622`        |
+| `color/fill/success/tertiary`         | `green/10` `#ebffec`        | `green/95` `#2e322f`        |
 | `color/fill/caution/primary`          | `gold/60` `#d88000`         | `gold/50` `#e48800`         |
 | `color/fill/caution/secondary`        | `gold/20` `#f9e3cb`         | `gold/90` `#402706`         |
+| `color/fill/caution/tertiary`         | `gold/10` `#fef4ea`         | `gold/95` `#342d26`         |
 | `color/fill/caution-yellow/primary`   | `yellow/60` `#e3c712`       | `yellow/50` `#f0d213`       |
 | `color/fill/caution-yellow/secondary` | `yellow/20` `#faf4cc`       | `yellow/90` `#423b0a`       |
+| `color/fill/caution-yellow/tertiary`  | `yellow/10` `#fffceb`       | `yellow/95` `#353327`       |
 | `color/fill/danger/primary`           | `red/60` `#e31c1c`          | `red/50` `#fc3f3f`          |
 | `color/fill/danger/secondary`         | `red/20` `#fccaca`          | `red/90` `#440c0c`          |
+| `color/fill/danger/tertiary`          | `red/10` `#ffebeb`          | `red/95` `#382e2e`          |
 
 
 **`primary` vs. `secondary`**: `primary` is the saturated, prominent fill (a CTA button body, a danger badge). `secondary` is the muted/tinted version (a hover background under a label, a subtle status pill).
