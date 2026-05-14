@@ -1,5 +1,11 @@
 # Design System Website — Claude Context
 
+> **Before opening a substantial PR, open `ARCHITECTURE.md`.** That file is
+> a map of where data lives and how it flows across runtime boundaries —
+> it exists specifically to help you spot drift risks before a change
+> goes wrong. The PR template asks you to skim it; the docs-drift CI
+> check warns when you change load-bearing files without touching it.
+
 ## Project
 React + Vite + TypeScript design system CMS. Content is managed through `/src/app/pages/cms/` pages and persisted via a Supabase edge function acting as a key-value store.
 
@@ -112,6 +118,22 @@ Skip the ChangeLog entry only for purely-internal changes (CLAUDE.md edits, buil
 ## Keeping these docs up to date
 Say **"sync context"** in any session to trigger an update of these files.
 `/project:sync-context` does NOT work — Claude Code resolves slash commands relative to cwd, which is often a worktree, not the project root.
+
+## Authoring substantial PRs (especially AI-authored)
+
+> Background: on 2026-05-14 a maintainer-AI shipped a PR that updated only the repo copy of a doc whose canonical source had silently moved to KV two days earlier. The instruction in CLAUDE.md was still literally true but its meaning had flipped. There was no diff in the doc, so reviewers had no signal. We added three guards to prevent recurrence; this section is the cultural one.
+
+For any PR over ~500 LOC, or any PR touching a [load-bearing source file listed in ARCHITECTURE.md](ARCHITECTURE.md#load-bearing-source-files-ci-watches-these):
+
+1. **Skim `ARCHITECTURE.md` first.** Find the section closest to your change. Re-read its "Drift risks" and "Canonical sources" callouts. If your change makes a risk worse, or moves a canonical, update the map in the same PR.
+2. **Search-and-read meta-docs** for the file/service/concept your change affects:
+   - `CLAUDE.md` — look for instructions whose *meaning* (not text) might flip
+   - `tokens/tokens-*.md` — reference tables can go stale silently
+   - `.claude/decisions.md` — past decisions may be invalidated
+3. **Fill in the PR template's architectural-impact checklist.** The boxes exist to make you stop and think; mechanical checking defeats the point.
+4. **If AI is authoring the PR**, the prompt should include: *"Before opening the PR, re-read `ARCHITECTURE.md` and `CLAUDE.md`, and check whether any instructions there would become misleading because of this change."* AI optimizes for the explicit task; that prompt extends the task to include doc maintenance.
+
+The technical guard for this is `.github/workflows/docs-drift-check.yml` — it posts a warning comment on PRs that touch load-bearing source without `CLAUDE.md`/`ARCHITECTURE.md`. The warning is advisory, not blocking; it exists to make you *look*, not to gate emergency fixes.
 
 ## Worktree cleanup
 If you see a "Commit changes" prompt in the Claude Code toolbar, a worktree is still active. Remove it:
