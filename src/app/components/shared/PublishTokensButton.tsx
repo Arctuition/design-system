@@ -11,6 +11,7 @@ import {
 import { Loader2, Rocket, ExternalLink, CheckCircle2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { publishDesignTokens, type PublishDesignTokensResult } from "../../store/api";
+import { useAppData } from "../../store/data-store";
 
 const ARTIFACT_LABELS: Record<string, string> = {
   bootstrap: "bootstrap.css",
@@ -35,6 +36,7 @@ export function PublishTokensButton({ size = "default" }: { size?: "default" | "
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<PublishDesignTokensResult | null>(null);
+  const { markTokensPublished } = useAppData();
 
   const onClick = () => {
     setResult(null);
@@ -47,6 +49,10 @@ export function PublishTokensButton({ size = "default" }: { size?: "default" | "
       const r = await publishDesignTokens();
       setResult(r);
       if (r.ok) {
+        // Stamp the publish time so every slot's status badge flips from
+        // "Uploaded" → "Published". Any new upload after this point will
+        // turn the badge back to "Uploaded" automatically.
+        markTokensPublished();
         const artifactCount = Object.keys(r.urls).length;
         toast.success(`Published ${artifactCount} artifact${artifactCount === 1 ? "" : "s"}`);
       } else {

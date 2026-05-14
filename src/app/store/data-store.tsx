@@ -203,6 +203,19 @@ export interface ArticleVersion {
   label: string;
 }
 
+/**
+ * Per-slot upload + global publish timestamps for the Token editor UI.
+ * `tokenSlotMtimes` keys are stable strings like `size/global`, `color/light`,
+ * `font/webDesktop`, `breakpoint`. Values are ISO timestamps written by the
+ * token setters when a slot's array contents change. `tokensLastPublishedAt`
+ * is updated once per successful Publish — comparing the two yields the
+ * three-state badge (Empty / Uploaded / Published) on each upload card.
+ */
+export interface TokenStatus {
+  tokenSlotMtimes: Record<string, string>;
+  tokensLastPublishedAt: string | null;
+}
+
 export interface AppState {
   homeArticle: string;
   changeLogs: ChangeLogEntry[];
@@ -211,6 +224,7 @@ export interface AppState {
   breakpointTokens: BreakpointTokenSet;
   fontTokens: FontTokenSet;
   tokenDocs: TokenDocs;
+  tokenStatus: TokenStatus;
   icons: IconItem[];
   patterns: PatternArticle[];
   editors: EditorAccount[];
@@ -230,6 +244,9 @@ interface AppContextType extends AppState {
   setSizeTokens: (tokens: SizeTokenSet) => void;
   setBreakpointTokens: (tokens: BreakpointTokenSet) => void;
   setFontTokens: (tokens: FontTokenSet) => void;
+  /** Called by PublishTokensButton after a successful Publish-to-Production.
+   *  Stamps the current time as the "Published" baseline for every slot. */
+  markTokensPublished: () => void;
   setTokenDoc: (key: keyof TokenDocs, markdown: string) => void;
   setIconologyArticle: (html: string) => void;
   addIcon: (icon: Omit<IconItem, "id">) => void;
@@ -741,6 +758,7 @@ function getDefaults(): AppState {
     breakpointTokens: defaultBreakpointTokens,
     fontTokens: defaultFontTokens,
     tokenDocs: defaultTokenDocs,
+    tokenStatus: { tokenSlotMtimes: {}, tokensLastPublishedAt: null },
     iconologyArticle: defaultIconologyArticle,
     icons: defaultIcons,
     patterns: defaultPatterns,
@@ -827,6 +845,16 @@ function buildStateFromServer(serverData: Record<string, any>): AppState {
         typeof serverData.tokenDocs?.typography === "string" && serverData.tokenDocs.typography.length > 0
           ? serverData.tokenDocs.typography
           : defaults.tokenDocs.typography,
+    },
+    tokenStatus: {
+      tokenSlotMtimes:
+        serverData.tokenStatus && typeof serverData.tokenStatus.tokenSlotMtimes === "object"
+          ? serverData.tokenStatus.tokenSlotMtimes
+          : {},
+      tokensLastPublishedAt:
+        serverData.tokenStatus && typeof serverData.tokenStatus.tokensLastPublishedAt === "string"
+          ? serverData.tokenStatus.tokensLastPublishedAt
+          : null,
     },
     iconologyArticle: serverData.iconologyArticle ?? defaults.iconologyArticle,
     icons: ensureChromeIcons(
@@ -929,6 +957,7 @@ function seedDefaults(): void {
     breakpointTokens: defaults.breakpointTokens,
     fontTokens: defaults.fontTokens,
     tokenDocs: defaults.tokenDocs,
+    tokenStatus: defaults.tokenStatus,
     iconologyArticle: defaults.iconologyArticle,
     icons: defaults.icons,
     patterns: defaults.patterns,
@@ -1176,6 +1205,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         breakpointTokens: state.breakpointTokens,
         fontTokens: state.fontTokens,
         tokenDocs: state.tokenDocs,
+        tokenStatus: state.tokenStatus,
         iconologyArticle: state.iconologyArticle,
         icons: state.icons,
         patterns: state.patterns,
@@ -1296,6 +1326,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           breakpointTokens: currentState.breakpointTokens,
           fontTokens: currentState.fontTokens,
           tokenDocs: currentState.tokenDocs,
+          tokenStatus: currentState.tokenStatus,
           iconologyArticle: currentState.iconologyArticle,
           icons: currentState.icons,
           patterns: currentState.patterns,
@@ -1401,21 +1432,37 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     removeChangeLog: (id) =>
       update({ changeLogs: state.changeLogs.filter((c) => c.id !== id) }, "changeLogs"),
     setColorTokens: (tokens) => {
-      setState((prev) => ({
-        ...prev,
-        colorTokens: {
+      const now = new Date().toISOString();
+      setState((prev) => {
+        const next = {
           global: tokens.global || [],
           semanticLight: tokens.semanticLight || [],
           semanticDark: tokens.semanticDark || [],
-        },
-      }));
+        };
+        // Stamp mtime only for slots whose array reference actually changed —
+        // a no-op setColorTokens (rare, but possible during sync) shouldn't
+        // turn a "Published" badge back into "Uploaded".
+        const updates: Record<string, string> = {};
+        if (prev.colorTokens.global !== next.global) updates["color/global"] = now;
+        if (prev.colorTokens.semanticLight !== next.semanticLight) updates["color/light"] = now;
+        if (prev.colorTokens.semanticDark !== next.semanticDark) updates["color/dark"] = now;
+        return {
+          ...prev,
+          colorTokens: next,
+          tokenStatus: {
+            ...prev.tokenStatus,
+            tokenSlotMtimes: { ...prev.tokenStatus.tokenSlotMtimes, ...updates },
+          },
+        };
+      });
       pendingSyncRef.current.add("colorTokens");
+      pendingSyncRef.current.add("tokenStatus");
       syncToServer();
     },
     setSizeTokens: (tokens) => {
-      setState((prev) => ({
-        ...prev,
-        sizeTokens: {
+      const now = new Date().toISOString();
+      setState((prev) => {
+        const next = {
           global: tokens.global || [],
           deviceMobile: tokens.deviceMobile || [],
           deviceTablet: tokens.deviceTablet || [],
@@ -1423,30 +1470,75 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           webTablet: tokens.webTablet || [],
           webDesktop: tokens.webDesktop || [],
           webDesktopLarge: tokens.webDesktopLarge || [],
-        },
-      }));
+        };
+        const updates: Record<string, string> = {};
+        for (const key of ["global", "deviceMobile", "deviceTablet", "webMobile", "webTablet", "webDesktop", "webDesktopLarge"] as const) {
+          if (prev.sizeTokens[key] !== next[key]) updates[`size/${key}`] = now;
+        }
+        return {
+          ...prev,
+          sizeTokens: next,
+          tokenStatus: {
+            ...prev.tokenStatus,
+            tokenSlotMtimes: { ...prev.tokenStatus.tokenSlotMtimes, ...updates },
+          },
+        };
+      });
       pendingSyncRef.current.add("sizeTokens");
+      pendingSyncRef.current.add("tokenStatus");
       syncToServer();
     },
     setBreakpointTokens: (tokens) => {
-      setState((prev) => ({
-        ...prev,
-        breakpointTokens: { tokens: tokens.tokens || [] },
-      }));
+      const now = new Date().toISOString();
+      setState((prev) => {
+        const next = tokens.tokens || [];
+        const changed = prev.breakpointTokens.tokens !== next;
+        return {
+          ...prev,
+          breakpointTokens: { tokens: next },
+          tokenStatus: changed ? {
+            ...prev.tokenStatus,
+            tokenSlotMtimes: { ...prev.tokenStatus.tokenSlotMtimes, breakpoint: now },
+          } : prev.tokenStatus,
+        };
+      });
       pendingSyncRef.current.add("breakpointTokens");
+      pendingSyncRef.current.add("tokenStatus");
       syncToServer();
     },
     setFontTokens: (tokens) => {
-      setState((prev) => ({
-        ...prev,
-        fontTokens: {
+      const now = new Date().toISOString();
+      setState((prev) => {
+        const next = {
           deviceMobile: tokens.deviceMobile || [],
           deviceTablet: tokens.deviceTablet || [],
           webMobile: tokens.webMobile || [],
           webDesktop: tokens.webDesktop || [],
-        },
-      }));
+        };
+        const updates: Record<string, string> = {};
+        for (const key of ["deviceMobile", "deviceTablet", "webMobile", "webDesktop"] as const) {
+          if (prev.fontTokens[key] !== next[key]) updates[`font/${key}`] = now;
+        }
+        return {
+          ...prev,
+          fontTokens: next,
+          tokenStatus: {
+            ...prev.tokenStatus,
+            tokenSlotMtimes: { ...prev.tokenStatus.tokenSlotMtimes, ...updates },
+          },
+        };
+      });
       pendingSyncRef.current.add("fontTokens");
+      pendingSyncRef.current.add("tokenStatus");
+      syncToServer();
+    },
+    markTokensPublished: () => {
+      const now = new Date().toISOString();
+      setState((prev) => ({
+        ...prev,
+        tokenStatus: { ...prev.tokenStatus, tokensLastPublishedAt: now },
+      }));
+      pendingSyncRef.current.add("tokenStatus");
       syncToServer();
     },
     setTokenDoc: (key, markdown) => {
@@ -1706,6 +1798,7 @@ export function useAppData() {
       breakpointTokens: { tokens: [] },
       fontTokens: { deviceMobile: [], deviceTablet: [], webMobile: [], webDesktop: [] },
       tokenDocs: { color: "", size: "", typography: "" },
+      tokenStatus: { tokenSlotMtimes: {}, tokensLastPublishedAt: null },
       iconologyArticle: "",
       icons: [],
       patternsArticle: "",
@@ -1720,6 +1813,7 @@ export function useAppData() {
       setSizeTokens: () => {},
       setBreakpointTokens: () => {},
       setFontTokens: () => {},
+      markTokensPublished: () => {},
       setTokenDoc: () => {},
       setIconologyArticle: () => {},
       addIcon: () => {},
