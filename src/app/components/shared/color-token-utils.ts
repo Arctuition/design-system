@@ -617,3 +617,33 @@ function parseTokensRaw(data: any): ColorToken[] {
   }
   return [];
 }
+
+/**
+ * Shape sniffer for color slots — mirrors `validateSizeFileShape`. Returns
+ * whether the file's top-level keys look right for the target slot, and
+ * what was actually found so the editor can show a "wrong slot" message.
+ */
+export interface ColorFileShape {
+  valid: boolean;
+  expectedKeys: string[];
+  foundKeys: string[];
+}
+
+export function validateColorFileShape(data: any, slot: ColorMatchSlot): ColorFileShape {
+  // Color exports can use any of these top-level wrappers depending on which
+  // Figma collection they come from. We accept anything in `color.*` for
+  // semantic slots, and require a `global` segment to live somewhere for
+  // global slots.
+  const expectedKeys = slot === "global" ? ["color", "color-global"] : ["color"];
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    // An array of {name, value} entries is also a valid shape — treat
+    // a non-empty array as valid.
+    if (Array.isArray(data) && data.length > 0 && data.some((t) => t?.name)) {
+      return { valid: true, expectedKeys, foundKeys: ["<array>"] };
+    }
+    return { valid: false, expectedKeys, foundKeys: [] };
+  }
+  const foundKeys = Object.keys(data).filter((k) => !k.startsWith("$"));
+  const valid = expectedKeys.some((k) => foundKeys.includes(k));
+  return { valid, expectedKeys, foundKeys };
+}
