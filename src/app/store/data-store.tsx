@@ -415,6 +415,52 @@ const defaultTokenDocs: TokenDocs = {
 const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
+    date: "2026-05-14",
+    version: "1.9.0",
+    title: "CMS upload cards — per-slot status badges and upload safety",
+    description: `Upload cards in the Size, Color, and Font token editors now tell you, at a glance, which slots have pending uploads waiting to ship vs. which are already live in production — and protect against accidentally importing the wrong file into the wrong slot.
+
+**Per-slot status badges with timestamps**
+- Three states per upload card: **Empty** / **Uploaded** (yellow, mtime shown) / **Published** (green, publishedAt shown).
+- Per-slot tracking — re-uploading just Semantic Light leaves Global and Semantic Dark badges untouched. Only slots whose contents actually changed flip to "Uploaded".
+- Timestamp shown beneath the badge in short format (e.g., \`May 14, 14:32\`), full ISO on hover.
+- Auto-seeds a baseline date on first load for slots that pre-date the feature, so badges have a real anchor to compare against.
+
+**Wrong-slot upload protection**
+- Uploading a color JSON to a size slot now fails loudly with a specific message — e.g., *"web-desktop.tokens.json doesn't look like a size token file for this slot. Expected: size. Found: color."* — instead of producing nonsense tokens that would silently corrupt the publish.
+- Bulk upload: when some files are unrecognized or duplicates, the Import button is disabled until you explicitly tick *"I understand N files will be discarded"*. Closes a click-through-without-reading failure mode.
+
+**Server-side persistence fix**
+- Closed a quiet bug where the badge state was being written client-side but rejected server-side because the new \`tokenStatus\` slot wasn't in the KV allowlist. Timestamps now persist across reloads.`,
+  },
+  {
+    id: uid(),
+    date: "2026-05-14",
+    version: "1.8.0",
+    title: "Design token pipeline — silent data loss fixed, device emulation tokens, live-sync public pages",
+    description: `A multi-PR sweep (#29–#36) that fixed three classes of silent data loss in the token upload path and shipped two user-visible features along the way.
+
+**Token uploads no longer lose data**
+- Color: every semantic light/dark token now correctly aliases its global (was collapsing to hardcoded hex on every Publish — broke theme overrides).
+- Size: \`comp/button/padding-horizontal\`, \`radius\`, and \`gap\` tokens now survive the upload pipeline (were silently dropped when their \`$value\` was a Figma string reference like \`"{size.padding-component-lg}"\`).
+- Font: all \`com.figma.scopes\` hints preserved (only the first was being kept — caused wrong CSS units on multi-scope tokens).
+- Combined: ~140 previously-lost tokens now reach production \`bootstrap.css\` on every Publish.
+
+**Device emulation mode in \`bootstrap.css\`**
+- Prototypes that simulate native iOS / Android UI inside a desktop browser can now opt into the device-mode token set via \`<html class="device-mobile">\` or \`<html class="device-tablet">\`. Padding, radii, heights, and font sizes all recompute to the device values regardless of viewport width.
+- The web responsive cascade (\`@media\`) and device-mode class selectors are deliberately orthogonal — a \`:not(.device-*)\` guard on the \`@media\` blocks prevents resize from leaking web values back into a device-emulating page.
+
+**Public token reference pages now live-sync from CMS**
+- \`/color/swatches\`, \`/color/tokens\`, \`/size/tokens\`, and \`/typography/tokens\` now read live KV state via \`useAppData()\`. Designer uploads in CMS reflect on the public pages immediately — no rebuild, no GH Pages redeploy. Bundled JSON falls back only for fresh installs.
+
+**Byte-identical parity CI gate**
+- A new check diffs the prebuild output against the CMS publish output for the same input. Caught a real \`flattenFont\` bug during development (\`font-weight: 400px\` — invalid CSS — and letter-spacing carrying IEEE-754 float noise). Every PR touching parsers must now pass this gate.
+
+**Edge function auto-deploy**
+- Added a GitHub Actions workflow that auto-deploys \`supabase/functions/**\` on every push to main. Closes a 30-minute window we hit during this sweep where the SPA had the fix but the edge function on prod was still running old code.`,
+  },
+  {
+    id: uid(),
     date: "2026-05-12",
     version: "1.7.0",
     title: "CMS-driven publish — token uploads go live without a git commit",
