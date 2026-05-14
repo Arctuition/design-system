@@ -85,8 +85,14 @@ export function flattenSizeTokens(obj: any, prefix: string = ""): SizeToken[] {
 
 /**
  * Parses a single Figma size-tokens JSON. Accepts either the semantic shape
- * (`{ size: {...} }`) or the global shape (`{ "size-global": {...} }`). Any
- * other top-level key is flattened as-is.
+ * (`{ size: {...} }`) or the global shape (`{ "size-global": {...} }`) or
+ * the breakpoint shape (`{ breakpoint: {...} }`).
+ *
+ * Files lacking ALL of those top-level keys are rejected — previously the
+ * parser fell back to a permissive `flattenSizeTokens(data)` which produced
+ * nonsense tokens when a color or font JSON was misrouted to a size slot.
+ * Use `validateSizeFileShape` to inspect ahead of time and surface a clear
+ * "wrong slot" error to the user.
  */
 export function parseSizeTokenFile(data: any): SizeToken[] {
   if (!data || typeof data !== "object") return [];
@@ -100,8 +106,37 @@ export function parseSizeTokenFile(data: any): SizeToken[] {
   if (Object.prototype.hasOwnProperty.call(data, "breakpoint")) {
     return flattenSizeTokens(data.breakpoint, "breakpoint");
   }
-  // Fallback: flatten everything
-  return flattenSizeTokens(data);
+  return [];
+}
+
+/**
+ * Check whether `data` has a top-level key that matches what we'd expect
+ * to parse out of a size JSON for the given slot. Used by the editor to
+ * abort with a "looks like the wrong slot" toast instead of silently
+ * importing zero tokens.
+ *
+ * Returns a tagged result so the caller can present a helpful message:
+ *   - `valid: true`  — at least one expected key is present
+ *   - `valid: false` — file is not size-shaped; show the foundKeys to the
+ *     user so they can spot e.g. that they uploaded a `color` JSON.
+ */
+export interface SizeFileShape {
+  valid: boolean;
+  expectedKeys: string[];
+  foundKeys: string[];
+}
+
+export function validateSizeFileShape(data: any, slot: MatchSlot): SizeFileShape {
+  const expectedKeys =
+    slot === "breakpoint" ? ["breakpoint"] :
+    slot === "global"     ? ["size-global", "size"] :
+                            ["size"];
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return { valid: false, expectedKeys, foundKeys: [] };
+  }
+  const foundKeys = Object.keys(data).filter((k) => !k.startsWith("$"));
+  const valid = expectedKeys.some((k) => foundKeys.includes(k));
+  return { valid, expectedKeys, foundKeys };
 }
 
 // ─── File name matching for bulk upload ───

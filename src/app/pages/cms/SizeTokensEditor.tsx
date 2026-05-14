@@ -17,6 +17,7 @@ import {
   parseSizeTokenFile,
   exportSizeCSSAsZip,
   analyzeBulkFiles,
+  validateSizeFileShape,
   EXPECTED_FILES,
   type MatchSlot,
   groupSizeTokensStable,
@@ -75,6 +76,19 @@ export function SizeTokensEditor() {
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target?.result as string);
+
+        // Defense against wrong-slot uploads: catch a color or font JSON
+        // before its top-level keys get silently flattened into garbage.
+        const shape = validateSizeFileShape(data, slot);
+        if (!shape.valid) {
+          toast.error(
+            `${file.name} doesn't look like a size token file for this slot. ` +
+            `Expected one of: ${shape.expectedKeys.join(", ")}. ` +
+            `Found: ${shape.foundKeys.slice(0, 3).join(", ") || "(empty)"}.`
+          );
+          return;
+        }
+
         const tokens = parseSizeTokenFile(data);
         if (tokens.length === 0) {
           toast.error(`No numeric tokens found in ${file.name}.`);
@@ -124,6 +138,11 @@ export function SizeTokensEditor() {
       try {
         const text = await file.text();
         const data = JSON.parse(text);
+        const shape = validateSizeFileShape(data, slot);
+        if (!shape.valid) {
+          errors.push(`${file.name}: wrong shape — expected ${shape.expectedKeys.join("/")}, found ${shape.foundKeys.slice(0, 2).join(",") || "(empty)"}`);
+          continue;
+        }
         const tokens = parseSizeTokenFile(data);
         if (tokens.length === 0) {
           errors.push(`${file.name}: no numeric tokens`);
@@ -493,7 +512,18 @@ function BulkConfirmDialog({
   const unmatched = pending?.unmatched ?? [];
   const missing = pending?.missing ?? [];
 
-  const canConfirm = matched.length > 0;
+  // Files that won't be imported. Explicit acknowledgement is required
+  // before Confirm enables — protects against the "click through without
+  // reading" failure mode where a designer doesn't notice the file they
+  // care about is in the discard list.
+  const hasDiscards = duplicates.length > 0 || unmatched.length > 0;
+  const [acknowledgedDiscards, setAcknowledgedDiscards] = React.useState(false);
+  // Reset the checkbox each time a new bulk operation opens the dialog.
+  React.useEffect(() => {
+    if (open) setAcknowledgedDiscards(false);
+  }, [open]);
+
+  const canConfirm = matched.length > 0 && (!hasDiscards || acknowledgedDiscards);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onCancel(); }}>
@@ -577,6 +607,26 @@ function BulkConfirmDialog({
             </section>
           )}
         </div>
+
+        {hasDiscards && (
+          <label
+            className="flex items-start gap-2 mt-2 cursor-pointer text-foreground"
+            style={{ fontSize: "var(--text-label)" }}
+          >
+            <input
+              type="checkbox"
+              checked={acknowledgedDiscards}
+              onChange={(e) => setAcknowledgedDiscards(e.target.checked)}
+              className="mt-0.5 cursor-pointer"
+            />
+            <span>
+              I understand{" "}
+              {duplicates.reduce((n, d) => n + d.files.length, 0) + unmatched.length} file
+              {duplicates.reduce((n, d) => n + d.files.length, 0) + unmatched.length === 1 ? "" : "s"}{" "}
+              will be discarded.
+            </span>
+          </label>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onCancel}>Cancel</Button>

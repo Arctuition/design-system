@@ -15,6 +15,7 @@ import {
 import type { FontTokenSet, FontToken } from "../../store/data-store";
 import {
   parseFontTokenFile,
+  validateFontFileShape,
   exportFontCSSAsZip,
   analyzeBulkFiles,
   EXPECTED_FILES,
@@ -66,6 +67,15 @@ export function FontTokensEditor() {
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target?.result as string);
+        const shape = validateFontFileShape(data);
+        if (!shape.valid) {
+          toast.error(
+            `${file.name} doesn't look like a font token file. ` +
+            `Expected top-level key: ${shape.expectedKeys.join(", ")}. ` +
+            `Found: ${shape.foundKeys.slice(0, 3).join(", ") || "(empty)"}.`
+          );
+          return;
+        }
         const tokens = parseFontTokenFile(data);
         if (tokens.length === 0) {
           toast.error(`No font tokens found in ${file.name}.`);
@@ -110,6 +120,11 @@ export function FontTokensEditor() {
       try {
         const text = await file.text();
         const data = JSON.parse(text);
+        const shape = validateFontFileShape(data);
+        if (!shape.valid) {
+          errors.push(`${file.name}: wrong shape — expected ${shape.expectedKeys.join("/")}, found ${shape.foundKeys.slice(0, 2).join(",") || "(empty)"}`);
+          continue;
+        }
         const tokens = parseFontTokenFile(data);
         if (tokens.length === 0) {
           errors.push(`${file.name}: no font tokens`);
@@ -387,7 +402,11 @@ function BulkConfirmDialog({
   const unmatched = pending?.unmatched ?? [];
   const missing = pending?.missing ?? [];
 
-  const canConfirm = matched.length > 0;
+  const hasDiscards = duplicates.length > 0 || unmatched.length > 0;
+  const [acknowledgedDiscards, setAcknowledgedDiscards] = React.useState(false);
+  React.useEffect(() => { if (open) setAcknowledgedDiscards(false); }, [open]);
+
+  const canConfirm = matched.length > 0 && (!hasDiscards || acknowledgedDiscards);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onCancel(); }}>
@@ -471,6 +490,23 @@ function BulkConfirmDialog({
             </section>
           )}
         </div>
+
+        {hasDiscards && (
+          <label className="flex items-start gap-2 mt-2 cursor-pointer text-foreground" style={{ fontSize: "var(--text-label)" }}>
+            <input
+              type="checkbox"
+              checked={acknowledgedDiscards}
+              onChange={(e) => setAcknowledgedDiscards(e.target.checked)}
+              className="mt-0.5 cursor-pointer"
+            />
+            <span>
+              I understand{" "}
+              {duplicates.reduce((n, d) => n + d.files.length, 0) + unmatched.length} file
+              {duplicates.reduce((n, d) => n + d.files.length, 0) + unmatched.length === 1 ? "" : "s"}{" "}
+              will be discarded.
+            </span>
+          </label>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onCancel}>Cancel</Button>

@@ -64,15 +64,36 @@ export function flattenFontTokens(obj: any, prefix: string = ""): FontToken[] {
 }
 
 /**
- * Parses a single Figma font-tokens JSON. Accepts either the wrapped shape
- * (`{ font: {...} }`) or anything top-level — falls back to flatten-everything.
+ * Parses a single Figma font-tokens JSON. Requires a `font` top-level key —
+ * the previous fallback flattened arbitrary objects, which produced nonsense
+ * tokens when a size or color JSON was misrouted into a font slot.
  */
 export function parseFontTokenFile(data: any): FontToken[] {
   if (!data || typeof data !== "object") return [];
   if (Object.prototype.hasOwnProperty.call(data, "font")) {
     return flattenFontTokens(data.font, "font");
   }
-  return flattenFontTokens(data);
+  return [];
+}
+
+/** Shape sniffer for the font slot — mirrors `validateSizeFileShape`. */
+export interface FontFileShape {
+  valid: boolean;
+  expectedKeys: string[];
+  foundKeys: string[];
+}
+
+export function validateFontFileShape(data: any): FontFileShape {
+  const expectedKeys = ["font"];
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return { valid: false, expectedKeys, foundKeys: [] };
+  }
+  const foundKeys = Object.keys(data).filter((k) => !k.startsWith("$"));
+  return {
+    valid: foundKeys.includes("font"),
+    expectedKeys,
+    foundKeys,
+  };
 }
 
 // ─── File name matching for bulk upload ───
