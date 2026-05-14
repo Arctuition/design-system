@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import type { ColorToken } from "../../store/data-store";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -47,6 +48,51 @@ function flattenColorTokens(obj: Record<string, any>, prefix = ""): ParsedColorT
 export function getLightColorTokens():  ParsedColorToken[] { return flattenColorTokens(lightJson  as Record<string, any>); }
 export function getDarkColorTokens():   ParsedColorToken[] { return flattenColorTokens(darkJson   as Record<string, any>); }
 export function getGlobalColorTokens(): ParsedColorToken[] { return flattenColorTokens(globalJson as Record<string, any>); }
+
+// ── KV-backed alternatives ─────────────────────────────────────────────────
+//
+// The CMS stores color tokens in `ColorToken` shape (`{name, value, aliasOf?}`).
+// Public token pages historically read the bundled JSON; this adapter turns
+// a KV `ColorToken[]` into the same `ParsedColorToken[]` shape so pages can
+// pivot to "live CMS" data without rewriting their downstream code.
+//
+// Naming: KV uses dot paths for color (`color.label.primary`) and slash for
+// alias targets (`color/global/gray/85`) — see flattenTokens in
+// color-token-utils.ts. Both normalize to `-` for the CSS var.
+
+/** True if `tokens` look like a Figma export (dot-path names beginning with
+ *  `color.` or already-CSS-var names). False for the placeholder shadcn-style
+ *  seed in data-store.tsx's `defaultColorTokens`. Pages use this to decide
+ *  whether to render KV data or fall back to bundled JSON. */
+export function looksLikeFigmaColorTokens(tokens: ColorToken[] | undefined): boolean {
+  if (!Array.isArray(tokens) || tokens.length === 0) return false;
+  return tokens.some((t) =>
+    t.name?.startsWith("color.") || t.name?.startsWith("--color-")
+  );
+}
+
+/** Convert a KV color row to the ParsedColorToken shape. */
+function kvRowToParsed(t: ColorToken): ParsedColorToken {
+  const cssVar = t.name?.startsWith("--")
+    ? t.name
+    : `--${t.name.replace(/\./g, "-")}`;
+  const hex = String(t.value ?? "");
+  const aliasOf = t.aliasOf;
+  const displayValue = aliasOf
+    ? `var(--${aliasOf.replace(/\//g, "-")})`
+    : hex;
+  return { cssVar, hex, displayValue, ...(aliasOf ? { aliasOf } : {}) };
+}
+
+export function getLightColorTokensFromKv(rows: ColorToken[]): ParsedColorToken[] {
+  return rows.map(kvRowToParsed);
+}
+export function getDarkColorTokensFromKv(rows: ColorToken[]): ParsedColorToken[] {
+  return rows.map(kvRowToParsed);
+}
+export function getGlobalColorTokensFromKv(rows: ColorToken[]): ParsedColorToken[] {
+  return rows.map(kvRowToParsed);
+}
 
 // ── Grouping helpers ───────────────────────────────────────────────────────
 

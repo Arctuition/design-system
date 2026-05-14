@@ -7,6 +7,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
 import { CssSyntaxBlock } from "../components/shared/CssSyntaxBlock";
 import {
   getSizeTokens,
+  getSizeTokensFromKv,
+  getGlobalSizeTokens,
+  getBreakpointTokens,
+  looksLikeFigmaSizeTokens,
   exportSizeCSSAsZip,
   buildGroupedSizeCss,
   buildGlobalSizeCss,
@@ -14,11 +18,37 @@ import {
   SIZE_MODES,
   type SizeMode,
 } from "../components/shared/size-json-token-utils";
+import { useAppData } from "../store/data-store";
+import type { SizeTokenSet } from "../store/data-store";
 
 type SizeTab = SizeMode | "global" | "breakpoints";
 
+// SizeMode keys → SizeTokenSet KV slot keys.
+const SIZE_MODE_TO_SLOT: Record<SizeMode, keyof SizeTokenSet> = {
+  "web-mobile":        "webMobile",
+  "web-tablet":        "webTablet",
+  "web-desktop":       "webDesktop",
+  "web-desktop-large": "webDesktopLarge",
+  "device-mobile":     "deviceMobile",
+  "device-tablet":     "deviceTablet",
+};
+
 export function SizeTokensPage() {
   const [activeTab, setActiveTab] = useState<SizeTab>("web-desktop");
+  // KV-first; bundled JSON fallback only when KV is empty or shadcn-shaped.
+  const { sizeTokens, breakpointTokens } = useAppData();
+  const resolveMode = (mode: SizeMode) => {
+    const rows = sizeTokens[SIZE_MODE_TO_SLOT[mode]];
+    return looksLikeFigmaSizeTokens(rows)
+      ? getSizeTokensFromKv(rows)
+      : getSizeTokens(mode);
+  };
+  const resolveGlobal = () => looksLikeFigmaSizeTokens(sizeTokens.global)
+    ? getSizeTokensFromKv(sizeTokens.global)
+    : getGlobalSizeTokens();
+  const resolveBreakpoints = () => looksLikeFigmaSizeTokens(breakpointTokens.tokens)
+    ? getSizeTokensFromKv(breakpointTokens.tokens)
+    : getBreakpointTokens();
 
   const handleExport = async () => {
     try {
@@ -59,14 +89,24 @@ export function SizeTokensPage() {
         </TabsList>
         {SIZE_MODES.map(({ key }) => (
           <TabsContent key={key} value={key} className="mt-0">
-            <CssSyntaxBlock code={buildGroupedSizeCss(getSizeTokens(key))} maxHeight="70vh" />
+            <CssSyntaxBlock code={buildGroupedSizeCss(resolveMode(key))} maxHeight="70vh" />
           </TabsContent>
         ))}
         <TabsContent value="global" className="mt-0">
-          <CssSyntaxBlock code={buildGlobalSizeCss()} maxHeight="70vh" />
+          <CssSyntaxBlock
+            code={looksLikeFigmaSizeTokens(sizeTokens.global)
+              ? buildGroupedSizeCss(resolveGlobal())
+              : buildGlobalSizeCss()}
+            maxHeight="70vh"
+          />
         </TabsContent>
         <TabsContent value="breakpoints" className="mt-0">
-          <CssSyntaxBlock code={buildBreakpointCss()} maxHeight="70vh" />
+          <CssSyntaxBlock
+            code={looksLikeFigmaSizeTokens(breakpointTokens.tokens)
+              ? buildGroupedSizeCss(resolveBreakpoints())
+              : buildBreakpointCss()}
+            maxHeight="70vh"
+          />
         </TabsContent>
       </Tabs>
     </div>

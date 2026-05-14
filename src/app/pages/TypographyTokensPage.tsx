@@ -7,18 +7,37 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
 import { CssSyntaxBlock } from "../components/shared/CssSyntaxBlock";
 import {
   getFontTokens,
+  getFontTokensFromKv,
+  looksLikeFigmaFontTokens,
   exportFontCSSAsZip,
   FONT_MODES,
   type FontMode,
+  type ParsedFontToken,
 } from "../components/shared/font-token-utils";
+import { useAppData } from "../store/data-store";
+import type { FontTokenSet } from "../store/data-store";
 
-function buildCss(mode: FontMode): string {
-  const lines = getFontTokens(mode).map(t => `  ${t.cssVar}: ${t.value};`);
+const FONT_MODE_TO_SLOT: Record<FontMode, keyof FontTokenSet> = {
+  "web-desktop":   "webDesktop",
+  "web-mobile":    "webMobile",
+  "device-tablet": "deviceTablet",
+  "device-mobile": "deviceMobile",
+};
+
+function buildCss(tokens: ParsedFontToken[]): string {
+  const lines = tokens.map(t => `  ${t.cssVar}: ${t.value};`);
   return `:root {\n${lines.join("\n")}\n}`;
 }
 
 export function TypographyTokensPage() {
   const [activeMode, setActiveMode] = useState<FontMode>("web-desktop");
+  const { fontTokens } = useAppData();
+  const resolveMode = (mode: FontMode): ParsedFontToken[] => {
+    const rows = fontTokens[FONT_MODE_TO_SLOT[mode]];
+    return looksLikeFigmaFontTokens(rows)
+      ? getFontTokensFromKv(rows)
+      : getFontTokens(mode);
+  };
 
   const handleExport = async () => {
     try {
@@ -57,7 +76,7 @@ export function TypographyTokensPage() {
         </TabsList>
         {FONT_MODES.map(({ key }) => (
           <TabsContent key={key} value={key} className="mt-0">
-            <CssSyntaxBlock code={buildCss(key)} />
+            <CssSyntaxBlock code={buildCss(resolveMode(key))} />
           </TabsContent>
         ))}
       </Tabs>
