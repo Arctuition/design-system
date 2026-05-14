@@ -959,6 +959,8 @@ app.post("/make-server-067f252d/design-tokens/publish", async (c) => {
     const sizeWebTablet       = sizeRowsToFlat(sizeTokens.webTablet);
     const sizeWebDesktop      = sizeRowsToFlat(sizeTokens.webDesktop);
     const sizeWebDesktopLarge = sizeRowsToFlat(sizeTokens.webDesktopLarge);
+    const sizeDeviceMobile    = sizeRowsToFlat(sizeTokens.deviceMobile);
+    const sizeDeviceTablet    = sizeRowsToFlat(sizeTokens.deviceTablet);
 
     const breakpoints   = sizeRowsToFlat(breakpointTokens.tokens);
     const breakpointPx  = extractBreakpointPxFromRows(breakpointTokens.tokens);
@@ -969,11 +971,20 @@ app.post("/make-server-067f252d/design-tokens/publish", async (c) => {
     const fontDesktop = fontRowsToFlat(
       fontTokens?.webDesktop?.length ? fontTokens.webDesktop : fontTokens?.webMobile ?? []
     );
+    const fontDeviceMobile = fontRowsToFlat(fontTokens?.deviceMobile ?? []);
+    const fontDeviceTablet = fontRowsToFlat(fontTokens?.deviceTablet ?? []);
 
-    // 3. Build the @media diff blocks (only tokens that differ from Web Mobile).
+    // 3. Build the diff blocks (only tokens that differ from the :root base).
+    //    Web modes diff vs web-mobile; device modes diff vs web-mobile (size)
+    //    and web-desktop (font) — those are the values currently emitted at
+    //    :root for their respective collections.
     const sizeTabletDiff       = diffFromBase(sizeWebMobile, sizeWebTablet);
     const sizeDesktopDiff      = diffFromBase(sizeWebMobile, sizeWebDesktop);
     const sizeDesktopLargeDiff = diffFromBase(sizeWebMobile, sizeWebDesktopLarge);
+    const sizeDeviceMobileDiff = diffFromBase(sizeWebMobile, sizeDeviceMobile);
+    const sizeDeviceTabletDiff = diffFromBase(sizeWebMobile, sizeDeviceTablet);
+    const fontDeviceMobileDiff = diffFromBase(fontDesktop, fontDeviceMobile, "value");
+    const fontDeviceTabletDiff = diffFromBase(fontDesktop, fontDeviceTablet, "value");
 
     // 4. Render both artifacts via the shared template — byte-identical to
     //    the prebuild script for the same logical input.
@@ -989,6 +1000,10 @@ app.post("/make-server-067f252d/design-tokens/publish", async (c) => {
       sizeDesktopLargeDiff,
       fontDesktop,
       breakpointPx,
+      sizeDeviceMobileDiff,
+      sizeDeviceTabletDiff,
+      fontDeviceMobileDiff,
+      fontDeviceTabletDiff,
     });
     const breakpointsJs = buildBreakpointsJs(breakpointPx);
 
