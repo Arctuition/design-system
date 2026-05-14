@@ -113,10 +113,30 @@ export function flattenTokens(obj: any, prefix: string = ""): ColorToken[] {
     const tokenType = String(rawType).toLowerCase();
     if (!rawType || tokenType === "color" || tokenType === "colour") {
       const valueStr = extractColorValue(rawValue);
+
+      // Preserve Figma metadata: alias relationship, variable id, scopes.
+      // Without `aliasOf`, every semantic color collapses to a raw hex on
+      // publish — breaking light/dark theming and global → semantic cascading.
+      const ext = obj["$extensions"] ?? {};
+      const aliasName = ext?.["com.figma.aliasData"]?.targetVariableName;
+      const variableId = ext?.["com.figma.variableId"];
+      const rawScopes = ext?.["com.figma.scopes"];
+
+      // Also accept in-collection string references like `"{color.global.gray.06}"`
+      // for safety, in case a future Figma export uses that shape for colors.
+      let inlineAlias: string | undefined;
+      if (typeof rawValue === "string") {
+        const m = /^\s*\{([^{}]+)\}\s*$/.exec(rawValue);
+        if (m) inlineAlias = m[1].replace(/\./g, "/");
+      }
+
       tokens.push({
         name: prefix || "unnamed",
         value: valueStr,
         description: typeof description === "string" ? description : "",
+        aliasOf: typeof aliasName === "string" ? aliasName : inlineAlias,
+        figmaVariableId: typeof variableId === "string" ? variableId : undefined,
+        scopes: Array.isArray(rawScopes) ? rawScopes.filter((s) => typeof s === "string") : undefined,
       });
     }
     return tokens;
@@ -229,6 +249,17 @@ function tokenValueToCSS(value: string): string {
     return `var(${tokenNameToCSSVar(refName)})`;
   }
   return v;
+}
+
+/**
+ * Render a `ColorToken` as a CSS value. Prefers the explicit `aliasOf`
+ * (set by the parser from Figma `aliasData`) so semantic tokens emit
+ * `var(--color-global-…)` and theme overrides keep working. Falls back to
+ * the legacy `tokenValueToCSS(value)` which inspects the value string.
+ */
+function tokenToCss(token: ColorToken): string {
+  if (token.aliasOf) return `var(${tokenNameToCSSVar(token.aliasOf)})`;
+  return tokenValueToCSS(token.value);
 }
 
 /**
@@ -392,7 +423,7 @@ export function buildCSSOutput(
   for (const group of semanticGroups) {
     const items = group.tokens.map((t) => ({
       cssName: tokenNameToCSSVar(t.name),
-      cssValue: tokenValueToCSS(t.value),
+      cssValue: tokenToCss(t),
     }));
     out.push(formatBlock(group.groupName, items));
     out.push("");
@@ -407,7 +438,7 @@ export function buildCSSOutput(
   for (const group of globalGroups) {
     const items = group.tokens.map((t) => ({
       cssName: tokenNameToCSSVar(t.name),
-      cssValue: tokenValueToCSS(t.value),
+      cssValue: tokenToCss(t),
     }));
     out.push(formatBlock(group.groupName, items));
     out.push("");
@@ -433,7 +464,7 @@ function buildGlobalCSSOutput(globalTokens: ColorToken[]): string {
   for (const group of groups) {
     const items = group.tokens.map((t) => ({
       cssName: tokenNameToCSSVar(t.name),
-      cssValue: tokenValueToCSS(t.value),
+      cssValue: tokenToCss(t),
     }));
     out.push(formatBlock(group.groupName, items));
     out.push("");
@@ -460,7 +491,7 @@ function buildSemanticCSSOutput(
   for (const group of semanticGroups) {
     const items = group.tokens.map((t) => ({
       cssName: tokenNameToCSSVar(t.name),
-      cssValue: tokenValueToCSS(t.value),
+      cssValue: tokenToCss(t),
     }));
     out.push(formatBlock(group.groupName, items));
     out.push("");

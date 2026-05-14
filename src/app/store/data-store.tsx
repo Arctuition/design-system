@@ -39,6 +39,17 @@ export interface ColorToken {
   name: string;
   value: string;
   description?: string;
+  /**
+   * If present, the token aliases another token. Format mirrors
+   * `com.figma.aliasData.targetVariableName` (e.g. `color/global/gray/06`).
+   * Server-side `colorRowsToFlat` turns this into a `var(--…)` reference so
+   * theme overrides (Light/Dark, brand recoloring) cascade correctly.
+   */
+  aliasOf?: string;
+  /** Original Figma variable id, kept for round-tripping. Not consumed yet. */
+  figmaVariableId?: string;
+  /** Original Figma scope hints (`SHAPE_FILL`, `TEXT_FILL`, etc.). */
+  scopes?: string[];
 }
 
 export interface ColorTokenGroup {
@@ -51,7 +62,17 @@ export interface ColorTokenGroup {
 export interface SizeToken {
   name: string;
   value: number;
+  /**
+   * Slash-separated token path this token aliases. Normalized from either
+   * `$extensions.com.figma.aliasData.targetVariableName` (e.g. `size-global/16`)
+   * or an in-collection brace reference (`{size.padding-component-lg}` →
+   * `size/padding-component-lg`). When present, downstream CSS emits
+   * `var(--…)` instead of the resolved numeric value.
+   */
   aliasOf?: string;
+  description?: string;
+  figmaVariableId?: string;
+  scopes?: string[];
 }
 
 export type SizeTokenMode =
@@ -91,8 +112,16 @@ export interface BreakpointTokenSet {
 export interface FontToken {
   name: string;
   value: string | number;
+  /**
+   * Primary scope hint, kept as-is for back-compat with downstream code that
+   * branches on a single value. Prefer `scopes` when multiple hints apply.
+   */
   scope?: string;
+  /** All Figma scope hints (`["FONT_SIZE", "LINE_HEIGHT"]` etc.). */
+  scopes?: string[];
   aliasOf?: string;
+  description?: string;
+  figmaVariableId?: string;
 }
 
 export type FontTokenMode =

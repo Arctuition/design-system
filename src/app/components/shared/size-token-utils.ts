@@ -4,9 +4,21 @@ import JSZip from "jszip";
 // ─── Parsing ───
 
 /**
- * Recursively flattens a Figma variable export tree. Leaves have `$value`
- * (numeric) and optionally `$extensions.com.figma.aliasData.targetVariableName`
- * pointing at a global token, which we preserve as `aliasOf`.
+ * Recursively flattens a Figma variable export tree. Leaves take one of three
+ * Figma alias shapes:
+ *
+ *   1. Numeric value, optionally with `$extensions.com.figma.aliasData.targetVariableName`
+ *      → semantic token pointing at a global. We preserve the alias name.
+ *
+ *   2. String value of the form `"{size.padding-component-lg}"` (Figma's
+ *      in-collection reference syntax) → comp/semantic token pointing at
+ *      another semantic. We parse the path inside the braces as the alias name.
+ *
+ *   3. Plain numeric value with no alias → leaf / global token.
+ *
+ * `$type` is accepted as `"number"`, `"dimension"`, or absent. Anything else
+ * is treated as a non-size token and skipped (preserves callers that mix
+ * collections in one file).
  */
 export function flattenSizeTokens(obj: any, prefix: string = ""): SizeToken[] {
   const tokens: SizeToken[] = [];
@@ -17,16 +29,46 @@ export function flattenSizeTokens(obj: any, prefix: string = ""): SizeToken[] {
   if (hasValue) {
     const rawValue = obj["$value"] ?? obj["value"];
     const rawType = obj["$type"] ?? obj["type"];
-    // Only accept numeric tokens
+    if (rawType) {
+      const t = String(rawType).toLowerCase();
+      if (t !== "number" && t !== "dimension") return tokens;
+    }
+
+    const ext = obj?.$extensions ?? {};
+    const aliasFromExt = ext?.["com.figma.aliasData"]?.targetVariableName;
+    const variableId = ext?.["com.figma.variableId"];
+    const rawScopes = ext?.["com.figma.scopes"];
+    const description = obj["$description"] ?? obj["description"] ?? obj["comment"];
+    const meta: Pick<SizeToken, "description" | "figmaVariableId" | "scopes"> = {};
+    if (typeof description === "string" && description) meta.description = description;
+    if (typeof variableId === "string") meta.figmaVariableId = variableId;
+    if (Array.isArray(rawScopes)) meta.scopes = rawScopes.filter((s) => typeof s === "string");
+
+    // Shape 2: in-collection string reference `"{size.padding-component-lg}"`.
+    // Convert the brace path into a slash path so it matches the global-alias
+    // format coming from $extensions, which uses `size-global/16` style.
+    if (typeof rawValue === "string") {
+      const m = /^\s*\{([^{}]+)\}\s*$/.exec(rawValue);
+      if (m) {
+        tokens.push({
+          name: prefix || "unnamed",
+          value: 0,                                     // numeric value is unknown at parse time; resolved at render via aliasOf
+          aliasOf: m[1].replace(/\./g, "/"),            // "size.padding-component-lg" → "size/padding-component-lg"
+          ...meta,
+        });
+      }
+      return tokens;
+    }
+
+    // Shape 1 / 3: numeric value, optionally aliased via $extensions.
     const numericValue = typeof rawValue === "number" ? rawValue : Number(rawValue);
     if (!Number.isFinite(numericValue)) return tokens;
-    if (rawType && String(rawType).toLowerCase() !== "number") return tokens;
 
-    const aliasName = obj?.$extensions?.["com.figma.aliasData"]?.targetVariableName;
     tokens.push({
       name: prefix || "unnamed",
       value: numericValue,
-      aliasOf: typeof aliasName === "string" ? aliasName : undefined,
+      aliasOf: typeof aliasFromExt === "string" ? aliasFromExt : undefined,
+      ...meta,
     });
     return tokens;
   }

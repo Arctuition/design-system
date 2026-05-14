@@ -309,46 +309,63 @@ export function tokenNameToCssVar(name) {
   return "--" + name.replace(/[./]/g, "-");
 }
 
-/** Color token rows → `[{cssVar, displayValue}]`. The value is whatever the
- *  client parser produced (already a CSS-ready hex / rgba / var() string). */
+/** Color token rows → `[{cssVar, displayValue}]`. If the row carries an
+ *  `aliasOf` (Figma aliasData or in-collection brace reference), emit a
+ *  `var(--…)` reference so theme overrides and global cascading survive.
+ *  Otherwise pass through whatever the client parser produced (hex / rgba). */
 export function colorRowsToFlat(rows) {
-  if (!Array.isArray(rows)) return [];
-  return rows.map((t) => ({
-    cssVar: tokenNameToCssVar(t.name),
-    displayValue: String(t.value ?? ""),
-  }));
-}
-
-/** Size/breakpoint token rows → `[{cssVar, displayValue}]`. Aliases survive
- *  as `var(--alias-target)`; numeric values get a `px` suffix. */
-export function sizeRowsToFlat(rows) {
   if (!Array.isArray(rows)) return [];
   return rows.map((t) => {
     const cssVar = tokenNameToCssVar(t.name);
-    const displayValue = t.aliasOf
-      ? `var(${tokenNameToCssVar(t.aliasOf)})`
-      : `${typeof t.value === "number" ? t.value : parseFloat(String(t.value))}px`;
-    return { cssVar, displayValue };
+    if (t.aliasOf) {
+      return { cssVar, displayValue: `var(${tokenNameToCssVar(t.aliasOf)})` };
+    }
+    return { cssVar, displayValue: String(t.value ?? "") };
   });
+}
+
+/** Size/breakpoint token rows → `[{cssVar, displayValue}]`. Aliases survive
+ *  as `var(--alias-target)`; numeric values get a `px` suffix. Rows whose
+ *  numeric value is non-finite AND have no alias are skipped — emitting
+ *  `NaNpx` would silently break responsive cascades downstream. */
+export function sizeRowsToFlat(rows) {
+  if (!Array.isArray(rows)) return [];
+  const out = [];
+  for (const t of rows) {
+    const cssVar = tokenNameToCssVar(t.name);
+    if (t.aliasOf) {
+      out.push({ cssVar, displayValue: `var(${tokenNameToCssVar(t.aliasOf)})` });
+      continue;
+    }
+    const n = typeof t.value === "number" ? t.value : parseFloat(String(t.value));
+    if (!Number.isFinite(n)) continue;  // would produce "NaNpx" — drop the row
+    out.push({ cssVar, displayValue: `${n}px` });
+  }
+  return out;
 }
 
 /** Font token rows → `[{cssVar, value}]`. The Figma scope hint drives the
  *  unit: FONT_SIZE / LINE_HEIGHT → px; FONT_STYLE → unitless (weight);
  *  ALL_SCOPES → px with 2-decimal precision (letter-spacing); strings
- *  (typeface) pass through. Aliases survive as `var(--alias)`. */
+ *  (typeface) pass through. Aliases survive as `var(--alias)`. Multi-scope
+ *  tokens (`scopes: [...]`) pick the strictest unit hint from the array. */
 export function fontRowsToFlat(rows) {
   if (!Array.isArray(rows)) return [];
   return rows.map((t) => {
     const cssVar = tokenNameToCssVar(t.name);
     if (t.aliasOf) return { cssVar, value: `var(${tokenNameToCssVar(t.aliasOf)})` };
     if (typeof t.value === "string") return { cssVar, value: t.value };
-    const scope = t.scope ?? "";
-    if (scope === "FONT_SIZE" || scope === "LINE_HEIGHT") {
-      return { cssVar, value: `${t.value}px` };
-    }
-    if (scope === "FONT_STYLE") return { cssVar, value: String(t.value) };
-    if (scope === "ALL_SCOPES") {
-      return { cssVar, value: `${parseFloat(t.value.toFixed(2))}px` };
+
+    // Pick a unit-bearing scope across the full scopes array, falling back to
+    // the legacy single `scope` field for back-compat with older KV rows.
+    const scopeList = Array.isArray(t.scopes) && t.scopes.length ? t.scopes : t.scope ? [t.scope] : [];
+    const pick = (needles) => scopeList.find((s) => needles.includes(s)) || "";
+    const sizeScope = pick(["FONT_SIZE", "LINE_HEIGHT"]);
+    if (sizeScope) return { cssVar, value: `${t.value}px` };
+    if (scopeList.includes("FONT_STYLE")) return { cssVar, value: String(t.value) };
+    if (scopeList.includes("ALL_SCOPES")) {
+      const n = typeof t.value === "number" ? t.value : parseFloat(String(t.value));
+      return { cssVar, value: Number.isFinite(n) ? `${parseFloat(n.toFixed(2))}px` : String(t.value) };
     }
     return { cssVar, value: String(t.value) };
   });
