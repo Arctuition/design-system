@@ -204,16 +204,27 @@ export interface ArticleVersion {
 }
 
 /**
- * Per-slot upload + global publish timestamps for the Token editor UI.
- * `tokenSlotMtimes` keys are stable strings like `size/global`, `color/light`,
- * `font/webDesktop`, `breakpoint`. Values are ISO timestamps written by the
- * token setters when a slot's array contents change. `tokensLastPublishedAt`
- * is updated once per successful Publish — comparing the two yields the
- * three-state badge (Empty / Uploaded / Published) on each upload card.
+ * Per-slot upload + per-slot publish timestamps for the Token editor UI.
+ * Keys are stable strings like `size/global`, `color/light`, `font/webDesktop`,
+ * `breakpoint`. Values are ISO timestamps.
+ *
+ * Why per-slot publishedAt (not a single global timestamp): a Publish-to-
+ * Production click pushes ALL slots, but designers want the badge to read
+ * "Published at [the time this slot's CURRENT contents went live]" — not
+ * "Published at [the most recent Publish click]". If only Semantic Light
+ * was re-uploaded and re-published, Global's badge should still show the
+ * older date, not today's. `markTokensPublished` only bumps publishedAt
+ * for slots whose mtime is newer than their current publishedAt.
+ *
+ * Legacy data (slot has tokens but no mtime / no publishedAt): the first
+ * Publish after Group E shipped seeds publishedAt to "now" so the user
+ * has a tracked baseline going forward. Until that first Publish, the
+ * badge reads "Published" with no timestamp (we don't lie about a time
+ * we don't know).
  */
 export interface TokenStatus {
   tokenSlotMtimes: Record<string, string>;
-  tokensLastPublishedAt: string | null;
+  tokenSlotPublishedAt: Record<string, string>;
 }
 
 export interface AppState {
@@ -758,7 +769,7 @@ function getDefaults(): AppState {
     breakpointTokens: defaultBreakpointTokens,
     fontTokens: defaultFontTokens,
     tokenDocs: defaultTokenDocs,
-    tokenStatus: { tokenSlotMtimes: {}, tokensLastPublishedAt: null },
+    tokenStatus: { tokenSlotMtimes: {}, tokenSlotPublishedAt: {} },
     iconologyArticle: defaultIconologyArticle,
     icons: defaultIcons,
     patterns: defaultPatterns,
@@ -851,10 +862,10 @@ function buildStateFromServer(serverData: Record<string, any>): AppState {
         serverData.tokenStatus && typeof serverData.tokenStatus.tokenSlotMtimes === "object"
           ? serverData.tokenStatus.tokenSlotMtimes
           : {},
-      tokensLastPublishedAt:
-        serverData.tokenStatus && typeof serverData.tokenStatus.tokensLastPublishedAt === "string"
-          ? serverData.tokenStatus.tokensLastPublishedAt
-          : null,
+      tokenSlotPublishedAt:
+        serverData.tokenStatus && typeof serverData.tokenStatus.tokenSlotPublishedAt === "object"
+          ? serverData.tokenStatus.tokenSlotPublishedAt
+          : {},
     },
     iconologyArticle: serverData.iconologyArticle ?? defaults.iconologyArticle,
     icons: ensureChromeIcons(
@@ -1534,10 +1545,50 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     },
     markTokensPublished: () => {
       const now = new Date().toISOString();
-      setState((prev) => ({
-        ...prev,
-        tokenStatus: { ...prev.tokenStatus, tokensLastPublishedAt: now },
-      }));
+      setState((prev) => {
+        const mtimes = prev.tokenStatus.tokenSlotMtimes;
+        const prevPubAts = prev.tokenStatus.tokenSlotPublishedAt;
+        const nextPubAts: Record<string, string> = { ...prevPubAts };
+
+        // Enumerate every slot that currently has data. A Publish click
+        // pushes the entire KV state to bootstrap.css, so every populated
+        // slot is now live — but we only bump `publishedAt` for slots
+        // whose content has actually changed since they were last
+        // published. Unchanged slots keep their older publishedAt so the
+        // badge truthfully reports "this slot's contents went live on X",
+        // not "the most recent Publish click was on Y".
+        const populatedSlots: string[] = [];
+        if (prev.colorTokens.global.length > 0)        populatedSlots.push("color/global");
+        if (prev.colorTokens.semanticLight.length > 0) populatedSlots.push("color/light");
+        if (prev.colorTokens.semanticDark.length > 0)  populatedSlots.push("color/dark");
+        for (const k of ["global", "deviceMobile", "deviceTablet", "webMobile", "webTablet", "webDesktop", "webDesktopLarge"] as const) {
+          if (prev.sizeTokens[k].length > 0) populatedSlots.push(`size/${k}`);
+        }
+        if (prev.breakpointTokens.tokens.length > 0) populatedSlots.push("breakpoint");
+        for (const k of ["deviceMobile", "deviceTablet", "webMobile", "webDesktop"] as const) {
+          if (prev.fontTokens[k].length > 0) populatedSlots.push(`font/${k}`);
+        }
+
+        for (const slot of populatedSlots) {
+          const mt = mtimes[slot];
+          const pa = prevPubAts[slot];
+          // Bump publishedAt when:
+          //   - the slot has been re-uploaded since its last publish (mt > pa),
+          //   - OR it's the first Publish observing this slot (no pa yet) —
+          //     this seeds a baseline for legacy data that was already in KV
+          //     before Group E shipped, so the user has a tracked timestamp
+          //     to compare against on the next upload cycle.
+          // Otherwise (slot unchanged), leave publishedAt alone.
+          if ((mt && (!pa || mt > pa)) || (!mt && !pa)) {
+            nextPubAts[slot] = now;
+          }
+        }
+
+        return {
+          ...prev,
+          tokenStatus: { ...prev.tokenStatus, tokenSlotPublishedAt: nextPubAts },
+        };
+      });
       pendingSyncRef.current.add("tokenStatus");
       syncToServer();
     },
@@ -1798,7 +1849,7 @@ export function useAppData() {
       breakpointTokens: { tokens: [] },
       fontTokens: { deviceMobile: [], deviceTablet: [], webMobile: [], webDesktop: [] },
       tokenDocs: { color: "", size: "", typography: "" },
-      tokenStatus: { tokenSlotMtimes: {}, tokensLastPublishedAt: null },
+      tokenStatus: { tokenSlotMtimes: {}, tokenSlotPublishedAt: {} },
       iconologyArticle: "",
       icons: [],
       patternsArticle: "",
