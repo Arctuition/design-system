@@ -857,16 +857,46 @@ function buildStateFromServer(serverData: Record<string, any>): AppState {
           ? serverData.tokenDocs.typography
           : defaults.tokenDocs.typography,
     },
-    tokenStatus: {
-      tokenSlotMtimes:
-        serverData.tokenStatus && typeof serverData.tokenStatus.tokenSlotMtimes === "object"
-          ? serverData.tokenStatus.tokenSlotMtimes
-          : {},
-      tokenSlotPublishedAt:
-        serverData.tokenStatus && typeof serverData.tokenStatus.tokenSlotPublishedAt === "object"
-          ? serverData.tokenStatus.tokenSlotPublishedAt
-          : {},
-    },
+    tokenStatus: (() => {
+      const raw = (serverData.tokenStatus && typeof serverData.tokenStatus === "object")
+        ? serverData.tokenStatus
+        : {};
+      const mtimes = typeof raw.tokenSlotMtimes === "object" && raw.tokenSlotMtimes !== null
+        ? raw.tokenSlotMtimes as Record<string, string>
+        : {};
+      let publishedAt = typeof raw.tokenSlotPublishedAt === "object" && raw.tokenSlotPublishedAt !== null
+        ? raw.tokenSlotPublishedAt as Record<string, string>
+        : {};
+
+      // Migration: the original Group E shape used a single global
+      // `tokensLastPublishedAt: string | null` for the entire token set.
+      // PR #37 moved to per-slot publishedAt. If a payload still carries
+      // the old shape, seed every populated slot's publishedAt with the
+      // old value so the user doesn't lose all their Publish history on
+      // the upgrade. This branch only fires for old payloads where the
+      // new field is empty.
+      if (Object.keys(publishedAt).length === 0 && typeof raw.tokensLastPublishedAt === "string") {
+        const legacyTs = raw.tokensLastPublishedAt;
+        const seeded: Record<string, string> = {};
+        const ct = serverData.colorTokens || {};
+        if (Array.isArray(ct.global) && ct.global.length > 0) seeded["color/global"] = legacyTs;
+        if (Array.isArray(ct.semanticLight) && ct.semanticLight.length > 0) seeded["color/light"] = legacyTs;
+        if (Array.isArray(ct.semanticDark) && ct.semanticDark.length > 0) seeded["color/dark"] = legacyTs;
+        const st = serverData.sizeTokens || {};
+        for (const k of ["global", "deviceMobile", "deviceTablet", "webMobile", "webTablet", "webDesktop", "webDesktopLarge"]) {
+          if (Array.isArray(st[k]) && st[k].length > 0) seeded[`size/${k}`] = legacyTs;
+        }
+        const bp = serverData.breakpointTokens?.tokens;
+        if (Array.isArray(bp) && bp.length > 0) seeded["breakpoint"] = legacyTs;
+        const ft = serverData.fontTokens || {};
+        for (const k of ["deviceMobile", "deviceTablet", "webMobile", "webDesktop"]) {
+          if (Array.isArray(ft[k]) && ft[k].length > 0) seeded[`font/${k}`] = legacyTs;
+        }
+        publishedAt = seeded;
+      }
+
+      return { tokenSlotMtimes: mtimes, tokenSlotPublishedAt: publishedAt };
+    })(),
     iconologyArticle: serverData.iconologyArticle ?? defaults.iconologyArticle,
     icons: ensureChromeIcons(
       Array.isArray(serverData.icons)

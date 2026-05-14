@@ -183,6 +183,11 @@ const STATE_KEYS = [
   "breakpointTokens",
   "fontTokens",
   "tokenDocs",
+  // Per-slot upload + publish timestamps for the editor status badges.
+  // Without this entry, every client PUT /state/tokenStatus returned 400
+  // and the badge timestamps were never persisted — they survived a single
+  // tab session via localStorage but vanished on a fresh browser.
+  "tokenStatus",
   "iconologyArticle",
   "icons",
   "patterns",
