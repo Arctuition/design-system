@@ -1,0 +1,55 @@
+# Auto-deploy Supabase edge functions when their source changes on main.
+#
+# Backstory — this workflow was added after a regression where PR #29 fixed
+# both the client parsers and the server-side token generators. The client
+# side rode GitHub Pages auto-deploy, but the server side sat in main with
+# no way to reach prod until someone manually ran `supabase functions deploy`.
+# Color aliasOf handling was silently broken on prod for ~30 minutes as a
+# result. This workflow closes that gap.
+#
+# Required GitHub secret:
+#   SUPABASE_ACCESS_TOKEN — a personal access token from
+#     https://supabase.com/dashboard/account/tokens with scope to deploy
+#     functions on project qcqtnrrprgqlckzywnkt.
+
+name: Deploy Supabase Edge Functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/**"
+      - ".github/workflows/deploy-edge-functions.yml"
+  workflow_dispatch:
+
+# Don't run two deploys in parallel — the API doesn't reject it, but it's
+# wasted work and the second deploy always wins so the first is meaningless.
+concurrency:
+  group: edge-functions-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_REF: qcqtnrrprgqlckzywnkt
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Single function today. If we add more, list them here — explicit
+      # rather than a glob, so a stray folder under supabase/functions/
+      # doesn't accidentally get deployed.
+      - name: Deploy make-server-067f252d
+        run: supabase functions deploy make-server-067f252d --project-ref "$PROJECT_REF"
+
+      # Verify the deploy landed by listing functions and printing versions.
+      # Doesn't fail the job (deploy already succeeded above) — this is
+      # just for the build log.
+      - name: Verify deploy
+        if: always()
+        run: supabase functions list --project-ref "$PROJECT_REF" || true
