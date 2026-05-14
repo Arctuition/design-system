@@ -1,5 +1,5 @@
 # Warn (don't fail) when a PR changes load-bearing source files without
-# also touching the project's meta-docs (CLAUDE.md / ARCHITECTURE.md).
+# also touching the project's meta-docs (CLAUDE.md / .claude/cms-architecture.md).
 #
 # Rationale: doc-drift bugs are silent. The text of an instruction can
 # stay literally true while its *meaning* flips because the underlying
@@ -18,7 +18,7 @@ on:
     paths:
       # Load-bearing source files. Keep this list in sync with the
       # "Load-bearing source files (CI watches these)" table in
-      # ARCHITECTURE.md — see that file for which file affects what.
+      # .claude/cms-architecture.md — see that file for which file affects what.
       - "supabase/functions/_shared/state-keys.mjs"
       - "supabase/functions/_shared/token-generators.mjs"
       - "supabase/functions/make-server-067f252d/index.ts"
@@ -53,7 +53,7 @@ jobs:
           # Was a meta-doc touched?
           META_TOUCHED=false
           for f in "${CHANGED[@]}"; do
-            if [[ "$f" == "CLAUDE.md" || "$f" == "ARCHITECTURE.md" ]]; then
+            if [[ "$f" == "CLAUDE.md" || "$f" == ".claude/cms-architecture.md" ]]; then
               META_TOUCHED=true
             fi
           done
@@ -95,9 +95,9 @@ jobs:
           ## ⚠️ Docs drift check — advisory
 
           This PR changes one or more **load-bearing source files** but
-          does not touch `CLAUDE.md` or `ARCHITECTURE.md`. On 2026-05-14
+          does not touch `CLAUDE.md` or `.claude/cms-architecture.md`. On 2026-05-14
           we found that this combination produced two days of silently
-          misleading docs ([post-mortem](.github/../ARCHITECTURE.md)).
+          misleading docs ([post-mortem](.claude/cms-architecture.md)).
 
           Files changed that the drift check watches:
 
@@ -105,7 +105,7 @@ jobs:
 
           **Before merging, please confirm:**
 
-          - [ ] I re-read the relevant section of `ARCHITECTURE.md` and either it's still accurate, or I'm updating it in this PR.
+          - [ ] I re-read the relevant section of `.claude/cms-architecture.md` and either it's still accurate, or I'm updating it in this PR.
           - [ ] I re-read `CLAUDE.md` for any instruction whose *meaning* (not text) might have flipped because of this change.
           - [ ] The PR template architectural-impact checklist is filled in.
 

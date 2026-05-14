@@ -3,10 +3,10 @@
   merging. Background: on 2026-05-14 a maintainer (re-)discovered that
   CLAUDE.md had been silently misleading for two days because PR #26
   moved a canonical source without touching the doc that described
-  it. See ARCHITECTURE.md + project memory for the post-mortem.
+  it. See .claude/cms-architecture.md + project memory for the post-mortem.
 
   Delete sections that don't apply. The intent is to make you stop
-  and read ARCHITECTURE.md once before merging, not to fill out a
+  and read .claude/cms-architecture.md once before merging, not to fill out a
   form mechanically.
 -->
 
@@ -16,9 +16,9 @@
 
 ## Architectural-impact checklist
 
-> Before you check any of these, open `ARCHITECTURE.md` in another tab
+> Before you check any of these, open `.claude/cms-architecture.md` in another tab
 > and skim the section closest to your change. If a box below is
-> checked, the corresponding section of `ARCHITECTURE.md` should also
+> checked, the corresponding section of `.claude/cms-architecture.md` should also
 > be updated in this PR.
 
 - [ ] **No architectural impact.** Pure refactor / bug fix / docs / styling that doesn't move data anywhere new.
@@ -30,7 +30,7 @@ If any of the below apply, expand the relevant block:
 
 - What artifact? <!-- e.g., "tokens-color.md" -->
 - Old canonical → new canonical? <!-- e.g., "repo tokens/*.md → KV tokenDocs" -->
-- `ARCHITECTURE.md` section updated to reflect new canonical: yes / no
+- `.claude/cms-architecture.md` section updated to reflect new canonical: yes / no
 - `CLAUDE.md` instruction text reviewed for stale meaning: yes / no
 - AI agents fetching pointer URLs (`public/llms.txt`) still get correct content: yes / no
 
@@ -42,7 +42,7 @@ If any of the below apply, expand the relevant block:
 - Source → destination? <!-- e.g., "client → /state/:key → KV" -->
 - Any new silent-failure paths introduced? (Number→NaN, fallback flatten, catch-and-discard, etc.)
 - Migration code for changed payload shape included: yes / no / not applicable
-- `ARCHITECTURE.md` diagram updated: yes / no
+- `.claude/cms-architecture.md` diagram updated: yes / no
 
 </details>
 
@@ -51,7 +51,7 @@ If any of the below apply, expand the relevant block:
 
 - What artifact? <!-- e.g., "new edge function" / "new Storage bucket object" -->
 - Auto-deploy pipeline added or extended: yes / no / not applicable
-- Where it gets fetched from documented in `ARCHITECTURE.md`: yes / no
+- Where it gets fetched from documented in `.claude/cms-architecture.md`: yes / no
 
 </details>
 
@@ -70,7 +70,7 @@ If any of the below apply, expand the relevant block:
 
 - Even if no individual change is architectural, large PRs can collectively shift the system. Re-scan:
   - `CLAUDE.md` — any instruction with a stale referent?
-  - `ARCHITECTURE.md` — any diagram outdated?
+  - `.claude/cms-architecture.md` — any diagram outdated?
   - `tokens/tokens-*.md` — any reference table outdated?
   - `.claude/decisions.md` — any decision invalidated?
 
