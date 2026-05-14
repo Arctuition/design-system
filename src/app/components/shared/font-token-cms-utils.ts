@@ -20,13 +20,35 @@ export function flattenFontTokens(obj: any, prefix: string = ""): FontToken[] {
   if (hasValue) {
     const rawValue = obj["$value"] ?? obj["value"];
     if (rawValue === undefined || rawValue === null) return tokens;
-    const scopes: string[] = obj?.$extensions?.["com.figma.scopes"] ?? [];
-    const aliasName = obj?.$extensions?.["com.figma.aliasData"]?.targetVariableName;
+    const ext = obj?.$extensions ?? {};
+    const rawScopes = ext?.["com.figma.scopes"];
+    const scopes: string[] = Array.isArray(rawScopes)
+      ? rawScopes.filter((s: unknown): s is string => typeof s === "string")
+      : [];
+    const aliasName = ext?.["com.figma.aliasData"]?.targetVariableName;
+    const variableId = ext?.["com.figma.variableId"];
+    const description = obj["$description"] ?? obj["description"] ?? obj["comment"];
+
+    // Resolve in-collection string references (`"{font.size.body.medium}"`)
+    // to the same slash-path alias format as $extensions aliasData.
+    let inlineAlias: string | undefined;
+    let valueOut: string | number = typeof rawValue === "number" ? rawValue : String(rawValue);
+    if (typeof rawValue === "string") {
+      const m = /^\s*\{([^{}]+)\}\s*$/.exec(rawValue);
+      if (m) {
+        inlineAlias = m[1].replace(/\./g, "/");
+        valueOut = "";  // value is irrelevant when aliased — kept empty for round-trip
+      }
+    }
+
     tokens.push({
       name: prefix || "unnamed",
-      value: typeof rawValue === "number" ? rawValue : String(rawValue),
-      scope: scopes[0],
-      aliasOf: typeof aliasName === "string" ? aliasName : undefined,
+      value: valueOut,
+      scope: scopes[0],           // back-compat: first scope drives unit selection
+      scopes: scopes.length ? scopes : undefined,
+      aliasOf: typeof aliasName === "string" ? aliasName : inlineAlias,
+      figmaVariableId: typeof variableId === "string" ? variableId : undefined,
+      description: typeof description === "string" && description ? description : undefined,
     });
     return tokens;
   }
