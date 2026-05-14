@@ -87,9 +87,11 @@ export function flattenSize(obj, prefix = "") {
  *  Kept as a named export so call sites read clearly. */
 export const flattenBreakpoint = flattenSize;
 
-/** Flatten a font-token tree → `[{ cssVar, value }]`. Font tokens rarely
- *  alias each other so the alias rewriting step is omitted; numeric values
- *  get a `px` suffix (caller decides whether to special-case font-weight). */
+/** Flatten a font-token tree → `[{ cssVar, value }]`. The Figma scope hint
+ *  drives the unit, mirroring `fontRowsToFlat` further down — without this
+ *  the prebuild path would emit `font-weight: 400px` and letter-spacing
+ *  values with IEEE-754 float noise (e.g. `-1.0499999523162842px`). Test
+ *  coverage: scripts/test-bootstrap-byte-identical.mjs. */
 export function flattenFont(obj, prefix = "") {
   const out = [];
   for (const [k, v] of Object.entries(obj)) {
@@ -97,9 +99,28 @@ export function flattenFont(obj, prefix = "") {
     const path = prefix ? `${prefix}-${k}` : k;
     if (v && typeof v === "object" && "$value" in v) {
       const raw = v.$value;
+      const scopes = Array.isArray(v.$extensions?.["com.figma.scopes"])
+        ? v.$extensions["com.figma.scopes"].filter((s) => typeof s === "string")
+        : [];
       let value;
-      if (typeof raw === "number") value = `${raw}px`;
-      else value = String(raw);
+      if (typeof raw === "string") {
+        // Typeface name, raw string passes through.
+        value = raw;
+      } else if (typeof raw === "number") {
+        if (scopes.includes("FONT_SIZE") || scopes.includes("LINE_HEIGHT")) {
+          value = `${raw}px`;
+        } else if (scopes.includes("FONT_STYLE")) {
+          // Font weight is unitless.
+          value = String(raw);
+        } else if (scopes.includes("ALL_SCOPES")) {
+          // Letter spacing — strip IEEE-754 noise to 2 decimals.
+          value = `${parseFloat(raw.toFixed(2))}px`;
+        } else {
+          value = `${raw}px`;
+        }
+      } else {
+        value = String(raw);
+      }
       out.push({ cssVar: `--${path}`, value });
     } else if (v && typeof v === "object") {
       out.push(...flattenFont(v, path));

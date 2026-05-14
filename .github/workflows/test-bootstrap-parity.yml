@@ -1,0 +1,50 @@
+# Byte-identical regression gate for bootstrap.css.
+#
+# Runs on every PR and every push to main. The script
+# scripts/test-bootstrap-byte-identical.mjs simulates both the prebuild
+# path (flattenColor/flattenSize/flattenFont → buildBootstrapCss) and the
+# CMS publish round-trip (parse → KV-shape rows → *RowsToFlat →
+# buildBootstrapCss) and exits non-zero if the two diverge.
+#
+# This catches the class of bug that originally motivated Groups A-F:
+# silent data drops in one parser path that the other doesn't see. If
+# this workflow fails on your PR, a parser or a *RowsToFlat helper is
+# distorting data on one side — fix the side that doesn't match Figma's
+# canonical interpretation.
+
+name: Bootstrap.css parity
+
+on:
+  pull_request:
+    paths:
+      - "tokens/**"
+      - "supabase/functions/_shared/**"
+      - "src/app/components/shared/color-token-utils.ts"
+      - "src/app/components/shared/size-token-utils.ts"
+      - "src/app/components/shared/font-token-cms-utils.ts"
+      - "scripts/test-bootstrap-byte-identical.mjs"
+      - "scripts/generate-llms-txt.mjs"
+      - "package.json"
+      - ".github/workflows/test-bootstrap-parity.yml"
+  push:
+    branches: [main]
+    paths:
+      - "tokens/**"
+      - "supabase/functions/_shared/**"
+      - "src/app/components/shared/color-token-utils.ts"
+      - "src/app/components/shared/size-token-utils.ts"
+      - "src/app/components/shared/font-token-cms-utils.ts"
+      - "scripts/test-bootstrap-byte-identical.mjs"
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # No deps needed — the test only uses node:fs + ESM imports of the
+      # repo's own .mjs sources. Skipping npm install keeps the job fast.
+      - name: Run bootstrap.css byte-identical test
+        run: npm run test:bootstrap
