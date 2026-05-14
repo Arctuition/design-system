@@ -171,29 +171,10 @@ app.onError((err, c) => {
 // KV key prefix for this app
 const PREFIX = "ds:";
 
-// All state keys stored in KV. MUST stay in sync with the keys the client
-// reads/writes in src/app/store/data-store.tsx — any key missing here causes
-// PUT /state/:key to return HTTP 400, which the client silently swallowed
-// before this fix.
-const STATE_KEYS = [
-  "homeArticle",
-  "changeLogs",
-  "colorTokens",
-  "sizeTokens",
-  "breakpointTokens",
-  "fontTokens",
-  "tokenDocs",
-  // Per-slot upload + publish timestamps for the editor status badges.
-  // Without this entry, every client PUT /state/tokenStatus returned 400
-  // and the badge timestamps were never persisted — they survived a single
-  // tab session via localStorage but vanished on a fresh browser.
-  "tokenStatus",
-  "iconologyArticle",
-  "icons",
-  "patterns",
-  "editors",
-  "articleVersions",
-];
+// All state keys stored in KV. Imported from a shared module so the client
+// and server cannot drift — see ../_shared/state-keys.mjs for the rationale.
+// @ts-ignore — pure JS module, no .d.ts; Deno bundles it via relative path.
+import { STATE_KEYS } from "../_shared/state-keys.mjs";
 
 // Keys returned by the bulk GET /state. articleVersions is excluded because
 // its size is dominated by HTML snapshots of pattern content (~1 MB per

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { loadStateFromServer, loadStateKey, saveStateKey, bulkSaveState } from "./api";
+import { isValidStateKey } from "../lib/state-keys";
 
 /**
  * Per-articleKey cap on stored versions. Must match the server-side
@@ -864,35 +865,47 @@ function buildStateFromServer(serverData: Record<string, any>): AppState {
       const mtimes = typeof raw.tokenSlotMtimes === "object" && raw.tokenSlotMtimes !== null
         ? raw.tokenSlotMtimes as Record<string, string>
         : {};
-      let publishedAt = typeof raw.tokenSlotPublishedAt === "object" && raw.tokenSlotPublishedAt !== null
-        ? raw.tokenSlotPublishedAt as Record<string, string>
-        : {};
+      const publishedAt = typeof raw.tokenSlotPublishedAt === "object" && raw.tokenSlotPublishedAt !== null
+        ? { ...(raw.tokenSlotPublishedAt as Record<string, string>) }
+        : {} as Record<string, string>;
 
-      // Migration: the original Group E shape used a single global
-      // `tokensLastPublishedAt: string | null` for the entire token set.
-      // PR #37 moved to per-slot publishedAt. If a payload still carries
-      // the old shape, seed every populated slot's publishedAt with the
-      // old value so the user doesn't lose all their Publish history on
-      // the upgrade. This branch only fires for old payloads where the
-      // new field is empty.
-      if (Object.keys(publishedAt).length === 0 && typeof raw.tokensLastPublishedAt === "string") {
-        const legacyTs = raw.tokensLastPublishedAt;
-        const seeded: Record<string, string> = {};
-        const ct = serverData.colorTokens || {};
-        if (Array.isArray(ct.global) && ct.global.length > 0) seeded["color/global"] = legacyTs;
-        if (Array.isArray(ct.semanticLight) && ct.semanticLight.length > 0) seeded["color/light"] = legacyTs;
-        if (Array.isArray(ct.semanticDark) && ct.semanticDark.length > 0) seeded["color/dark"] = legacyTs;
-        const st = serverData.sizeTokens || {};
-        for (const k of ["global", "deviceMobile", "deviceTablet", "webMobile", "webTablet", "webDesktop", "webDesktopLarge"]) {
-          if (Array.isArray(st[k]) && st[k].length > 0) seeded[`size/${k}`] = legacyTs;
+      // Auto-seed publishedAt for any populated slot that has no recorded
+      // upload OR publish timestamp. Two cases this covers:
+      //
+      //   1. Legacy data from before Group E shipped — slot has tokens in
+      //      KV but no tracked history. Without seeding, the badge reads
+      //      "Published" with no date, which the user can't compare
+      //      against future uploads.
+      //
+      //   2. Payloads still carrying the old `tokensLastPublishedAt`
+      //      single-string field (pre-PR #37). Use it as the seed value
+      //      so we preserve whatever Publish history the user did track.
+      //
+      // Important: we only seed when both mtime AND publishedAt are
+      // missing for a slot. If a slot has an mtime (user uploaded but
+      // never published), the badge should correctly read "Uploaded" —
+      // seeding publishedAt there would silently downgrade the badge to
+      // "Published" and lie about the slot's state.
+      const seedValue = typeof raw.tokensLastPublishedAt === "string"
+        ? raw.tokensLastPublishedAt
+        : new Date().toISOString();
+      const maybeSeed = (slotKey: string, hasData: boolean) => {
+        if (hasData && !publishedAt[slotKey] && !mtimes[slotKey]) {
+          publishedAt[slotKey] = seedValue;
         }
-        const bp = serverData.breakpointTokens?.tokens;
-        if (Array.isArray(bp) && bp.length > 0) seeded["breakpoint"] = legacyTs;
-        const ft = serverData.fontTokens || {};
-        for (const k of ["deviceMobile", "deviceTablet", "webMobile", "webDesktop"]) {
-          if (Array.isArray(ft[k]) && ft[k].length > 0) seeded[`font/${k}`] = legacyTs;
-        }
-        publishedAt = seeded;
+      };
+      const ct = serverData.colorTokens || {};
+      maybeSeed("color/global", Array.isArray(ct.global) && ct.global.length > 0);
+      maybeSeed("color/light",  Array.isArray(ct.semanticLight) && ct.semanticLight.length > 0);
+      maybeSeed("color/dark",   Array.isArray(ct.semanticDark) && ct.semanticDark.length > 0);
+      const st = serverData.sizeTokens || {};
+      for (const k of ["global", "deviceMobile", "deviceTablet", "webMobile", "webTablet", "webDesktop", "webDesktopLarge"]) {
+        maybeSeed(`size/${k}`, Array.isArray(st[k]) && st[k].length > 0);
+      }
+      maybeSeed("breakpoint", Array.isArray(serverData.breakpointTokens?.tokens) && serverData.breakpointTokens.tokens.length > 0);
+      const ft = serverData.fontTokens || {};
+      for (const k of ["deviceMobile", "deviceTablet", "webMobile", "webDesktop"]) {
+        maybeSeed(`font/${k}`, Array.isArray(ft[k]) && ft[k].length > 0);
       }
 
       return { tokenSlotMtimes: mtimes, tokenSlotPublishedAt: publishedAt };
@@ -1140,6 +1153,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               // Silently fail - localStorage is the primary storage
             });
           }
+          // Persist any tokenStatus that buildStateFromServer auto-seeded
+          // (legacy data without publishedAt → gets today's date as
+          // baseline; pre-PR #37 single-field payloads → migrated to
+          // per-slot map). The seed in memory needs to reach KV so it
+          // survives reload and shows a stable date instead of drifting
+          // on every load.
+          const serverPubAt = result.data.tokenStatus?.tokenSlotPublishedAt;
+          const loadedPubAt = newState.tokenStatus.tokenSlotPublishedAt;
+          const serverKeys = serverPubAt && typeof serverPubAt === "object"
+            ? Object.keys(serverPubAt as Record<string, string>).length
+            : 0;
+          if (Object.keys(loadedPubAt).length !== serverKeys) {
+            pendingSyncRef.current.add("tokenStatus");
+            saveStateKey("tokenStatus", newState.tokenStatus).catch(() => {
+              // Silently fail - localStorage will keep it
+            });
+          }
           console.log("✅ Loaded state from server");
           setIsLoading(false);
           return;
@@ -1356,6 +1386,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const keys = Array.from(pendingSyncRef.current);
       pendingSyncRef.current.clear();
       if (keys.length === 0) return;
+
+      // Defense layer (added after the tokenStatus 400-swallow bug):
+      // any key not in the shared STATE_KEYS allowlist would be silently
+      // rejected by the edge function with HTTP 400. Surface that loudly
+      // here so the next maintainer who adds a state slot without
+      // registering it gets an immediate, visible error instead of a
+      // mystery "my data isn't persisting" symptom.
+      const invalidKeys = keys.filter((k) => !isValidStateKey(k));
+      if (invalidKeys.length > 0) {
+        const msg = `State sync skipped: unknown key(s) ${invalidKeys.join(", ")}. ` +
+          `Add to supabase/functions/_shared/state-keys.mjs before syncing.`;
+        console.error(msg);
+        toast.error(msg);
+        // Drop invalid keys; sync only the valid ones below.
+        for (const k of invalidKeys) {
+          const idx = keys.indexOf(k);
+          if (idx >= 0) keys.splice(idx, 1);
+        }
+        if (keys.length === 0) return;
+      }
 
       // Read current state for the pending keys
       setState((currentState) => {
