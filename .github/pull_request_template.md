@@ -80,6 +80,15 @@ If any of the below apply, expand the relevant block:
 
 <!-- How to verify this PR locally + on prod. -->
 
+## Regular-task reminders
+
+> Standing rules that apply to most PRs. AI authors: tick these before opening, not after a user audit. See §"Regular task checklist" in CLAUDE.md for the full list and rationale.
+
+- [ ] **ChangeLog entry written** (or explicitly skipped because the PR is purely internal — docs, build tooling, dev-only scripts). For a *cluster* of related PRs, one combined entry is fine and preferred — don't write 14 separate entries. See `scripts/safe-changelog-sync.mjs`.
+- [ ] **Project doc manifest** (CLAUDE.md top section) updated if this PR adds, retires, or moves a rule file.
+- [ ] **`.claude/cms-architecture.md`** updated if this PR changes a data flow, canonical source, or load-bearing source file's contract.
+- [ ] **Migration code** is in this PR (not a follow-up) if any persisted field is renamed or reshaped.
+
 ## Notes for reviewer
 
 <!-- Anything subtle, anything you considered but didn't do, anything

@@ -6,6 +6,38 @@
 > goes wrong. The PR template asks you to skim it; the docs-drift CI
 > check warns when you change load-bearing files without touching it.
 
+## Project doc manifest
+
+> All the project rule files in one place — agents and humans alike should
+> know what exists *before* they start a task. Don't re-load these all at
+> once; pull only the rows relevant to what you're about to do. The
+> "When to read" column says when each becomes load-bearing.
+>
+> **Maintenance**: when you add, retire, or move a rule file, update this
+> table in the same PR. If a row stops being consulted across multiple
+> sessions, demote it (move to the "Background" tier) or delete it.
+
+| Tier | File | When to read |
+|---|---|---|
+| **Always-loaded** | `CLAUDE.md` (this file) | Auto-loaded into every session by Claude Code |
+| **Always-loaded** | `~/.claude/projects/<this>/memory/MEMORY.md` | Auto-loaded; index into project-specific lessons & feedback |
+| **Always-loaded** | `~/.claude/memory/MEMORY.md` | Cross-project engineering lessons; index. Auto-loaded by some configurations |
+| **High — data flow / architecture** | [`.claude/cms-architecture.md`](.claude/cms-architecture.md) | Before any substantial PR. Lists drift risks + canonical sources + load-bearing source files + CI gates |
+| **High — past decisions** | [`.claude/decisions.md`](.claude/decisions.md) | When deciding *how* to implement something; check whether a similar choice was already made and why |
+| **Medium — local setup** | [`.claude/local-dev.md`](.claude/local-dev.md) | First-time local setup; debugging dev env (esp. the Supabase Docker quirks) |
+| **Medium — pattern docs** | [`.claude/pattern-doc-workflow.md`](.claude/pattern-doc-workflow.md) | Editing or creating Pattern docs / images |
+| **Specialised — token MDs** | (canonical: KV `tokenDocs` via curl, **not** `tokens/*.md`) | Editing the three token reference MDs. See §"Token reference MDs" below |
+| **Specialised — changelog** | [`scripts/safe-changelog-sync.mjs`](scripts/safe-changelog-sync.mjs) + `defaultChangeLogs` in `data-store.tsx` | Every user-visible PR. See §"ChangeLog must update on every PR" below |
+| **Specialised — drift guards** | [`.github/workflows/docs-drift-check.yml`](.github/workflows/docs-drift-check.yml), [`.github/pull_request_template.md`](.github/pull_request_template.md) | When touching load-bearing source files |
+| **Background — token data** | `tokens/tokens-*.md`, `tokens/<collection>/*.json` | Reading current token values (seed copy). For *editing*, see "Specialised — token MDs" above |
+| **Background — lessons archive** | `~/.claude/projects/<this>/memory/project_*.md`, `~/.claude/memory/lesson_*.md` | Pull on-demand when MEMORY.md index hints at relevance to current task |
+
+### How to use this manifest
+
+- **Starting a new task?** Skim the table, identify rows that match the task domain, read those files first.
+- **Creating a new project-level doc?** Run `find . -iname "<topic>*"` first. If a relevant entry exists anywhere in `.claude/`, `tokens/`, or repo root, **extend it rather than creating a parallel file**. Two parallel architecture docs is worse than one slightly-outdated one — that exact mistake happened on 2026-05-14 (see project memory).
+- **Promote / demote**: if a row goes unconsulted across several sessions, either the doc is no longer load-bearing (demote to Background or delete), or it's load-bearing but unreadable (rewrite). Doc rot is real; address it rather than accumulating.
+
 ## Project
 React + Vite + TypeScript design system CMS. Content is managed through `/src/app/pages/cms/` pages and persisted via a Supabase edge function acting as a key-value store.
 
@@ -127,13 +159,25 @@ For any PR over ~500 LOC, or any PR touching a [load-bearing source file listed 
 
 1. **Skim `.claude/cms-architecture.md` first.** Find the section closest to your change. Re-read its "Drift risks" and "Canonical sources" callouts. If your change makes a risk worse, or moves a canonical, update the map in the same PR.
 2. **Search-and-read meta-docs** for the file/service/concept your change affects:
-   - `CLAUDE.md` — look for instructions whose *meaning* (not text) might flip
+   - `CLAUDE.md` (start with the §Project doc manifest table at the top) — look for instructions whose *meaning* (not text) might flip
    - `tokens/tokens-*.md` — reference tables can go stale silently
    - `.claude/decisions.md` — past decisions may be invalidated
 3. **Fill in the PR template's architectural-impact checklist.** The boxes exist to make you stop and think; mechanical checking defeats the point.
-4. **If AI is authoring the PR**, the prompt should include: *"Before opening the PR, re-read `.claude/cms-architecture.md` and `CLAUDE.md`, and check whether any instructions there would become misleading because of this change."* AI optimizes for the explicit task; that prompt extends the task to include doc maintenance.
+4. **Search before creating any new project-level doc.** If asked to add a map / runbook / architecture doc / index, run `find . -iname "<topic>*"` first. If a similar file exists (likely listed in §Project doc manifest), extend it instead of creating a parallel file. A duplicated map is itself the drift hazard the system is meant to prevent — on 2026-05-14 this exact mistake was made and the user had to point at the existing file.
+5. **Don't forget regular tasks.** Before opening a PR, check the §Regular task checklist below — there are standing rules (e.g., update the ChangeLog) that apply to every user-visible PR, easy to skip when deep in code. The PR template has a reminder.
+6. **If AI is authoring the PR**, the prompt should include: *"Before opening the PR, re-read `CLAUDE.md` (especially the §Project doc manifest), the relevant section of `.claude/cms-architecture.md`, and check whether any instruction there would become misleading because of this change. Also walk the §Regular task checklist."* AI optimizes for the explicit task; this prompt extends the task to include doc maintenance + the standing rules.
 
 The technical guard for this is `.github/workflows/docs-drift-check.yml` — it posts a warning comment on PRs that touch load-bearing source without `CLAUDE.md`/`.claude/cms-architecture.md`. The warning is advisory, not blocking; it exists to make you *look*, not to gate emergency fixes.
+
+## Regular task checklist
+
+> Standing rules that apply to every user-visible PR. AI authors especially: tick through this *before* opening the PR, not after the user catches you skipping. Forgetting any of these is the same class of failure as silent doc drift — they're invisible until someone audits.
+
+- [ ] **ChangeLog updated** if the PR ships a user-visible change. See §"ChangeLog must update on every PR" — grouping multiple small PRs into one entry is fine and preferred, but the rule is "every release of user-visible work has an entry." Skip only for purely-internal changes (CLAUDE.md edits, build tooling, dev-only scripts).
+- [ ] **Project doc manifest updated** if the PR adds, retires, or moves a rule file.
+- [ ] **`.claude/cms-architecture.md` updated** if the PR changes a data flow, a canonical source, or a load-bearing source file's contract (see §Drift risks and guards).
+- [ ] **Migration code present** if the PR renames or reshapes any persisted field.
+- [ ] **Architecture impact checklist on the PR description** filled in honestly (or its boxes deliberately cleared with reasons).
 
 ## Worktree cleanup
 If you see a "Commit changes" prompt in the Claude Code toolbar, a worktree is still active. Remove it:
