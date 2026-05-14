@@ -8,6 +8,8 @@
       "mcp__Claude_Preview__preview_list",
       "mcp__Claude_Preview__preview_network",
       "mcp__Claude_Preview__preview_inspect",
+      "mcp__Claude_Preview__preview_start",
+      "mcp__Claude_Preview__preview_eval",
       "mcp__Figma__get_screenshot",
       "mcp__Figma__get_design_context",
       "mcp__Figma__get_metadata",
