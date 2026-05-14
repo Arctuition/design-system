@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import type { SizeToken } from "../../store/data-store";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -115,6 +116,45 @@ export function getSizeTokens(mode: SizeMode): ParsedSizeToken[] {
 
 export function getBreakpointTokens(): ParsedSizeToken[] {
   return flattenSizeTokens(breakpointJson as Record<string, any>);
+}
+
+// ── KV-backed alternatives ─────────────────────────────────────────────────
+//
+// KV stores size tokens as `SizeToken` rows (`{name, value, aliasOf?}`).
+// Names use slash paths (`size/comp/button/padding`). This adapter turns
+// them into the same `ParsedSizeToken[]` shape the public pages already
+// consume, so pages can pivot to "live CMS" data without rewriting.
+
+/** Heuristic: KV rows that look like Figma size tokens (start with `size/`
+ *  or `breakpoint/`). The shadcn-style default seed in data-store.tsx uses
+ *  totally different names, so this is a clean discriminator. */
+export function looksLikeFigmaSizeTokens(tokens: SizeToken[] | undefined): boolean {
+  if (!Array.isArray(tokens) || tokens.length === 0) return false;
+  return tokens.some((t) =>
+    t.name?.startsWith("size/") ||
+    t.name?.startsWith("size-global/") ||
+    t.name?.startsWith("breakpoint/")
+  );
+}
+
+function kvRowToParsedSize(t: SizeToken): ParsedSizeToken {
+  const cssVar = `--${t.name.replace(/\//g, "-")}`;
+  let displayValue: string;
+  let rawValue: string;
+  if (t.aliasOf) {
+    displayValue = `var(--${t.aliasOf.replace(/[./]/g, "-")})`;
+    rawValue = displayValue;
+  } else {
+    const n = typeof t.value === "number" ? t.value : parseFloat(String(t.value));
+    const px = Number.isFinite(n) ? `${n}px` : "0px";
+    displayValue = px;
+    rawValue = px;
+  }
+  return { cssVar, displayValue, rawValue };
+}
+
+export function getSizeTokensFromKv(rows: SizeToken[]): ParsedSizeToken[] {
+  return rows.map(kvRowToParsedSize);
 }
 
 /**

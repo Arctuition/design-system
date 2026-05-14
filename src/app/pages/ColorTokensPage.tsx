@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { ArrowLeft, Download } from "lucide-react";
 import { toast } from "sonner";
@@ -9,21 +9,43 @@ import {
   getLightColorTokens,
   getDarkColorTokens,
   getGlobalColorTokens,
+  getLightColorTokensFromKv,
+  getDarkColorTokensFromKv,
+  getGlobalColorTokensFromKv,
+  looksLikeFigmaColorTokens,
   buildSemanticCssLines,
   buildGlobalCssLines,
   exportColorCSSAsZip,
 } from "../components/shared/color-json-token-utils";
+import { useAppData } from "../store/data-store";
 
 function linesToString(lines: { text: string }[]): string {
   return lines.map(l => l.text).join("\n");
 }
 
-const lightCss  = linesToString(buildSemanticCssLines(getLightColorTokens(),  "SEMANTIC TOKENS — LIGHT MODE"));
-const darkCss   = linesToString(buildSemanticCssLines(getDarkColorTokens(),   "SEMANTIC TOKENS — DARK MODE"));
-const globalCss = linesToString(buildGlobalCssLines(getGlobalColorTokens()));
-
 export function ColorTokensPage() {
   const [activeTab, setActiveTab] = useState<"light" | "dark" | "global">("light");
+
+  // Pivoted from build-time-bundled JSON to live KV state. Falls back to
+  // bundled JSON when KV holds the shadcn-style placeholder seed.
+  const { colorTokens } = useAppData();
+  const lightCss = useMemo(() => linesToString(buildSemanticCssLines(
+    looksLikeFigmaColorTokens(colorTokens.semanticLight)
+      ? getLightColorTokensFromKv(colorTokens.semanticLight)
+      : getLightColorTokens(),
+    "SEMANTIC TOKENS — LIGHT MODE"
+  )), [colorTokens.semanticLight]);
+  const darkCss = useMemo(() => linesToString(buildSemanticCssLines(
+    looksLikeFigmaColorTokens(colorTokens.semanticDark)
+      ? getDarkColorTokensFromKv(colorTokens.semanticDark)
+      : getDarkColorTokens(),
+    "SEMANTIC TOKENS — DARK MODE"
+  )), [colorTokens.semanticDark]);
+  const globalCss = useMemo(() => linesToString(buildGlobalCssLines(
+    looksLikeFigmaColorTokens(colorTokens.global)
+      ? getGlobalColorTokensFromKv(colorTokens.global)
+      : getGlobalColorTokens()
+  )), [colorTokens.global]);
 
   const handleExport = async () => {
     try {

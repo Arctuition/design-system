@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import type { FontToken } from "../../store/data-store";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -87,6 +88,39 @@ function flattenFontTokens(
 
 export function getFontTokens(mode: FontMode): ParsedFontToken[] {
   return flattenFontTokens(JSON_BY_MODE[mode]);
+}
+
+// ── KV-backed alternative ──────────────────────────────────────────────────
+//
+// KV stores font tokens as `FontToken` rows (`{name, value, scope?, scopes?, aliasOf?}`).
+// Names use slash paths (`font/size/body/medium`). The CSS unit is decided
+// by the Figma scope hint(s), mirroring formatValue() above.
+
+export function looksLikeFigmaFontTokens(tokens: FontToken[] | undefined): boolean {
+  if (!Array.isArray(tokens) || tokens.length === 0) return false;
+  return tokens.some((t) => t.name?.startsWith("font/") || t.name?.startsWith("--font-"));
+}
+
+function kvRowToParsedFont(t: FontToken): ParsedFontToken {
+  const cssVar = t.name?.startsWith("--")
+    ? t.name
+    : `--${t.name.replace(/\//g, "-")}`;
+  // Multi-scope rows prefer the first unit-bearing hint; legacy single-scope
+  // rows just use it directly.
+  const scopes = Array.isArray(t.scopes) && t.scopes.length ? t.scopes : t.scope ? [t.scope] : [];
+  let value: string;
+  if (t.aliasOf) {
+    value = `var(--${t.aliasOf.replace(/[./]/g, "-")})`;
+  } else if (typeof t.value === "string") {
+    value = t.value;
+  } else {
+    value = formatValue(t.value, scopes);
+  }
+  return { cssVar, value, scope: scopes[0] ?? "UNKNOWN" };
+}
+
+export function getFontTokensFromKv(rows: FontToken[]): ParsedFontToken[] {
+  return rows.map(kvRowToParsedFont);
 }
 
 // ── Group by category (second segment: size, font-weight, typeface, letter-spacing) ──

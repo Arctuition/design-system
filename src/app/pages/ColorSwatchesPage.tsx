@@ -7,9 +7,14 @@ import {
   getLightColorTokens,
   getDarkColorTokens,
   getGlobalColorTokens,
+  getLightColorTokensFromKv,
+  getDarkColorTokensFromKv,
+  getGlobalColorTokensFromKv,
+  looksLikeFigmaColorTokens,
   groupColorTokens,
   type ParsedColorToken,
 } from "../components/shared/color-json-token-utils";
+import { useAppData } from "../store/data-store";
 import { TokenOutlineSidebar, buildOutlineSections, slugify } from "../components/shared/TokenOutlineSidebar";
 import { copyToClipboard } from "../utils/clipboard";
 
@@ -107,9 +112,33 @@ type ColorTab = "light" | "dark" | "global";
 export function ColorSwatchesPage() {
   const [activeTab, setActiveTab] = useState<ColorTab>("light");
 
-  const lightGroups  = useMemo(() => groupColorTokens(getLightColorTokens()),  []);
-  const darkGroups   = useMemo(() => groupColorTokens(getDarkColorTokens()),   []);
-  const globalGroups = useMemo(() => groupColorTokens(getGlobalColorTokens()), []);
+  // Read live CMS state, falling back to bundled JSON when KV holds the
+  // shadcn-style placeholder seed (no Figma upload yet).
+  const { colorTokens } = useAppData();
+  const lightGroups = useMemo(() =>
+    groupColorTokens(
+      looksLikeFigmaColorTokens(colorTokens.semanticLight)
+        ? getLightColorTokensFromKv(colorTokens.semanticLight)
+        : getLightColorTokens()
+    ),
+    [colorTokens.semanticLight]
+  );
+  const darkGroups = useMemo(() =>
+    groupColorTokens(
+      looksLikeFigmaColorTokens(colorTokens.semanticDark)
+        ? getDarkColorTokensFromKv(colorTokens.semanticDark)
+        : getDarkColorTokens()
+    ),
+    [colorTokens.semanticDark]
+  );
+  const globalGroups = useMemo(() =>
+    groupColorTokens(
+      looksLikeFigmaColorTokens(colorTokens.global)
+        ? getGlobalColorTokensFromKv(colorTokens.global)
+        : getGlobalColorTokens()
+    ),
+    [colorTokens.global]
+  );
 
   const currentGroups =
     activeTab === "light"  ? lightGroups  :
