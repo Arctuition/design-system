@@ -23,6 +23,8 @@ import {
   type MatchSlot,
 } from "../../components/shared/font-token-cms-utils";
 import { PublishTokensButton } from "../../components/shared/PublishTokensButton";
+import { TokenSlotStatusBadge } from "../../components/shared/TokenSlotStatusBadge";
+import { looksLikeFigmaFontTokens } from "../../components/shared/font-token-utils";
 
 const FONT_SLOTS: Array<{ key: MatchSlot; label: string; stateKey: keyof FontTokenSet }> = [
   { key: "deviceMobile", label: "Device Mobile", stateKey: "deviceMobile" },
@@ -203,16 +205,18 @@ export function FontTokensEditor() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {FONT_SLOTS.map((s) => {
             const count = slotCount(s.stateKey);
+            const hasData = looksLikeFigmaFontTokens(fontTokens[s.stateKey]);
             return (
               <div key={s.key} className="p-4 border border-border rounded-[var(--radius-card)] bg-secondary/10">
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between gap-2 mb-1">
                   <span style={{ fontSize: "var(--text-p)", fontWeight: "var(--font-weight-medium)" }}>
                     {s.label}
                   </span>
-                  <span className="text-muted-foreground" style={{ fontSize: "var(--text-label)" }}>
-                    {count > 0 ? `${count} tokens` : "empty"}
-                  </span>
+                  <TokenSlotStatusBadge slotKey={`font/${s.stateKey}`} hasData={hasData} />
                 </div>
+                <p className="text-muted-foreground mb-1" style={{ fontSize: "var(--text-label)" }}>
+                  {count > 0 ? `${count} tokens` : "no tokens"}
+                </p>
                 <p className="text-muted-foreground mb-3" style={{ fontSize: "var(--text-label)" }}>
                   Expects <code className="bg-secondary px-1 rounded-[var(--radius)]">{EXPECTED_FILES[s.key]}</code>
                 </p>

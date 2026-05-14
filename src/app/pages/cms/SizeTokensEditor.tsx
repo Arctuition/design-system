@@ -22,6 +22,8 @@ import {
   groupSizeTokensStable,
 } from "../../components/shared/size-token-utils";
 import { PublishTokensButton } from "../../components/shared/PublishTokensButton";
+import { TokenSlotStatusBadge } from "../../components/shared/TokenSlotStatusBadge";
+import { looksLikeFigmaSizeTokens } from "../../components/shared/size-json-token-utils";
 
 // Ordered list of upload slots for the individual upload UI. The Breakpoint
 // slot writes to a separate state branch (breakpointTokens), so it's handled
@@ -223,16 +225,18 @@ export function SizeTokensEditor() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {SIZE_SLOTS.map((s) => {
             const count = slotCount(s.stateKey);
+            const hasData = looksLikeFigmaSizeTokens(sizeTokens[s.stateKey]);
             return (
               <div key={s.key} className="p-4 border border-border rounded-[var(--radius-card)] bg-secondary/10">
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between gap-2 mb-1">
                   <span style={{ fontSize: "var(--text-p)", fontWeight: "var(--font-weight-medium)" }}>
                     {s.label}
                   </span>
-                  <span className="text-muted-foreground" style={{ fontSize: "var(--text-label)" }}>
-                    {count > 0 ? `${count} tokens` : "empty"}
-                  </span>
+                  <TokenSlotStatusBadge slotKey={`size/${s.stateKey}`} hasData={hasData} />
                 </div>
+                <p className="text-muted-foreground mb-1" style={{ fontSize: "var(--text-label)" }}>
+                  {count > 0 ? `${count} tokens` : "no tokens"}
+                </p>
                 <p className="text-muted-foreground mb-3" style={{ fontSize: "var(--text-label)" }}>
                   Expects <code className="bg-secondary px-1 rounded-[var(--radius)]">{EXPECTED_FILES[s.key]}</code>
                 </p>
@@ -265,14 +269,18 @@ export function SizeTokensEditor() {
           The breakpoint collection is mode-independent — its values are the viewport widths that trigger size-mode switches (Web Mobile → Tablet → Desktop → Desktop Large).
         </p>
         <div className="p-4 border border-border rounded-[var(--radius-card)] bg-secondary/10 max-w-md">
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center justify-between gap-2 mb-1">
             <span style={{ fontSize: "var(--text-p)", fontWeight: "var(--font-weight-medium)" }}>
               Breakpoint Collection
             </span>
-            <span className="text-muted-foreground" style={{ fontSize: "var(--text-label)" }}>
-              {breakpointCount > 0 ? `${breakpointCount} tokens` : "empty"}
-            </span>
+            <TokenSlotStatusBadge
+              slotKey="breakpoint"
+              hasData={looksLikeFigmaSizeTokens(breakpointTokens.tokens)}
+            />
           </div>
+          <p className="text-muted-foreground mb-1" style={{ fontSize: "var(--text-label)" }}>
+            {breakpointCount > 0 ? `${breakpointCount} tokens` : "no tokens"}
+          </p>
           <p className="text-muted-foreground mb-3" style={{ fontSize: "var(--text-label)" }}>
             Expects <code className="bg-secondary px-1 rounded-[var(--radius)]">{EXPECTED_FILES.breakpoint}</code>
           </p>

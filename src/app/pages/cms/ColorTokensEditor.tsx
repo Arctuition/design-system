@@ -50,6 +50,14 @@ import {
 } from "../../components/shared/TokenOutlineSidebar";
 import { copyToClipboard } from "../../utils/clipboard";
 import { PublishTokensButton } from "../../components/shared/PublishTokensButton";
+import { TokenSlotStatusBadge } from "../../components/shared/TokenSlotStatusBadge";
+import { looksLikeFigmaColorTokens } from "../../components/shared/color-json-token-utils";
+
+const COLOR_SLOT_TO_STATE_KEY: Record<"global" | "semanticLight" | "semanticDark", string> = {
+  global: "color/global",
+  semanticLight: "color/light",
+  semanticDark: "color/dark",
+};
 
 // ─── Slot config ───
 
@@ -328,15 +336,21 @@ export function ColorTokensEditor() {
                 {SLOTS.map((s) => {
                   const count = slotCount(colorTokens, s.key);
                   const Icon = s.icon;
+                  const slotData =
+                    s.key === "global" ? colorTokens.global :
+                    s.key === "semanticLight" ? colorTokens.semanticLight :
+                    colorTokens.semanticDark;
+                  const hasData = looksLikeFigmaColorTokens(slotData);
                   return (
                     <div
                       key={s.key}
                       className="p-4 border border-border rounded-[var(--radius-card)] bg-secondary/10"
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-1.5">
-                          <Icon className="size-4 text-foreground" />
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Icon className="size-4 text-foreground shrink-0" />
                           <span
+                            className="truncate"
                             style={{
                               fontSize: "var(--text-p)",
                               fontWeight: "var(--font-weight-medium)",
@@ -345,13 +359,11 @@ export function ColorTokensEditor() {
                             {s.label}
                           </span>
                         </div>
-                        <span
-                          className="text-muted-foreground"
-                          style={{ fontSize: "var(--text-label)" }}
-                        >
-                          {count > 0 ? `${count} tokens` : "empty"}
-                        </span>
+                        <TokenSlotStatusBadge slotKey={COLOR_SLOT_TO_STATE_KEY[s.key]} hasData={hasData} />
                       </div>
+                      <p className="text-muted-foreground mb-2" style={{ fontSize: "var(--text-label)" }}>
+                        {count > 0 ? `${count} tokens` : "no tokens"}
+                      </p>
                       <p
                         className="text-muted-foreground mb-2"
                         style={{ fontSize: "var(--text-label)" }}
