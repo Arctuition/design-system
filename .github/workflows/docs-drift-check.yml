@@ -1,0 +1,133 @@
+# Warn (don't fail) when a PR changes load-bearing source files without
+# also touching the project's meta-docs (CLAUDE.md / ARCHITECTURE.md).
+#
+# Rationale: doc-drift bugs are silent. The text of an instruction can
+# stay literally true while its *meaning* flips because the underlying
+# code moved. There's no diff in the doc, so reviewers don't catch it.
+# This workflow forces the author to at least *look at* the meta-docs
+# during the PR, which catches ~80% of "I forgot" cases.
+#
+# Why warn instead of fail: emergency fixes shouldn't be gated by docs.
+# The check posts a comment on the PR; the author can ack and move on,
+# or update the docs in the same PR. Either is fine.
+
+name: Docs drift check
+
+on:
+  pull_request:
+    paths:
+      # Load-bearing source files. Keep this list in sync with the
+      # "Load-bearing source files (CI watches these)" table in
+      # ARCHITECTURE.md — see that file for which file affects what.
+      - "supabase/functions/_shared/state-keys.mjs"
+      - "supabase/functions/_shared/token-generators.mjs"
+      - "supabase/functions/make-server-067f252d/index.ts"
+      - "src/app/store/data-store.tsx"
+      - "src/app/store/api.ts"
+      - "src/app/lib/state-keys.ts"
+      - "scripts/generate-llms-txt.mjs"
+
+permissions:
+  pull-requests: write   # to post the warning comment
+
+jobs:
+  drift-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    # need history to diff against base
+
+      - name: Detect missing meta-doc updates
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          # Files changed in this PR.
+          mapfile -t CHANGED < <(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+
+          # Was a meta-doc touched?
+          META_TOUCHED=false
+          for f in "${CHANGED[@]}"; do
+            if [[ "$f" == "CLAUDE.md" || "$f" == "ARCHITECTURE.md" ]]; then
+              META_TOUCHED=true
+            fi
+          done
+
+          # Which load-bearing files were touched?
+          LOAD_BEARING=()
+          for f in "${CHANGED[@]}"; do
+            case "$f" in
+              supabase/functions/_shared/state-keys.mjs|\
+              supabase/functions/_shared/token-generators.mjs|\
+              supabase/functions/make-server-067f252d/index.ts|\
+              src/app/store/data-store.tsx|\
+              src/app/store/api.ts|\
+              src/app/lib/state-keys.ts|\
+              scripts/generate-llms-txt.mjs)
+                LOAD_BEARING+=("$f")
+                ;;
+            esac
+          done
+
+          if [[ ${#LOAD_BEARING[@]} -gt 0 && "$META_TOUCHED" == "false" ]]; then
+            echo "needs_warning=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "files<<EOF"
+              printf -- "- \`%s\`\n" "${LOAD_BEARING[@]}"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_warning=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post warning comment (advisory only — does not fail)
+        if: steps.check.outputs.needs_warning == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR=${{ github.event.pull_request.number }}
+          BODY=$(cat <<'EOF'
+          ## ⚠️ Docs drift check — advisory
+
+          This PR changes one or more **load-bearing source files** but
+          does not touch `CLAUDE.md` or `ARCHITECTURE.md`. On 2026-05-14
+          we found that this combination produced two days of silently
+          misleading docs ([post-mortem](.github/../ARCHITECTURE.md)).
+
+          Files changed that the drift check watches:
+
+          ${{ steps.check.outputs.files }}
+
+          **Before merging, please confirm:**
+
+          - [ ] I re-read the relevant section of `ARCHITECTURE.md` and either it's still accurate, or I'm updating it in this PR.
+          - [ ] I re-read `CLAUDE.md` for any instruction whose *meaning* (not text) might have flipped because of this change.
+          - [ ] The PR template architectural-impact checklist is filled in.
+
+          If you've done these and no doc change is needed, no action
+          required — this is a warning, not a block. If you want to
+          silence the warning explicitly, edit either doc with a
+          one-line note like *"PR #N: verified no change needed."*
+
+          ([What is this check?](.github/workflows/docs-drift-check.yml))
+          EOF
+          )
+
+          # Use upsert behavior: replace any prior comment from this workflow
+          # so the PR doesn't accumulate duplicates on each push.
+          EXISTING=$(gh pr view "$PR" --json comments \
+            --jq '.comments[] | select(.body | startswith("## ⚠️ Docs drift check")) | .id' \
+            | head -1 || true)
+          if [[ -n "$EXISTING" ]]; then
+            gh api -X PATCH "/repos/${{ github.repository }}/issues/comments/$EXISTING" \
+              -f body="$BODY" >/dev/null
+            echo "Updated existing drift-check comment $EXISTING"
+          else
+            gh pr comment "$PR" --body "$BODY"
+            echo "Posted new drift-check comment"
+          fi
