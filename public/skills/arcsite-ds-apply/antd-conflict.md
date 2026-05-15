@@ -2,21 +2,21 @@
 
 The hardest case in Mode 2 (modifying the ArcSite product codebase). The product uses Ant Design heavily, and ArcSite component-level tokens don't always map cleanly onto AntD's customization surfaces. This guide is a **linear runbook**: do the audit first, the freshness check second, the decision third, the implementation fourth, and the self-check last. Skipping a step leads to the bugs the design team keeps catching at review time.
 
+> **Maintainer note — this file holds *principles only*.** Do not hardcode app names, exact file paths, framework versions, hex values, or token names that may drift. The runbook tells the agent how to *discover* the codebase's current state (which apps exist, which file is the ConfigProvider entry, which tokens are in the local layer) — it does not snapshot those answers. If you find yourself typing a specific path or name, replace it with the discovery step.
+
 ---
 
 ## 1. Pre-coding audit (always do this before writing any styled JSX)
 
 The biggest source of Mode 2 rework is "I started writing before I understood what was already there." This audit makes the codebase's current state visible so your decisions later have ground truth to stand on. Don't skip it because the task feels small — it's almost always faster to do the audit than to undo a wrong assumption.
 
-The codebase is a pnpm monorepo. Multiple apps each have their own `App.tsx` and their own `ConfigProvider` setup. **Identify which app you are working in first** (typically `apps/web` for user-site work, `apps/enterprise`, `apps/web2` for the Next.js app, `apps/h5` for mobile web). Every audit step below is scoped to that app, not the repo root.
+The codebase is a pnpm monorepo. Multiple apps each have their own `App.tsx` (or framework-equivalent root) and their own `ConfigProvider` setup. **Identify which app you are working in first** — list the `apps/` directory (or whatever the repo uses as its app-root directory) and pick the one matching the user's task. Don't assume app names; the set evolves. Every audit step below is scoped to that app, not the repo root.
 
 Walk this checklist in order. Read the actual files — do not work from memory or assume the codebase matches a generic React+AntD setup.
 
 ### 1a. ConfigProvider current state
 
-Open the ConfigProvider entry for your app:
-- Vite apps: `apps/<app>/src/App.tsx`
-- Next.js app: `apps/web2/src/app/providers.tsx`
+Find the ConfigProvider entry for your app. It usually lives near the app's root setup file (where the framework mounts the root component). Locate it by `grep`'ing the app's source for `ConfigProvider` and reading the import — that is faster and more reliable than guessing by framework convention.
 
 Note which AntD theme tokens are already overridden (under `theme.token`) and which component-specific overrides exist (under `theme.components`). **You will not redefine anything that's already configured here** — if the override exists, the team has already made a decision about it.
 
@@ -26,7 +26,7 @@ Find the codebase's local token layer (typically `tokens-color.css`, `tokens-typ
 
 ### 1c. Font loading
 
-Check `apps/<app>/index.html` (or the Next.js equivalent: `app/layout.tsx`) for how Inter is loaded. If it's already loaded globally, you do not need to import bootstrap.css — Mode 2 follows the codebase's existing font wiring. **Never** layer bootstrap.css on top of an already-set-up codebase; that's a Mode 1 (prototype) artifact, not a Mode 2 tool.
+Locate where Inter is loaded in the app — usually in the framework's root HTML / layout file. `grep` for `Inter` in the app's source if you can't find it by convention. If Inter is already loaded globally, you do not need to import bootstrap.css — Mode 2 follows the codebase's existing font wiring. **Never** layer bootstrap.css on top of an already-set-up codebase; that's a Mode 1 (prototype) artifact, not a Mode 2 tool.
 
 ### 1d. Existing pages and dependencies
 

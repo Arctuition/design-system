@@ -286,6 +286,7 @@ Repo path: \`public/logos/\` (served at \`/logos/*.svg\`).
 
 LLM application guides for the ArcSite design system:
 
+- [Design-to-code fidelity gate](https://arctuition.github.io/design-system/skills/arcsite-ds-apply/design-fidelity.md) *(read first for any design-to-code task — gates the visual-fidelity × engineering-rigor axes before coding and contains the pixel-match four-phase protocol)*
 - [Prototype mode guide](https://arctuition.github.io/design-system/skills/arcsite-ds-apply/prototype.md)
 - [AntD conflict handling](https://arctuition.github.io/design-system/skills/arcsite-ds-apply/antd-conflict.md)
 - [Figma MCP flow](https://arctuition.github.io/design-system/skills/arcsite-ds-apply/figma-flow.md)

@@ -1,5 +1,7 @@
 # Reference: Figma design generation
 
+> **Maintainer note — this file holds *principles only*.** Do not hardcode library component names, variable names, hex values, or specific page / file names that may drift. The agent looks these up via Figma MCP at runtime — that is the canonical source.
+
 For Figma work, the source of truth split is:
 
 - **Principles** → from `llms.txt` (decision-making, hierarchy, when to use what)
