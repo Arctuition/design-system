@@ -415,6 +415,19 @@ const defaultTokenDocs: TokenDocs = {
 const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
+    date: "2026-05-15",
+    version: "1.10.0",
+    title: "Catch-all 404 page (responsive, design-fidelity matched)",
+    description: `New \`/*\` catch-all route mounted outside \`AppLayout\` so the 404 fills the full viewport with no sidebar / topbar chrome. Five responsive layouts (\`<768 / 768 / 992 / 1200 / 1440\`) drive layout, gutter, max-content-width, button radius, and the giant "404" display size off the design system's per-breakpoint Web size-token modes (\`web-mobile\` / \`web-tablet\` / \`web-desktop\` / \`web-desktop-large\`).
+
+**Implementation details**
+- Container width snaps to the Figma frame's *inner width* per band (912 / 1184 / 1440), not the generic \`size/layout-max-content-width\` token — extra viewport becomes side margin instead of stretching the layout.
+- Columns use a true 24-col grid with explicit \`grid-column: span 8/12/16\` per layer at desktop bands; matches Figma's column distribution to the px.
+- The 3D house illustration is the real raster PNG (\`/img-404.png\`), positioned absolutely *larger* than its column so the image edges spill naturally outside the layout frame — mirrors the "Clip content off" toggle in Figma.
+- GitHub Pages \`404.html\` SPA fallback (copied from \`index.html\` by the vite plugin) routes unknown paths into the React app, where this catch-all renders.`,
+  },
+  {
+    id: uid(),
     date: "2026-05-14",
     version: "1.9.0",
     title: "CMS upload cards — per-slot status badges and upload safety",
