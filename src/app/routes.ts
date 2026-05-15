@@ -73,6 +73,14 @@ export const router = createBrowserRouter([
           { path: "admin/data-cleanup", lazy: lazyComponent(() => import("./components/admin/DataCleanup"), "DataCleanup") },
         ],
       },
+
+      // Catch-all 404 lives outside AppLayout so the design fills the
+      // full viewport (no sidebar/topbar chrome), matching the Figma
+      // responsive frames. GitHub Pages also routes unknown paths
+      // through 404.html (copied from index.html by the vite
+      // spaFallback plugin), so this handles both server-side misses
+      // and in-app navigation to missing routes.
+      { path: "*", lazy: lazyComponent(() => import("./pages/NotFoundPage"), "NotFoundPage") },
     ],
   },
 ], { basename });
