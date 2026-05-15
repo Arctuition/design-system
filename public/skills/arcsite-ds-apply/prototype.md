@@ -2,6 +2,8 @@
 
 Use this guide whenever you are building standalone ArcSite UI from scratch — prototypes, demos, marketing pages, internal tools — anywhere there is no production codebase or third-party UI library to fight with.
 
+> **Maintainer note — this file holds *principles only*.** Do not hardcode token values, breakpoint pixels, mode names, hex codes, font weight lists, exact filenames, or repo paths that may drift. Reference the canonical source (`llms.txt`, the JSON files under `tokens/`, the codebase itself) and let the agent read live values. If you find yourself typing a specific value here, replace it with a pointer to where the value lives.
+
 ## Non-negotiable bootstrap
 
 Before writing any component CSS, do these three things, in order:
@@ -12,11 +14,9 @@ Before writing any component CSS, do these three things, in order:
    <link rel="stylesheet" href="https://arctuition.github.io/design-system/tokens/bootstrap.css">
    ```
 
-   This loads Inter (weights 400/500/600/800), defines every CSS variable referenced in `llms.txt`, and wires up dark-mode swap. **Do not** hand-copy values from `llms.txt` into a local `:root` — that is the failure mode this stylesheet exists to prevent.
+   This loads Inter (whatever weights the design system currently ships with), defines every CSS variable referenced in `llms.txt`, and wires up dark-mode swap. **Do not** hand-copy values from `llms.txt` into a local `:root` — that is the failure mode this stylesheet exists to prevent.
 
-2. **Pick a logo from `/logos/`** (do not redraw, recolor, or invent):
-   - Light background → `glyph-and-text.svg` (or `glyph.svg` if space is tight)
-   - Dark background, photography, video → `glyph-and-text-on-dark.svg` (or `glyph-on-dark.svg`)
+2. **Pick a logo from `/logos/`** (do not redraw, recolor, or invent). List the directory's current contents and pick by filename: light-background variants vs `on-dark` variants, with-text vs glyph-only as the design needs. Do not enumerate the filenames from memory — `/logos/` is the canonical source and may grow over time.
 
 3. **Confirm dark mode behavior**, even if the prototype is single-mode. The bootstrap defines both modes; if the brief is "light only," explicitly set `<html class="">` (no `dark`) and document the choice. Never strip dark tokens from the bootstrap.
 
