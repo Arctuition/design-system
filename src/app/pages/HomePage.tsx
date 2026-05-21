@@ -38,12 +38,12 @@ export function HomePage() {
       <img
         src={HOME_HERO_LIGHT}
         alt="ArcSite Design Hub — blueprint schematic"
-        className="block dark:hidden w-full h-auto rounded-[var(--radius)] mb-8"
+        className="block dark:hidden w-full h-auto rounded-[var(--radius-card)] mb-8"
       />
       <img
         src={HOME_HERO_DARK}
         alt="ArcSite Design Hub — blueprint schematic"
-        className="hidden dark:block w-full h-auto rounded-[var(--radius)] mb-8"
+        className="hidden dark:block w-full h-auto rounded-[var(--radius-card)] mb-8"
       />
 
       {/* Article Section */}
@@ -77,7 +77,7 @@ export function HomePage() {
                     onClick={() => hasDescription && toggle(entry.id)}
                     aria-expanded={isOpen}
                     aria-controls={`changelog-body-${entry.id}`}
-                    className={`w-full text-left rounded-[var(--radius)] -mx-2 px-2 py-1 transition-colors ${
+                    className={`w-full text-left rounded-[var(--radius-card)] -mx-2 px-2 py-1 transition-colors ${
                       hasDescription
                         ? "cursor-pointer hover:bg-muted/40"
                         : "cursor-default"

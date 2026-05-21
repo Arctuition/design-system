@@ -416,6 +416,22 @@ const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
     date: "2026-05-21",
+    version: "1.11.1",
+    title: "Home hero polish + article colors track theme",
+    description: `Follow-ups to the 1.11.0 rebrand.
+
+**Home hero**
+- Refreshed both light + dark blueprint variants (\`public/home/home-hero-{light,dark}.jpg\`).
+- Bumped corner radius from \`--radius\` (2px) to \`--radius-card\` (8px) — the design-system card-radius token, matching the cards used elsewhere on the home page.
+
+**Article text now follows the theme**
+- The rich-text editor's color picker records every choice as an inline \`style="color: …"\`, which beats CSS specificity in *both* light and dark mode. It just happened to be invisible until dark mode flipped the body and the hardcoded near-black text disappeared against it (most visible: the "Design Hub" pseudo-H1 on the home page).
+- \`ArticleRenderer.sanitizeArticleHtml\` now strips inline \`color\` from text-content elements (\`h1-h6, p, span inside p, li, span inside li, strong, em, a\`). Font-size and other inline properties are preserved (e.g., the user's chosen 34px sizing for the home-page "Design Hub" still applies). Figcaption + fig-description are exempt — we set their colors explicitly via design-system label tokens just above.
+- Side-effect to be aware of: if an author intentionally used the color picker to set a non-foreground accent (e.g., red on a word), that accent will now also be neutralized. If accent colors matter, the next iteration would parse the value and only strip near-foreground shades.`,
+  },
+  {
+    id: uid(),
+    date: "2026-05-21",
     version: "1.11.0",
     title: "ArcSite Design Hub — rebrand, new lockup, home hero, CMS image-delete fixes",
     description: `Site identity refresh + a handful of editor papercuts squashed.

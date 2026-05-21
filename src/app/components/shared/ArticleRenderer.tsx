@@ -48,6 +48,25 @@ function sanitizeArticleHtml(raw: string): string {
     s.color = "var(--color-label-secondary)";
   });
 
+  // Strip inline `color` from text-content elements so theme tokens always
+  // win. Background: the rich-text editor's color picker records every
+  // choice as an inline style, which beats CSS specificity in BOTH modes —
+  // it just happens to be near-foreground in light mode so the bug is
+  // invisible until dark mode flips the body to dark and the hardcoded
+  // near-black text disappears against it. Font-size / font-weight / other
+  // inline properties are preserved (those represent layout intent that
+  // doesn't break across themes); only `color` is dropped, falling back to
+  // the theme's --foreground / --card-foreground via `.article-content`.
+  // Figcaption + fig-description are exempt because we set their color
+  // explicitly above to design-system label tokens.
+  doc
+    .querySelectorAll("h1, h2, h3, h4, h5, h6, p, p span, li, li span, strong, em, a")
+    .forEach((el) => {
+      const html = el as HTMLElement;
+      if (html.closest("figcaption, [data-role='fig-description']")) return;
+      if (html.style.color) html.style.removeProperty("color");
+    });
+
   return doc.body.innerHTML;
 }
 
