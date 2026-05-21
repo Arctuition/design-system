@@ -1,3 +1,10 @@
 .DS_Store
 node_modules/
 dist/
+
+# Build artifacts — regenerated from Supabase KV on every `npm run dev` /
+# `npm run build` by scripts/generate-icons-{json,files}.mjs. Supabase is
+# canonical for icons. See .claude/cms-architecture.md §"Icon pipeline".
+/public/icons/
+/public/icons.json
+/public/icons.index.json
