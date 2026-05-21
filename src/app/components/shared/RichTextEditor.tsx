@@ -1731,16 +1731,27 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
   const deleteImageFigure = useCallback(() => {
     const fig = activeImageFigureRef.current;
     if (!fig) return;
+    const editor = editorRef.current;
     const next = fig.nextElementSibling || fig.nextSibling;
-    try {
-      const r = document.createRange();
-      r.selectNode(fig);
-      const sel = window.getSelection();
-      sel?.removeAllRanges(); sel?.addRange(r);
-      document.execCommand("delete");
-    } catch {
-      fig.remove();
+    // Two failure modes when invoked from the toolbar button (not the
+    // keyboard): (1) clicking the button steals focus from the
+    // contentEditable, so `document.execCommand("delete")` silently returns
+    // `false`; (2) even after refocus + range-select-node, some browsers
+    // report `true` but no-op on a Range that selects a non-text block
+    // node. So: try execCommand for native-undo integration, but trust the
+    // DOM as the source of truth — if `fig` is still attached afterward,
+    // forcibly remove it.
+    if (editor) {
+      editor.focus({ preventScroll: true });
+      try {
+        const r = document.createRange();
+        r.selectNode(fig);
+        const sel = window.getSelection();
+        sel?.removeAllRanges(); sel?.addRange(r);
+        document.execCommand("delete");
+      } catch { /* fall through to hard remove */ }
     }
+    if (fig.parentNode) fig.remove();
     selectImageFigure(null);
     if (next && editorRef.current?.contains(next)) {
       try {
@@ -2822,6 +2833,17 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
 
     // ── Backspace ─────────────────────────────────────────────────────────
     if (e.key === "Backspace") {
+      // ── Mouse-selected image: delete immediately on the first Backspace. ─
+      // The two-step flow below exists to prevent *accidental* deletion when
+      // the caret happens to sit next to a block. Mouse-clicking the image
+      // is an explicit "I picked this thing" signal, so the protection is
+      // the wrong heuristic — short-circuit straight to delete.
+      if (activeImageFigureRef.current) {
+        e.preventDefault();
+        deleteImageFigure();
+        return;
+      }
+
       const selection = window.getSelection();
       if (!selection || !selection.rangeCount) return;
       const range = selection.getRangeAt(0);
@@ -2837,17 +2859,21 @@ export function RichTextEditor({ value, onChange, onSave, className, stickyToolb
           clearPendingDelete();
           const tag = el.tagName;
           const isCols = el.hasAttribute("data-rte-cols");
-          // Select the element and delete via execCommand so the browser tracks
+          // Select the element and try execCommand so the browser tracks
           // this in its native undo stack (Ctrl+Z / Cmd+Z will restore it).
+          // BUT some browsers silently no-op execCommand("delete") on a
+          // Range that selects a non-text block node (figure/table/cols)
+          // while still returning true — so we don't trust the return
+          // value. After the attempt, treat the DOM as the source of truth
+          // and force-remove `el` if it's still attached.
           try {
             const r = document.createRange();
             r.selectNode(el);
             selection.removeAllRanges();
             selection.addRange(r);
             document.execCommand("delete");
-          } catch {
-            el.remove(); // fallback
-          }
+          } catch { /* fall through to hard remove */ }
+          if (el.parentNode) el.remove();
           if (tag === "FIGURE") selectImageFigure(null);
           if (tag === "TABLE") { activeTableRef.current = null; setActiveTable(null); setActiveCell(null); }
           if (isCols) { activeColLayoutRef.current = null; setActiveColLayout(null); setColBarPos(null); }

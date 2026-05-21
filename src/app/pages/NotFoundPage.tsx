@@ -52,7 +52,7 @@ export function NotFoundPage() {
               </p>
             </div>
             <Link to="/" className="nf-btn">
-              ArcSite Design System Home
+              ArcSite Design Hub Home
             </Link>
           </div>
         </div>

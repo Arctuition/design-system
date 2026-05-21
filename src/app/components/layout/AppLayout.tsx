@@ -15,20 +15,24 @@ const LOGO_DARK = `${import.meta.env.BASE_URL}logos/glyph-and-text-on-dark.svg`;
 
 function BrandLockup() {
   return (
-    <>
+    <Link
+      to="/"
+      aria-label="Go to home"
+      className="flex items-center shrink-0 rounded-[var(--radius)] hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
       <img
         src={LOGO_LIGHT}
-        alt="Arctuition"
+        alt="ArcSite"
         className="block dark:hidden"
-        style={{ height: 18, width: "auto" }}
+        style={{ height: 20, width: "auto" }}
       />
       <img
         src={LOGO_DARK}
-        alt="Arctuition"
+        alt="ArcSite"
         className="hidden dark:block"
-        style={{ height: 18, width: "auto" }}
+        style={{ height: 20, width: "auto" }}
       />
-    </>
+    </Link>
   );
 }
 
@@ -246,7 +250,7 @@ export function AppLayout() {
               <BrandLockup />
               <div className="w-px h-6 bg-foreground/10 shrink-0" />
               <span className="text-foreground opacity-90 truncate" style={{ fontSize: "var(--text-label)" }}>
-                Design System
+                Design Hub
               </span>
             </div>
             <TooltipProvider delayDuration={300}>
@@ -470,7 +474,7 @@ export function AppLayout() {
                 <div className="flex items-center gap-3">
                   <BrandLockup />
                   <span className="text-foreground opacity-90" style={{ fontSize: "var(--text-label)" }}>
-                    Design System
+                    Design Hub
                   </span>
                 </div>
                 <div className="w-px h-5 bg-border shrink-0" />
