@@ -415,6 +415,23 @@ const defaultTokenDocs: TokenDocs = {
 const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
+    date: "2026-05-21",
+    version: "1.11.0",
+    title: "ArcSite Design Hub — rebrand, new lockup, home hero, CMS image-delete fixes",
+    description: `Site identity refresh + a handful of editor papercuts squashed.
+
+**Rebrand**
+- Browser tab title, sidebar/top-bar label, and 404 home link now read "ArcSite Design Hub" (previously "Arctuition Design System").
+- New ArcSite wordmark lockup replaces the abstract glyph in the sidebar — light + dark variants under \`public/logos/glyph-and-text*.svg\`, trimmed \`viewBox\` to drop the white artboard and rendered at 20px tall for adequate vertical breathing room in the 48px header. Clicking the lockup navigates to home.
+- New home page hero — a blueprint-style schematic of the Design Hub, with separate light + dark JPGs under \`public/home/\`. Sits above the article content, sized to match the 800px article column.
+
+**Rich text editor — image delete actually deletes now**
+- Toolbar **Delete** button: previously the click stole focus from the contentEditable and \`document.execCommand("delete")\` silently returned \`false\`, leaving the figure in the DOM. The handler now refocuses the editor before the command and treats the DOM as the source of truth — if the \`<figure>\` is still attached after the attempt, it's force-removed.
+- Keyboard 2-step Backspace (caret at start of line below an image): same silent-no-op browser quirk hit the second-press path. Same DOM-truth fallback applied.
+- Single Backspace when an image is mouse-selected now deletes it on the first hit (the two-step delay was meant to guard against *accidental* deletion when the caret merely sits next to a block — an explicit mouse-pick is the opposite signal).`,
+  },
+  {
+    id: uid(),
     date: "2026-05-15",
     version: "1.10.0",
     title: "Catch-all 404 page (responsive, design-fidelity matched)",

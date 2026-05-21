@@ -6,6 +6,14 @@ import { LibraryIcon } from "../components/shared/LibraryIcon";
 import { Badge } from "../components/ui/badge";
 import { Calendar } from "lucide-react";
 
+// Home hero — a blueprint-style schematic of the "ArcSite Design Hub". Two
+// variants: a peach/orange-on-cream version for light mode and a darker
+// inverse for dark mode. Lives in /public/home/ so it ships with the
+// frontend bundle rather than being CMS-managed (intentional: this is the
+// brand identity for the page, not editorial content).
+const HOME_HERO_LIGHT = `${import.meta.env.BASE_URL}home/home-hero-light.jpg`;
+const HOME_HERO_DARK = `${import.meta.env.BASE_URL}home/home-hero-dark.jpg`;
+
 export function HomePage() {
   const { homeArticle, changeLogs } = useAppData();
   // Entries collapse by default — only the title row is visible until the
@@ -24,6 +32,20 @@ export function HomePage() {
 
   return (
     <div className="max-w-[800px] mx-auto px-8 py-10">
+      {/* Home hero — blueprint schematic. Width matches the article column
+          via w-full inside the same max-w-[800px] container; light/dark
+          variants swap via the .dark class on <html> (see theme.ts). */}
+      <img
+        src={HOME_HERO_LIGHT}
+        alt="ArcSite Design Hub — blueprint schematic"
+        className="block dark:hidden w-full h-auto rounded-[var(--radius)] mb-8"
+      />
+      <img
+        src={HOME_HERO_DARK}
+        alt="ArcSite Design Hub — blueprint schematic"
+        className="hidden dark:block w-full h-auto rounded-[var(--radius)] mb-8"
+      />
+
       {/* Article Section */}
       <ArticleRenderer html={homeArticle} />
 
