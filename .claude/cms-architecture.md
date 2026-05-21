@@ -52,6 +52,7 @@ The table summarises known places where data can silently diverge between code p
 | Meta-docs (this file, CLAUDE.md) go stale after architecture changes | this whole document | `.github/workflows/docs-drift-check.yml` advisory comment; PR template architectural-impact checklist; CLAUDE.md substantial-PR rule |
 | `NaNpx` / `undefined` values leak into published CSS | §3a token pipeline | `sizeRowsToFlat` filters non-finite values; byte-identical CI test would catch any reintroduction |
 | Multi-scope font tokens emit wrong CSS unit | §3a token pipeline | `flattenFont` and `fontRowsToFlat` both read full `com.figma.scopes` array (regression fix PR #36) |
+| In-repo `public/icons/` snapshot drifts from Supabase when designer uploads via CMS | §3e icon pipeline | `public/icons/`, `icons.json`, `icons.index.json` are gitignored (PR #50). Regenerated on every dev start and CI build from Supabase. |
 
 ## Substantial-PR checklist
 
@@ -346,6 +347,42 @@ The `/color`, `/size`, `/typography` pages render Markdown files, not an HTML ar
 ```
 
 **Why MD-only and not HTML-twin like patterns**: the content (prose + tables + code) is Markdown-native and round-trips losslessly. There's no design-heavy layout an HTML editor would express that MD can't. Storing an HTML duplicate would be carrying a derived format with no information gain — drift risk for free.
+
+### 3e. Icons — Supabase-canonical, materialized at build time
+
+Icons follow the same Supabase-canonical pattern as token docs, but they fan out into many small static files for cheap per-icon HTTP fetches.
+
+```
+  ┌──────────┐  upload via /cms/icon-editor   ┌──────────────────────────┐
+  │ Designer │ ─────────────────────────────► │ Supabase KV              │
+  └──────────┘                                │   state.icons[]          │
+                                              │   (name, tags, svgBytes) │
+                                              └────────────┬─────────────┘
+                                                           │
+                            predev / prebuild              │ HTTPS fetch
+                            ◄──────────────────────────────┘
+                            │
+                            ▼
+            scripts/generate-icons-json.mjs
+            │
+            ├─► public/icons.json         (full, with embedded SVG bytes)
+            └─► public/icons.index.json   (slim search manifest, no bytes)
+                            │
+                            ▼
+            scripts/generate-icon-files.mjs
+            │
+            ├─► wipes public/icons/    (rmSync — removes deleted icons)
+            └─► writes public/icons/<fileName>.svg   (one file per icon)
+
+            ▼
+            vite build → dist/  → GH Pages
+```
+
+**`public/icons/`, `public/icons.json`, `public/icons.index.json` are gitignored** as of PR #50 — they're pure build artifacts regenerated from Supabase on every `npm run dev` and every `npm run build` (which runs in CI before deploy). Don't try to edit them by hand or commit a snapshot — the next `predev` will wipe `public/icons/` (see `rmSync` in `generate-icon-files.mjs`) and any edit will be lost.
+
+**Offline behavior**: if Supabase is unreachable when the script runs, both JSONs are written as stub manifests (`status: "error"`) and individual SVG files aren't generated. The vite build doesn't fail — icons are simply missing on the deployed site for that build. Production fixes itself on the next successful build.
+
+**Drift risk** (resolved by gitignore): before PR #50, the in-repo snapshot of `public/icons/` could drift whenever a designer uploaded a new icon via the CMS and nobody manually re-committed the regenerated bundle. The deployed site (`arctuition.github.io/design-system`) was always correct because CI prebuild regenerated from Supabase, but local clones and PR diffs saw confusing "new untracked SVGs" appearing mid-session. The fix: treat the files as build artifacts, don't track them.
 
 ---
 
