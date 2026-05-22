@@ -85,6 +85,8 @@ These are the failures that show up most often when LLMs default to training-set
 3. **No translating values across sources.** Do not read a hex from `llms.txt` and paste it into your CSS; do not read a Figma variable's resolved value and paste it. Always reference by token name so source updates propagate.
 4. **No invented or recolored brand assets.** Do not draw a new logo. Do not apply CSS filters to recolor the provided logos. If you need a variant that does not exist (e.g. monochrome on a tinted background), flag to the user.
 5. **No `:root` redefinition.** Do not re-declare token variables in your prototype's stylesheet — the bootstrap is the only source. Overrides break dark-mode swap and create silent drift.
+6. **No hand-drawn SVG paths for non-trivial shapes.** For grips, markers, custom glyphs, icons, dimension chrome — anything with curvature or a non-rectangular silhouette — fetch the actual asset (from Figma via `get_design_context` + `curl`, from `/icons.json`, from the project's existing assets), then embed the real path. Approximating a teardrop as "triangle + half-circle," substituting a lucide-react icon for a custom mark, or eyeballing bezier control points produces visible regressions every time. If the asset doesn't exist yet, flag the gap — don't guess at the curve.
+7. **No re-implementing chrome that already exists in a sibling prototype.** When working in a multi-prototype workspace (e.g. `design-playground/<project>/`), the first step before writing any top nav, tool panel, context menu, or canvas wrapper is to list the sibling projects' `components/` directories. If a `TopNav` / `RightToolPanel` / `LeftContextMenu` / `Canvas` already exists, **import it**. A parallel implementation drifts within a single sprint and the maintenance cost compounds.
 
 ## What to flag to the user
 
@@ -102,5 +104,6 @@ Walk this list before reporting completion. If any item is "no," fix it first.
 - [ ] Are there zero hardcoded `px` / `rem` values for spacing, font-size, line-height, radius, or border-width outside the bootstrap?
 - [ ] Are all logos sourced from `/logos/` (not drawn, not recolored)?
 - [ ] Do all icons come from the shared icon library or `arcsite-icons` package (not drawn from scratch)?
+- [ ] Were sibling-project `components/` directories listed before any chrome was implemented, and reusable components imported rather than re-implemented?
 - [ ] Does toggling `<html class="dark">` produce a coherent dark mode (no broken contrast, no missing tokens)?
 - [ ] Are all interactive states (hover, active, focus, disabled) bound to semantic tokens, not ad-hoc tints?

@@ -415,6 +415,23 @@ const defaultTokenDocs: TokenDocs = {
 const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
+    date: "2026-05-22",
+    version: "1.12.0",
+    title: "Skill upgrade — canvas-prototype mode + fidelity / surface-shape split",
+    description: `Restructure of the \`arcsite-ds-apply\` skill in response to the Calibration prototype retrospective. The skill now treats **visual fidelity** and **surface shape** (responsive web vs. canvas-app) as independent axes — both lo-fi and hi-fi canvas prototypes route through canvas-specific guidance, and both responsive and canvas surfaces can be pixel-match.
+
+**New: \`canvas-prototype.md\`** — guide for any canvas-shaped app surface (pan/zoom, custom geometry, simulated device frame), at any fidelity. Covers the coordinate-space contract (viewport / canvas / screen-anchored), counter-scaled \`strokeWidth\`, the \`ScreenAnchor\` pattern, why \`vector-effect: non-scaling-stroke\` is unreliable, and a canvas-specific verification matrix (min/max zoom, tilted past 45° / 90°, flipped state, empty / error / mid-drag). Replaces the earlier \`hi-fi-canvas.md\` shape since fidelity and canvas-ness are orthogonal.
+
+**Promoted into \`design-fidelity.md\`** — the universal "read the design as a contract" rules: annotations first, fetch SVG don't hand-draw, variant diff. These apply to *any* pixel-match Figma source, not just responsive web pages. The responsive-specific per-band variable protocol still lives here, but now under a "responsive surfaces (additional)" sub-section so canvas-app pixel-match work can use the universal rules without inheriting irrelevant breakpoint logic.
+
+**SKILL.md Step 0 — three independent axes.** Visual fidelity (reference / contract) × engineering rigor (demo / production) × surface shape (responsive / canvas-app). Step 0 now includes a routing table covering all six common combinations and which docs each requires.
+
+**\`prototype.md\` — two new anti-patterns.** (1) No hand-drawn SVG paths for non-trivial shapes — fetch the Figma asset, don't approximate. (2) When working in a multi-prototype workspace, list sibling \`components/\` directories before re-implementing chrome (top nav, tool panels, etc.).
+
+**Coordinate-space extended reference** — the worked patterns (\`ScreenAnchor\` implementation, hit-testing pitfalls, draggable-endpoint example) live with the prototype project that owns the patterns (Design Playground's \`guidelines/coordinate-spaces.md\`), not on the design-system-website's \`patterns/\` tree, which is reserved for production-grade patterns.`,
+  },
+  {
+    id: uid(),
     date: "2026-05-21",
     version: "1.11.1",
     title: "Home hero polish + article colors track theme",
