@@ -8,3 +8,12 @@ dist/
 /public/icons/
 /public/icons.json
 /public/icons.index.json
+
+# Build artifacts — regenerated on every `npm run dev` / `npm run build`
+# by scripts/generate-llms-txt.mjs. bootstrap.css alternates between a
+# 12-line shim (prod) and a full inline copy (dev), so the file dirties
+# every time the dev/prod modes alternate. Treat all three as generated
+# only — edit the template inside generate-llms-txt.mjs instead.
+/public/llms.txt
+/public/tokens/bootstrap.css
+/public/tokens/breakpoints.js
