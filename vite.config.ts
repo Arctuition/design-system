@@ -1,27 +1,12 @@
 import { defineConfig } from 'vite'
 import path from 'path'
-import fs from 'fs'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
-// GitHub Pages serves the site at https://<owner>.github.io/<repo>/, so all
-// asset URLs need to be prefixed with the repo name. Override with VITE_BASE
-// (e.g. VITE_BASE=/ for a custom domain or a *.github.io user-site repo).
-const base = process.env.VITE_BASE ?? '/design-system/'
-
-// GitHub Pages has no SPA fallback — unknown paths return 404.html. Copying
-// index.html to 404.html makes the React app boot for any deep link, then
-// react-router takes over.
-const spaFallback = {
-  name: 'spa-fallback-404',
-  closeBundle() {
-    const dist = path.resolve(__dirname, 'dist')
-    const index = path.join(dist, 'index.html')
-    if (fs.existsSync(index)) {
-      fs.copyFileSync(index, path.join(dist, '404.html'))
-    }
-  },
-}
+// Default to root-path deployment (AWS Amplify, `npx serve dist`, custom
+// domains). Override with VITE_BASE=/subpath/ if you ever need to deploy
+// under a subdirectory.
+const base = process.env.VITE_BASE ?? '/'
 
 export default defineConfig({
   base,
@@ -30,7 +15,6 @@ export default defineConfig({
     // Tailwind is not being actively used – do not remove them
     react(),
     tailwindcss(),
-    spaFallback,
   ],
   resolve: {
     alias: {
