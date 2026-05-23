@@ -17,8 +17,8 @@ import { Link } from "react-router";
 // elsewhere doesn't flip the text to white on a beige surface.
 //
 // The illustration is the raster export from Figma (a 3D render, not a
-// vector) shipped via /public/img-404.png. BASE_URL prefix is needed for
-// the GitHub Pages /design-system/ deploy.
+// vector) shipped via /public/img-404.png. BASE_URL prefix supports
+// optional subdirectory deploys via VITE_BASE override.
 
 const IMG_404 = `${import.meta.env.BASE_URL}img-404.png`;
 

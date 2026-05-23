@@ -91,7 +91,7 @@ If the task is on a canvas surface, walk `canvas-prototype.md`'s "Architecture d
 
 **Don't hardcode the breakpoint values or mode-name crosswalk here, in your code, or in your head.** The breakpoint collection lives in Figma and is JSON-exported to the repo at `tokens/breakpoint/breakpoint.tokens.json`, published to:
 
-- `https://arctuition.github.io/design-system/tokens/breakpoints.js` *(JS module — `import { breakpointPx } from …`)*
+- `https://design-system.arcsite.com/tokens/breakpoints.js` *(JS module — `import { breakpointPx } from …`)*
 - `llms.txt` — the "Tokens & primitives" section lists the current pixel values inline
 
 Each breakpoint in `breakpoint.tokens.json` has a `$description` field that explicitly states the mode transition in the form `"< X: Mode A. ≥ X: Mode B."`. **Read these `$description`s** to find out which size-token mode applies at which pixel range — that mapping is part of the design system, not something to infer from frame names. Frame names in a Figma file (e.g. "1200 and above") are conventions chosen by the designer; the breakpoint values + descriptions are the source of truth.

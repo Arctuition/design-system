@@ -415,6 +415,23 @@ const defaultTokenDocs: TokenDocs = {
 const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
+    date: "2026-05-23",
+    version: "1.13.0",
+    title: "Deployment moved to AWS Amplify (design-system.arcsite.com)",
+    description: `The public site now lives at [\`https://design-system.arcsite.com\`](https://design-system.arcsite.com), served from AWS Amplify instead of GitHub Pages. Same code, same canonical Supabase backend — only the URL and the hosting target changed.
+
+**What changed for prototype authors**
+- New canonical bootstrap URL: \`https://design-system.arcsite.com/tokens/bootstrap.css\` — update any \`<link rel="stylesheet">\` lines in existing prototypes. The shim still \`@import\`s the live, CMS-published Supabase Storage copy underneath, so token Publishes still propagate within ~1 minute.
+- AI agents fetching \`llms.txt\` should hit \`https://design-system.arcsite.com/llms.txt\`. All embedded URLs (logos, skills, breakpoints.js) now point at the new domain.
+
+**Build / repo hygiene**
+- Vite \`base\` defaults to \`/\` (was \`/design-system/\`). Subdir deploys still work via \`VITE_BASE=/subpath/\`.
+- Removed the GitHub Pages SPA fallback plugin (\`404.html\` copy) and the \`deploy.yml\` workflow. Amplify handles SPA rewrites via its own redirect rules.
+- Gitignored the three build artifacts that previously dirtied the working tree across dev/prod alternation: \`public/llms.txt\`, \`public/tokens/bootstrap.css\`, \`public/tokens/breakpoints.js\`. All regenerated on \`prebuild\` / \`predev\`.
+- Centralized the site URL behind a single \`SITE_BASE_URL\` const in \`scripts/generate-llms-txt.mjs\` — future domain moves change one line. Internal in-app markdown links (ChangeLog, etc.) switched to relative paths so they don't rot if the domain changes again.`,
+  },
+  {
+    id: uid(),
     date: "2026-05-22",
     version: "1.12.0",
     title: "Skill upgrade — canvas-prototype mode + fidelity / surface-shape split",
@@ -539,8 +556,8 @@ const defaultChangeLogs: ChangeLogEntry[] = [
 **Shared token-generation module**
 - The flatten / diff / build logic moved out of \`scripts/generate-llms-txt.mjs\` into \`supabase/functions/_shared/token-generators.mjs\` so the Node prebuild, browser CMS, and Deno edge function all run the *exact same code*. \`bootstrap.css\` regenerated on Publish is byte-identical to the one \`npm run build\` produces (verified MD5).
 
-**GitHub Pages \`bootstrap.css\` shim**
-- Production builds now emit a 1-line \`@import url("https://…/design-tokens/bootstrap.css")\` shim at \`https://arctuition.github.io/design-system/tokens/bootstrap.css\` — existing prototypes that hardcode that URL keep working unchanged and auto-pick-up CMS publishes. Local dev builds still emit the full inline content for offline use.
+**Public \`bootstrap.css\` shim**
+- Production builds now emit a 1-line \`@import url("https://…/design-tokens/bootstrap.css")\` shim at \`/tokens/bootstrap.css\` — existing prototypes that hardcode that URL keep working unchanged and auto-pick-up CMS publishes. Local dev builds still emit the full inline content for offline use.
 
 **Token reference docs (color/size/typography) move to CMS**
 - New \`tokenDocs\` KV slot stores the Markdown source for \`/color\`, \`/size\`, and \`/typography\`. Three Markdown editors in CMS (\`/cms/color-editor/doc\`, \`/cms/size-editor/doc\`, \`/cms/typography-editor\`) — split-pane textarea + live preview, Discard / Save, no version history yet.
@@ -756,8 +773,8 @@ const defaultChangeLogs: ChangeLogEntry[] = [
 - Inline \`<code>\` in markdown headings now uses \`0.9em\` (relative) instead of \`var(--text-label)\` (fixed 13px), so a \`font\` chip in an H1 no longer collapses to body size
 
 **Brand**
-- Sidebar + title-bar mark uses [\`/logos/glyph-and-text.svg\`](https://arctuition.github.io/design-system/logos/glyph-and-text.svg); dark variant swaps via \`.dark\`
-- Favicon set to [\`/logos/glyph.svg\`](https://arctuition.github.io/design-system/logos/glyph.svg) + \`glyph-on-dark.svg\` via \`prefers-color-scheme\`
+- Sidebar + title-bar mark uses [\`/logos/glyph-and-text.svg\`](/logos/glyph-and-text.svg); dark variant swaps via \`.dark\`
+- Favicon set to [\`/logos/glyph.svg\`](/logos/glyph.svg) + \`glyph-on-dark.svg\` via \`prefers-color-scheme\`
 - Initial loader spinner uses brand orange \`#E3571C\`
 - Browser tab title is \`Arctuition Design System\`
 
@@ -765,7 +782,7 @@ const defaultChangeLogs: ChangeLogEntry[] = [
 - Change Log entries collapse by default — only version + date + title show until the user expands
 
 **Generator fix**
-- \`scripts/generate-llms-txt.mjs\` now stitches alpha into transparency-token hex codes. Before: \`--color-global-gray-transparency-on-light-85: #000000\` (broken). After: \`#000000D9\`. Affects 167 transparency tokens in [\`/tokens/bootstrap.css\`](https://arctuition.github.io/design-system/tokens/bootstrap.css).`,
+- \`scripts/generate-llms-txt.mjs\` now stitches alpha into transparency-token hex codes. Before: \`--color-global-gray-transparency-on-light-85: #000000\` (broken). After: \`#000000D9\`. Affects 167 transparency tokens in [\`/tokens/bootstrap.css\`](/tokens/bootstrap.css).`,
   },
   {
     id: uid(),
@@ -786,8 +803,8 @@ const defaultChangeLogs: ChangeLogEntry[] = [
 - ChangeLog editor: description field upgraded to a multi-line Markdown textarea — bullets, bold, code spans, and links now render on the home timeline
 
 **Where to look**
-- Doc: [/tokens/tokens-color.md](https://arctuition.github.io/design-system/tokens/tokens-color.md)
-- Bootstrap: [/tokens/bootstrap.css](https://arctuition.github.io/design-system/tokens/bootstrap.css)`,
+- Doc: [/tokens/tokens-color.md](/tokens/tokens-color.md)
+- Bootstrap: [/tokens/bootstrap.css](/tokens/bootstrap.css)`,
   },
   { id: uid(), date: "2026-03-11", version: "1.0.0", title: "Initial Release", description: "Launched the design system with core components including Typography, Color Tokens, Iconology, and Patterns documentation." },
   { id: uid(), date: "2026-03-05", version: "0.9.0", title: "Beta Release", description: "Added semantic and global color token documentation. Introduced dark mode token support." },

@@ -38,6 +38,13 @@ function readJson(rel) {
 const SUPABASE_PROJECT_ID = "qcqtnrrprgqlckzywnkt";
 const PRODUCTION_BUILD = process.env.npm_lifecycle_event === "prebuild";
 
+// Public origin where the built site is served. AI agents fetch llms.txt
+// from this origin and follow links inside it to bootstrap.css, logos,
+// skills MDs, etc. — those links must be absolute because consumers (Figma
+// Make / CodeSandbox / pasted prototype HTML) live on other origins.
+// Single source of truth: change here, re-run prebuild, redeploy.
+const SITE_BASE_URL = "https://design-system.arcsite.com";
+
 const lightTokens  = flattenColor(readJson("tokens/color/light.tokens.json"));
 const darkTokens   = flattenColor(readJson("tokens/color/dark.tokens.json"));
 const globalColor  = flattenColor(readJson("tokens/color/color-global-value.tokens.json"));
@@ -90,7 +97,7 @@ Tailwind 4 arbitrary value syntax: \`bg-(--color-label-primary)\`, \`text-(--col
 Any new ArcSite UI being built from scratch (prototype, demo, marketing page, internal tool) **must** start by importing the canonical token + font bootstrap stylesheet. This loads Inter, defines every CSS variable referenced below, and sets up dark-mode swap automatically. Copy these two lines into the \`<head>\`:
 
 \`\`\`html
-<link rel="stylesheet" href="https://arctuition.github.io/design-system/tokens/bootstrap.css">
+<link rel="stylesheet" href="${SITE_BASE_URL}/tokens/bootstrap.css">
 \`\`\`
 
 After importing, reference tokens by name only (\`color: var(--color-label-primary);\`). Do not hand-copy values from the sections below into your CSS — those sections are reference, not source. Dark mode: add \`class="dark"\` or \`data-theme="dark"\` to \`<html>\` (or any subtree).
@@ -180,7 +187,7 @@ them directly inside the design system itself, never in product UI.
 
 All CSS-variable definitions live in the published stylesheet, regenerated
 by the CMS on every token upload. Don't paste numeric values inline; reference
-tokens by name and import the stylesheet. The GitHub Pages \`bootstrap.css\`
+tokens by name and import the stylesheet. The site \`bootstrap.css\`
 URL above is a shim that \`@import\`s the live copy from this Supabase URL.
 
 - **Tokens CSS (color + size + font + breakpoint vars, mobile-first cascade):**
@@ -189,7 +196,7 @@ URL above is a shim that \`@import\`s the live copy from this Supabase URL.
 - **Breakpoints as JS object (for matchMedia / Tailwind config / container queries):**
   https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/design-tokens/breakpoints.js
 
-- **Token reference docs (Markdown — same content as the GitHub Pages copies
+- **Token reference docs (Markdown — same content as the site copies
   above, mirrored to Supabase by the CMS publish so designer edits propagate
   without a commit):**
   https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/design-tokens/tokens-color.md
@@ -232,7 +239,7 @@ back to your own judgment.
 - **How to apply** —
   - Onboarding: primary CTA, active step, focus ring all bind to \`brand/primary\`; container uses \`surface/container/brand\`. Do not mix in \`action\` tokens.
   - Everywhere else: active nav row = \`surface/container/action\` + \`label/action/primary\`; chart series primary/secondary = \`label/action/primary\` / \`…/secondary\`.
-  - Logo SVGs: reference \`https://arctuition.github.io/design-system/logos/glyph*.svg\` directly — they bake in brand orange.
+  - Logo SVGs: reference \`${SITE_BASE_URL}/logos/glyph*.svg\` directly — they bake in brand orange.
 
 ### 3. Empty input placeholders bind to tertiary
 - **Rule** — When an input is empty, the placeholder text binds to \`color/label/tertiary\` (or \`…/tertiary-increased-contrast\`). Never \`primary\` or \`secondary\`.
@@ -270,13 +277,13 @@ company mark — never re-trace, redraw, or recolor; reference the SVG directly.
 
 Variants:
 - **glyph** — icon-only mark for **light backgrounds**. Brand-orange glyph on transparent. Default for most product UI, headers, and marketing surfaces with light/white backgrounds.
-  \`https://arctuition.github.io/design-system/logos/glyph.svg\`
+  \`${SITE_BASE_URL}/logos/glyph.svg\`
 - **glyph on dark** — icon-only mark for **dark backgrounds**. Light-treated glyph designed to remain legible on dark surfaces, photography, or busy backgrounds.
-  \`https://arctuition.github.io/design-system/logos/glyph-on-dark.svg\`
+  \`${SITE_BASE_URL}/logos/glyph-on-dark.svg\`
 - **glyph and text** — full wordmark + glyph for **light backgrounds**. Default lockup for headers, marketing pages, and product surfaces with light/white backgrounds.
-  \`https://arctuition.github.io/design-system/logos/glyph-and-text.svg\`
+  \`${SITE_BASE_URL}/logos/glyph-and-text.svg\`
 - **glyph and text on dark** — full wordmark + glyph for **dark backgrounds**. Light-treated lockup; use on dark or photographic backgrounds where the default would lose contrast.
-  \`https://arctuition.github.io/design-system/logos/glyph-and-text-on-dark.svg\`
+  \`${SITE_BASE_URL}/logos/glyph-and-text-on-dark.svg\`
 
 Repo path: \`public/logos/\` (served at \`/logos/*.svg\`).
 
@@ -286,11 +293,11 @@ Repo path: \`public/logos/\` (served at \`/logos/*.svg\`).
 
 LLM application guides for the ArcSite design system:
 
-- [Design-to-code fidelity gate](https://arctuition.github.io/design-system/skills/arcsite-ds-apply/design-fidelity.md) *(read whenever visual fidelity = contract — the universal "read the design as a contract" rules: annotations first, fetch SVG don't hand-draw, variant diff. Plus the responsive-specific per-band variable protocol and the four-phase verification flow.)*
-- [Canvas-app prototype guide](https://arctuition.github.io/design-system/skills/arcsite-ds-apply/canvas-prototype.md) *(read whenever surface shape = canvas-app, at any fidelity — coordinate-space contract, device-frame and pan/zoom architecture, counter-scaled stroke, \`ScreenAnchor\` pattern, canvas-specific verification matrix. Composes with the fidelity gate when also pixel-match.)*
-- [Prototype mode guide](https://arctuition.github.io/design-system/skills/arcsite-ds-apply/prototype.md)
-- [AntD conflict handling](https://arctuition.github.io/design-system/skills/arcsite-ds-apply/antd-conflict.md)
-- [Figma MCP flow](https://arctuition.github.io/design-system/skills/arcsite-ds-apply/figma-flow.md)
+- [Design-to-code fidelity gate](${SITE_BASE_URL}/skills/arcsite-ds-apply/design-fidelity.md) *(read whenever visual fidelity = contract — the universal "read the design as a contract" rules: annotations first, fetch SVG don't hand-draw, variant diff. Plus the responsive-specific per-band variable protocol and the four-phase verification flow.)*
+- [Canvas-app prototype guide](${SITE_BASE_URL}/skills/arcsite-ds-apply/canvas-prototype.md) *(read whenever surface shape = canvas-app, at any fidelity — coordinate-space contract, device-frame and pan/zoom architecture, counter-scaled stroke, \`ScreenAnchor\` pattern, canvas-specific verification matrix. Composes with the fidelity gate when also pixel-match.)*
+- [Prototype mode guide](${SITE_BASE_URL}/skills/arcsite-ds-apply/prototype.md)
+- [AntD conflict handling](${SITE_BASE_URL}/skills/arcsite-ds-apply/antd-conflict.md)
+- [Figma MCP flow](${SITE_BASE_URL}/skills/arcsite-ds-apply/figma-flow.md)
 `;
 
 const outPath = resolve(ROOT, "public/llms.txt");
@@ -322,7 +329,7 @@ console.log(`[llms.txt] mirrored ${TOKEN_DOCS.length} token docs to public/token
 //   - Production build (`npm run build`, lifecycle = "prebuild") emits a
 //     1-line `@import` shim forwarding to the live Supabase Storage copy
 //     the CMS regenerates on every Publish. Designers hit Publish and
-//     prototypes referencing the historical GitHub Pages URL pick up the
+//     prototypes referencing the public bootstrap.css URL pick up the
 //     new values within ~1 minute, with no commit or rebuild.
 //
 //   - Local dev (`npm run dev`, lifecycle = "predev") and one-off runs
@@ -332,7 +339,7 @@ console.log(`[llms.txt] mirrored ${TOKEN_DOCS.length} token docs to public/token
 //     opens it directly out of `public/tokens/`.
 //
 // The shim is the production target because that's the only emission that
-// reaches consumers via the canonical GitHub Pages URL. Dev builds never
+// reaches consumers via the canonical public URL. Dev builds never
 // ship to that URL, so the inlined copy is purely a local-quality-of-life
 // artifact — it's never the source of truth for prototypes.
 const bootstrapCss = PRODUCTION_BUILD

@@ -126,7 +126,7 @@ When shipping visual changes to a Pattern doc (image refresh, Do/Don't pairs, ne
 ## ChangeLog must update on every PR
 Every PR in this project that ships a user-visible change must produce a corresponding entry in the home-page Change Log. **Update both places**:
 
-1. **Production Supabase** — write the new entry directly so the live site (`https://arctuition.github.io/design-system/`) shows it immediately. Updating only the `defaultChangeLogs` seed is not enough — the seed only applies to fresh installs, never to existing prod data.
+1. **Production Supabase** — write the new entry directly so the live site (`https://design-system.arcsite.com/`) shows it immediately. Updating only the `defaultChangeLogs` seed is not enough — the seed only applies to fresh installs, never to existing prod data.
 2. **`defaultChangeLogs`** in `src/app/store/data-store.tsx` — keeps the in-repo seed aligned and serves as a code-side record.
 
 **How to write to prod Supabase — use the helper:**

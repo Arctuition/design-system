@@ -38,9 +38,9 @@ Single source of truth: Supabase. The repo's `tokens/*.json` files become seed-o
 | MD reference docs location | Supabase KV with an MD editor in CMS | Single source of truth, agent-friendly, eliminates the dual-edit drift risk. |
 | Supabase Storage bucket name | `design-tokens` | Public read, separate from `pattern-assets` |
 | Storage versioning | Enabled | Mirrors how other articles already version. Lets devs pin to a specific publish date if needed. |
-| `bootstrap.css` URL | Stays at `arctuition.github.io/design-system/tokens/bootstrap.css` via 1-line `@import` shim | Existing prototypes don't change |
+| `bootstrap.css` URL | Stays at `design-system.arcsite.com/tokens/bootstrap.css` via 1-line `@import` shim | Existing prototypes don't change |
 | `breakpoints.js` URL | Migrates to Supabase | `@import` doesn't work for JS, so no choice. Update CLAUDE.md / docs. |
-| `llms.txt` URL | Stays on GH Pages | Still works. Drop the ~550 lines of inline token blocks — replace with pointers to Supabase. |
+| `llms.txt` URL | Stays on the site | Still works. Drop the ~550 lines of inline token blocks — replace with pointers to Supabase. |
 | Single bootstrap.css | Contains color + size + font + breakpoint vars combined (today's structure) | Don't split into `typography.css` — one `<link>` for prototypes |
 | Per-family `.zip` downloads | Still produced, also posted to Storage | Designer can hand off via CMS button OR dev team can curl |
 
@@ -294,7 +294,7 @@ Keep `tokens/tokens-*.md` in the repo as seed files (matches the `tokens/size/*.
 
 **H2 — Skill audit:**
 
-- [public/skills/arcsite-ds-apply/prototype.md](public/skills/arcsite-ds-apply/prototype.md) — verify the `<link rel="stylesheet" href="https://arctuition.github.io/.../bootstrap.css">` line still works (it should, via the shim).
+- [public/skills/arcsite-ds-apply/prototype.md](public/skills/arcsite-ds-apply/prototype.md) — verify the `<link rel="stylesheet" href="https://design-system.arcsite.com/.../bootstrap.css">` line still works (it should, via the shim).
 - [public/skills/arcsite-ds-apply/figma-flow.md](public/skills/arcsite-ds-apply/figma-flow.md) — should be fine, references llms.txt which is unchanged.
 - [public/skills/arcsite-ds-apply/antd-conflict.md](public/skills/arcsite-ds-apply/antd-conflict.md) — references llms.txt, should be fine.
 
@@ -309,9 +309,9 @@ After all steps, verify the end-to-end loop:
 1. Designer uploads a fresh `tokens-color.tokens.json` via `/cms/color-editor`.
 2. Clicks Publish.
 3. `https://<sb>.../design-tokens/bootstrap.css` is updated within ~5 seconds (check via `curl -I` for `Last-Modified`).
-4. Open a fresh browser tab to a known prototype using the GH Pages URL — token values reflect the new upload after ~10 min cache expiry (or shift+reload).
+4. Open a fresh browser tab to a known prototype using the site URL — token values reflect the new upload after the CDN cache TTL expires (or shift+reload).
 5. Open `/size/tokens` on the live website — Breakpoints tab still works.
-6. AI agent test: an agent fetches `https://arctuition.github.io/design-system/llms.txt`, follows the Supabase URL to bootstrap.css, gets the latest token values.
+6. AI agent test: an agent fetches `https://design-system.arcsite.com/llms.txt`, follows the Supabase URL to bootstrap.css, gets the latest token values.
 7. Dev team curl: `curl -O https://<sb>.../design-tokens/bootstrap.css` succeeds, returns the latest.
 
 ## 7. Key files reference

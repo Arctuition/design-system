@@ -11,7 +11,7 @@ Before writing any component CSS, do these three things, in order:
 1. **Import the bootstrap stylesheet** — single line in the `<head>` (or top of the entry CSS for a React/Vite prototype):
 
    ```html
-   <link rel="stylesheet" href="https://arctuition.github.io/design-system/tokens/bootstrap.css">
+   <link rel="stylesheet" href="https://design-system.arcsite.com/tokens/bootstrap.css">
    ```
 
    This loads Inter (whatever weights the design system currently ships with), defines every CSS variable referenced in `llms.txt`, and wires up dark-mode swap. **Do not** hand-copy values from `llms.txt` into a local `:root` — that is the failure mode this stylesheet exists to prevent.
@@ -33,7 +33,7 @@ Before writing any component CSS, do these three things, in order:
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <link rel="stylesheet" href="https://arctuition.github.io/design-system/tokens/bootstrap.css">
+    <link rel="stylesheet" href="https://design-system.arcsite.com/tokens/bootstrap.css">
     <style>
       body {
         font: var(--text-body-medium);
@@ -55,7 +55,7 @@ Before writing any component CSS, do these three things, in order:
     </style>
   </head>
   <body>
-    <img src="https://arctuition.github.io/design-system/logos/glyph-and-text.svg" alt="ArcSite">
+    <img src="https://design-system.arcsite.com/logos/glyph-and-text.svg" alt="ArcSite">
     <!-- ... -->
   </body>
 </html>
@@ -67,7 +67,7 @@ Tailwind 4 supports CSS-variable arbitrary values directly — no config extensi
 
 ```jsx
 // In your entry CSS (before tailwind directives):
-//   @import url("https://arctuition.github.io/design-system/tokens/bootstrap.css");
+//   @import url("https://design-system.arcsite.com/tokens/bootstrap.css");
 
 <button className="bg-(--color-fill-action-primary) text-(--color-label-on-action) p-(--size-padding-md) rounded-(--size-radius-md)">
   Sign in

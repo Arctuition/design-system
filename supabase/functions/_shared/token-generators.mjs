@@ -230,7 +230,7 @@ ${fmt(fontDeviceTabletDiff, "value")}
  *
  * Usage: import once at the root of any new prototype or standalone UI.
  *   <link rel="stylesheet"
- *         href="https://arctuition.github.io/design-system/tokens/bootstrap.css">
+ *         href="https://design-system.arcsite.com/tokens/bootstrap.css">
  *
  * Then reference tokens via CSS custom properties:
  *   color: var(--color-label-primary);
@@ -312,31 +312,32 @@ ${fmt(fontDesktop, "value")}
 }
 
 /**
- * Build the 1-line `bootstrap.css` shim that GitHub Pages serves at the
- * historical URL. The shim `@import`s the live, CMS-published copy from
- * Supabase Storage — so existing prototypes that hardcode the GH Pages URL
- * automatically pick up new token values within ~1 minute of a designer
- * hitting Publish in the CMS, with no rebuild or commit.
+ * Build the 1-line `bootstrap.css` shim that the public site serves at
+ * /tokens/bootstrap.css. The shim `@import`s the live, CMS-published copy
+ * from Supabase Storage — so prototypes that hardcode the site URL pick
+ * up new token values within ~1 minute of a designer hitting Publish in
+ * the CMS, with no rebuild or commit.
  *
- * Cache trade-off: GitHub Pages caches its own assets for ~10 min by default.
- * The `@import` URL is a separate request the browser resolves on its own,
- * so it respects whatever cache headers Supabase sets (`max-age=60` per the
- * design-tokens bucket helper). Worst-case staleness is roughly the GH
- * Pages cache TTL — designers can hard-reload to bypass it.
+ * Cache trade-off: the site CDN (Amplify / CloudFront) caches its own
+ * assets per its own TTL. The `@import` URL is a separate request the
+ * browser resolves on its own, so it respects whatever cache headers
+ * Supabase sets (`max-age=60` per the design-tokens bucket helper).
+ * Worst-case staleness is roughly the site cache TTL — designers can
+ * hard-reload to bypass it.
  *
  * Downtime caveat: if Supabase Storage is unreachable the `@import` fails
- * silently and prototypes lose their tokens. The deployed copy on GitHub
- * Pages is the only place to add a fallback — see the production-mode
- * branch in scripts/generate-llms-txt.mjs.
+ * silently and prototypes lose their tokens. The deployed shim is the
+ * only place to add a fallback — see the production-mode branch in
+ * scripts/generate-llms-txt.mjs.
  */
 export function buildBootstrapShim(projectId) {
   const liveUrl = `https://${projectId}.supabase.co/storage/v1/object/public/design-tokens/bootstrap.css`;
   return `/*
  * Arcsite Design System — token bootstrap (shim)
  *
- * This GitHub Pages copy is a 1-line forward to the live Supabase Storage
- * version, which the CMS regenerates and publishes on every token upload.
- * Prototypes that hardcode the historical URL keep working unchanged.
+ * This shim is a 1-line forward to the live Supabase Storage version,
+ * which the CMS regenerates and publishes on every token upload.
+ * Prototypes that hardcode the site URL keep working unchanged.
  *
  * To pin to a specific published version, fetch the Supabase URL directly:
  *   ${liveUrl}

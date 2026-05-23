@@ -382,7 +382,7 @@ Icons follow the same Supabase-canonical pattern as token docs, but they fan out
 
 **Offline behavior**: if Supabase is unreachable when the script runs, both JSONs are written as stub manifests (`status: "error"`) and individual SVG files aren't generated. The vite build doesn't fail — icons are simply missing on the deployed site for that build. Production fixes itself on the next successful build.
 
-**Drift risk** (resolved by gitignore): before PR #50, the in-repo snapshot of `public/icons/` could drift whenever a designer uploaded a new icon via the CMS and nobody manually re-committed the regenerated bundle. The deployed site (`arctuition.github.io/design-system`) was always correct because CI prebuild regenerated from Supabase, but local clones and PR diffs saw confusing "new untracked SVGs" appearing mid-session. The fix: treat the files as build artifacts, don't track them.
+**Drift risk** (resolved by gitignore): before PR #50, the in-repo snapshot of `public/icons/` could drift whenever a designer uploaded a new icon via the CMS and nobody manually re-committed the regenerated bundle. The deployed site (`design-system.arcsite.com`) was always correct because CI prebuild regenerated from Supabase, but local clones and PR diffs saw confusing "new untracked SVGs" appearing mid-session. The fix: treat the files as build artifacts, don't track them.
 
 ---
 
@@ -396,11 +396,11 @@ Icons follow the same Supabase-canonical pattern as token docs, but they fan out
                                       │
                                       ▼
                 ┌─────────────────────────────────────────┐
-                │ https://arctuition.github.io/           │
-                │           design-system/llms.txt        │  ← GH Pages,
+                │ https://design-system.arcsite.com/      │
+                │                           llms.txt      │  ← Amplify,
                 │                                         │     stable URL
                 │ ## Bootstrap                            │
-                │   <link href="…github.io/.../           │
+                │   <link href="…arcsite.com/.../         │
                 │           bootstrap.css">               │  ← 1-line shim
                 │                                         │     forwards to
                 │ ## Token values (live)                  │     Supabase Storage
@@ -470,14 +470,14 @@ Key property: `llms.txt` is the **index**. Token values are NOT duplicated inlin
    reproducibility. Not enabled by default — switch on per bucket.
 ```
 
-### 4c. Public website — `arctuition.github.io/design-system/`
+### 4c. Public website — `design-system.arcsite.com`
 
 ```
    Browser navigates to /size or /color or /patterns/<slug>
                                       │
                                       ▼
    ┌──────────────────────────────────────────────────────────────┐
-   │ React SPA (loaded from GH Pages)                             │
+   │ React SPA (loaded from AWS Amplify)                          │
    │                                                              │
    │ DataProvider boots:                                          │
    │   1. Reads cached state from localStorage (instant paint)    │
