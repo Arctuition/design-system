@@ -415,6 +415,23 @@ const defaultTokenDocs: TokenDocs = {
 const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
+    date: "2026-05-27",
+    version: "1.14.0",
+    title: "Token docs + bootstrap.css fully self-contained (egress-safe)",
+    description: `Completes the move off third-party hosts so the design system works behind corporate network egress allowlists.
+
+**What changed**
+- \`llms.txt\` now points AI agents at the token reference docs, \`breakpoints.js\`, and \`bootstrap.css\` on \`design-system.arcsite.com\` itself — previously these still pointed at Supabase Storage (\`*.supabase.co\`), which isn't allowlisted in many orgs.
+- \`bootstrap.css\` is now a **fully self-contained** stylesheet (inlines Inter + every token + dark-mode swap). It used to be a 1-line \`@import\` shim forwarding to Supabase Storage, so prototypes importing it still pulled tokens from a third-party host at render time. No cross-origin dependency now.
+
+**Why**
+- The 1.13.0 move to design-system.arcsite.com swapped the page URLs but left the token-doc/bootstrap URLs on Supabase. A teammate behind an egress allowlist still couldn't load tokens. This closes that gap.
+
+**Note for token authors**
+- During this interim, token-doc + bootstrap changes reach AI agents on the next site deploy rather than instantly. The instant-publish path returns with the planned backend migration to AWS.`,
+  },
+  {
+    id: uid(),
     date: "2026-05-23",
     version: "1.13.0",
     title: "Deployment moved to AWS Amplify (design-system.arcsite.com)",

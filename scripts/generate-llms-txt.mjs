@@ -19,7 +19,6 @@ import {
   diffFromBase,
   formatTokenLines,
   buildBootstrapCss,
-  buildBootstrapShim,
   buildBreakpointsJs,
 } from "../supabase/functions/_shared/token-generators.mjs";
 
@@ -31,12 +30,6 @@ function readJson(rel) {
 }
 
 // ── Build llms.txt ─────────────────────────────────────────────────────────
-
-// Supabase project + emission mode. The same constants drive both the
-// `## Token values` pointers in llms.txt below AND the bootstrap.css
-// shim emission further down. The project id mirrors utils/supabase/info.tsx.
-const SUPABASE_PROJECT_ID = "qcqtnrrprgqlckzywnkt";
-const PRODUCTION_BUILD = process.env.npm_lifecycle_event === "prebuild";
 
 // Public origin where the built site is served. AI agents fetch llms.txt
 // from this origin and follow links inside it to bootstrap.css, logos,
@@ -183,25 +176,29 @@ them directly inside the design system itself, never in product UI.
 
 ---
 
-## Token values — fetch live from Supabase
+## Token values
 
-All CSS-variable definitions live in the published stylesheet, regenerated
-by the CMS on every token upload. Don't paste numeric values inline; reference
-tokens by name and import the stylesheet. The site \`bootstrap.css\`
-URL above is a shim that \`@import\`s the live copy from this Supabase URL.
+All CSS-variable definitions live in the bootstrap stylesheet. Don't paste
+numeric values inline; reference tokens by name and import the stylesheet.
+Every artifact below is a static file on this same origin, so an AI agent
+only ever fetches one allowlistable host — no cross-origin hop. They are
+regenerated from the canonical token JSON on each site build.
+
+> Interim note: these are build-time snapshots. CMS token edits reach AI
+> agents on the next site deploy, not instantly. The instant-publish path
+> (CMS → object storage) returns with the backend migration to AWS. See
+> .claude/decisions.md.
 
 - **Tokens CSS (color + size + font + breakpoint vars, mobile-first cascade):**
-  https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/design-tokens/bootstrap.css
+  ${SITE_BASE_URL}/tokens/bootstrap.css
 
 - **Breakpoints as JS object (for matchMedia / Tailwind config / container queries):**
-  https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/design-tokens/breakpoints.js
+  ${SITE_BASE_URL}/tokens/breakpoints.js
 
-- **Token reference docs (Markdown — same content as the site copies
-  above, mirrored to Supabase by the CMS publish so designer edits propagate
-  without a commit):**
-  https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/design-tokens/tokens-color.md
-  https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/design-tokens/tokens-size-space.md
-  https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/design-tokens/tokens-typography.md
+- **Token reference docs (Markdown):**
+  ${SITE_BASE_URL}/tokens/tokens-color.md
+  ${SITE_BASE_URL}/tokens/tokens-size-space.md
+  ${SITE_BASE_URL}/tokens/tokens-typography.md
 
 The size cascade is mobile-first: defaults are Web Mobile, with
 \`@media (min-width: ${breakpointPx.sm}px / ${breakpointPx.lg}px / ${breakpointPx.xl}px)\`
@@ -324,47 +321,35 @@ for (const name of TOKEN_DOCS) {
 }
 console.log(`[llms.txt] mirrored ${TOKEN_DOCS.length} token docs to public/tokens/`);
 
-// Generate bootstrap.css. Two emission modes:
-//
-//   - Production build (`npm run build`, lifecycle = "prebuild") emits a
-//     1-line `@import` shim forwarding to the live Supabase Storage copy
-//     the CMS regenerates on every Publish. Designers hit Publish and
-//     prototypes referencing the public bootstrap.css URL pick up the
-//     new values within ~1 minute, with no commit or rebuild.
-//
-//   - Local dev (`npm run dev`, lifecycle = "predev") and one-off runs
-//     (`npm run generate:llms`) emit the full inlined token block. Lets
-//     local development keep working without a live network round-trip to
-//     Supabase, and ensures the file is meaningful when a contributor
-//     opens it directly out of `public/tokens/`.
-//
-// The shim is the production target because that's the only emission that
-// reaches consumers via the canonical public URL. Dev builds never
-// ship to that URL, so the inlined copy is purely a local-quality-of-life
-// artifact — it's never the source of truth for prototypes.
-const bootstrapCss = PRODUCTION_BUILD
-  ? buildBootstrapShim(SUPABASE_PROJECT_ID)
-  : buildBootstrapCss({
-      globalColor,
-      lightTokens,
-      darkTokens,
-      sizeGlobal,
-      breakpoints,
-      sizeWebMobile,
-      sizeTabletDiff,
-      sizeDesktopDiff,
-      sizeDesktopLargeDiff,
-      fontDesktop,
-      breakpointPx,
-      sizeDeviceMobileDiff,
-      sizeDeviceTabletDiff,
-      fontDeviceMobileDiff,
-      fontDeviceTabletDiff,
-    });
+// Generate bootstrap.css as a fully-inlined token stylesheet (Inter + every
+// CSS variable + dark-mode swap), emitted self-contained in every mode so the
+// file served at ${SITE_BASE_URL}/tokens/bootstrap.css has zero cross-origin
+// dependencies. (It previously emitted a 1-line `@import` shim to Supabase
+// Storage in production — which gave designers instant token publishing but
+// made the file useless behind a network egress allowlist that didn't include
+// Supabase. That instant-publish path returns with the AWS backend migration;
+// until then bootstrap is a build-time snapshot. See .claude/decisions.md.)
+const bootstrapCss = buildBootstrapCss({
+  globalColor,
+  lightTokens,
+  darkTokens,
+  sizeGlobal,
+  breakpoints,
+  sizeWebMobile,
+  sizeTabletDiff,
+  sizeDesktopDiff,
+  sizeDesktopLargeDiff,
+  fontDesktop,
+  breakpointPx,
+  sizeDeviceMobileDiff,
+  sizeDeviceTabletDiff,
+  fontDeviceMobileDiff,
+  fontDeviceTabletDiff,
+});
 const bootstrapPath = resolve(publicTokensDir, "bootstrap.css");
 writeFileSync(bootstrapPath, bootstrapCss, "utf-8");
 console.log(
-  `[bootstrap.css] wrote ${bootstrapPath} — ${bootstrapCss.length} chars (${PRODUCTION_BUILD ? "shim" : "inline"})`
+  `[bootstrap.css] wrote ${bootstrapPath} — ${bootstrapCss.length} chars (inline)`
 );
 
 // Also emit a JS module so consumers can use the raw breakpoint pixels in

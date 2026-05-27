@@ -67,3 +67,34 @@ By registering as `make-server-067f252d`, the local and production path behavior
 **Decision:** `supabase/migrations/20260101000000_create_kv_store.sql` is committed
 
 **Why:** The migration creates the `kv_store_067f252d` table that the edge function reads/writes. It must be versioned so any developer can run `supabase db reset` and get a working local schema. The actual data (icon lists, article content, etc.) lives only in the local Postgres and is never committed.
+
+---
+
+## 7. AI-agent token artifacts are self-contained static files, not Supabase Storage
+
+**Decision:** `llms.txt` points AI agents at `bootstrap.css`, `breakpoints.js`,
+and the three `tokens-*.md` on the static site (`${SITE_BASE_URL}/tokens/…`),
+and `scripts/generate-llms-txt.mjs` emits a **fully-inlined** `bootstrap.css`
+in every build mode (no `@import` shim). `buildBootstrapShim` was removed from
+`_shared/token-generators.mjs` (no remaining caller).
+
+**Why:** The move to `design-system.arcsite.com` (ChangeLog 1.13.0) swapped the
+*page* URLs but left the token-doc / `bootstrap.css` URLs pointing at
+`*.supabase.co` storage, and `bootstrap.css` was a shim that `@import`ed
+Supabase at render time. A teammate behind an org network-egress allowlist
+(which trusts `*.arcsite.com` but not the multi-tenant `*.supabase.co`) still
+couldn't load tokens. Serving every agent-facing artifact self-contained from
+our own domain removes the third-party dependency entirely.
+
+**Trade-off (interim):** Token-doc / bootstrap edits now reach AI agents on the
+next site deploy, not instantly — the Supabase live-publish path was already
+unreachable behind the egress allowlist anyway. The instant-publish path
+returns with the backend migration to AWS (CMS/KV/Storage), at which point the
+`${SITE_BASE_URL}` token URLs can repoint to the AWS publish target.
+
+**Agent-facing canonical moved:** the static `tokens-*.md` are mirrored at
+prebuild from **repo `tokens/*.md`**, so a CMS (KV) token-doc edit no longer
+reaches agents until repo `tokens/*.md` is re-synced and the site redeploys.
+See the §3d / drift-risk notes in `.claude/cms-architecture.md` and the
+"Token reference MDs" banner in `CLAUDE.md`. (Repo and KV were byte-identical
+as of 2026-05-27.)

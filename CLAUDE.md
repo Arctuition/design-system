@@ -77,9 +77,18 @@ In dev mode, the app automatically routes API calls to `http://127.0.0.1:54321` 
 
 ## Token reference MDs — canonical = KV, NOT repo
 
-⚠️ **`tokens/tokens-color.md`, `tokens/tokens-size-space.md`, `tokens/tokens-typography.md` are NOT the source of truth for what AI agents fetch.** They're a seed / fallback only.
+> 🔄 **CHANGED (see `.claude/decisions.md` #7) — read before trusting the rest of this section.**
+> The agent-fetch path moved. `llms.txt` now points AI agents at the **static
+> `https://design-system.arcsite.com/tokens/tokens-*.md`** files (mirrored at
+> prebuild from **repo `tokens/*.md`**) — *not* the Supabase Storage URLs below.
+> Consequence during the egress-interim (until the AWS backend migration):
+> - **To make a token-doc edit reach AI agents you now MUST update repo `tokens/*.md` and redeploy.** Editing only via the CMS (KV → Storage) updates the public React pages but no longer reaches agents.
+> - So the "do NOT make a PR to `tokens/*.md`" rule below is **inverted for the agent path** during the interim. The KV/Storage workflow below still drives the public token pages.
+> - Keep repo `tokens/*.md` and KV `tokenDocs` in sync (byte-identical as of 2026-05-27).
 
-The canonical lives in KV (`tokenDocs.{color,size,typography}`) and is published to Supabase Storage by the same `/design-tokens/publish` endpoint that publishes `bootstrap.css`. `public/llms.txt` explicitly points AI agents at those Storage URLs:
+⚠️ **Historical framing — still true for the runtime CMS / public website, but NOT for the AI-agent fetch path:** `tokens/tokens-color.md`, `tokens/tokens-size-space.md`, `tokens/tokens-typography.md` are NOT the source of truth for the public website pages. They're a seed for those.
+
+The canonical for the **public website + CMS** lives in KV (`tokenDocs.{color,size,typography}`) and is published to Supabase Storage by the same `/design-tokens/publish` endpoint that publishes `bootstrap.css`. Before decision #7, `public/llms.txt` pointed AI agents at those Storage URLs (it no longer does):
 
 ```
 https://qcqtnrrprgqlckzywnkt.supabase.co/storage/v1/object/public/design-tokens/tokens-color.md
