@@ -198,9 +198,17 @@ The HTML slots that used to exist for `sizeArticle` / `colorArticle` / `typograp
                        └────────────────────────────────────┘
 ```
 
+> **Superseded by `.claude/decisions.md` #7 (2026-05-27).** Prebuild no longer
+> emits a shim, and `llms.txt` no longer points agents at Supabase Storage for
+> token artifacts — `bootstrap.css` / `breakpoints.js` / `tokens-*.md` are now
+> served self-contained from the static site (`design-system.arcsite.com/tokens/…`).
+> The CMS-publish-to-Storage path below still runs for the public React pages,
+> but it is no longer the agent-facing canonical. (A fuller rewrite of this map
+> is a follow-up PR.)
+
 **Two paths produce `bootstrap.css`**:
-1. **CMS publish** (above) — reads current KV state, regenerates bootstrap.css, writes to Storage. This is the canonical path for prod consumers.
-2. **Prebuild** (`scripts/generate-llms-txt.mjs`) — runs at `npm run build` / `npm run dev`, reads bundled `tokens/*.json`, writes to `public/tokens/bootstrap.css` (for dev mode) or a shim (for production GH Pages build that `@import`s the Storage URL).
+1. **CMS publish** (above) — reads current KV state, regenerates bootstrap.css, writes to Storage. Drives the public React pages; **no longer what AI agents fetch** (see decision #7).
+2. **Prebuild** (`scripts/generate-llms-txt.mjs`) — runs at `npm run build` / `npm run dev`, reads bundled `tokens/*.json`, writes a **fully-inlined, self-contained** `public/tokens/bootstrap.css` in *every* mode (the production `@import` shim was removed). This static file, served at `design-system.arcsite.com/tokens/bootstrap.css`, is the canonical artifact AI agents import.
 
 Both paths share the same flatten + buildBootstrapCss functions in `supabase/functions/_shared/token-generators.mjs`. CI (`test-bootstrap-parity.yml`) diffs the two outputs byte-by-byte and fails the PR if they disagree. This was the cure for the May 14 2026 `flattenFont` scope bug.
 

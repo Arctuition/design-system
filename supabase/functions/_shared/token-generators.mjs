@@ -311,42 +311,6 @@ ${fmt(fontDesktop, "value")}
 `;
 }
 
-/**
- * Build the 1-line `bootstrap.css` shim that the public site serves at
- * /tokens/bootstrap.css. The shim `@import`s the live, CMS-published copy
- * from Supabase Storage — so prototypes that hardcode the site URL pick
- * up new token values within ~1 minute of a designer hitting Publish in
- * the CMS, with no rebuild or commit.
- *
- * Cache trade-off: the site CDN (Amplify / CloudFront) caches its own
- * assets per its own TTL. The `@import` URL is a separate request the
- * browser resolves on its own, so it respects whatever cache headers
- * Supabase sets (`max-age=60` per the design-tokens bucket helper).
- * Worst-case staleness is roughly the site cache TTL — designers can
- * hard-reload to bypass it.
- *
- * Downtime caveat: if Supabase Storage is unreachable the `@import` fails
- * silently and prototypes lose their tokens. The deployed shim is the
- * only place to add a fallback — see the production-mode branch in
- * scripts/generate-llms-txt.mjs.
- */
-export function buildBootstrapShim(projectId) {
-  const liveUrl = `https://${projectId}.supabase.co/storage/v1/object/public/design-tokens/bootstrap.css`;
-  return `/*
- * Arcsite Design System — token bootstrap (shim)
- *
- * This shim is a 1-line forward to the live Supabase Storage version,
- * which the CMS regenerates and publishes on every token upload.
- * Prototypes that hardcode the site URL keep working unchanged.
- *
- * To pin to a specific published version, fetch the Supabase URL directly:
- *   ${liveUrl}
- */
-
-@import url("${liveUrl}");
-`;
-}
-
 /** Build the breakpoints.js ES module — a tiny export of the same pixel map
  *  that the @media blocks use, for JS consumers that can't reach CSS vars. */
 export function buildBreakpointsJs(breakpointPx) {
