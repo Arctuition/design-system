@@ -14,7 +14,7 @@ Pending merge to `main` (see §10 — prerequisite for Option B):
 
 Reference docs in repo:
 
-- [.claude/cms-architecture.md](.claude/cms-architecture.md) — full data-flow architecture (current state + planned Option B state). **Read this first.** Once PR 23 is on main this file will be there. If not yet, it lives on the `claude/part-3-cleanup-obsolete-article-paths` branch.
+- [ARCHITECTURE.md](../ARCHITECTURE.md) — full data-flow architecture (current state + planned Option B state). **Read this first.** (Formerly `.claude/cms-architecture.md`; consolidated to the top-level `ARCHITECTURE.md` on 2026-05-27.)
 
 ## 2. Goal of Option B
 
@@ -318,7 +318,7 @@ After all steps, verify the end-to-end loop:
 
 | File | Role |
 |---|---|
-| [.claude/cms-architecture.md](.claude/cms-architecture.md) | Full data-flow architecture. **Read this first.** |
+| [ARCHITECTURE.md](../ARCHITECTURE.md) | Full data-flow architecture. **Read this first.** (Formerly `.claude/cms-architecture.md`.) |
 | [src/app/store/data-store.tsx](src/app/store/data-store.tsx) | Single source of state — `AppState`, defaults, KV sync, safe-loading stub |
 | [src/app/store/api.ts](src/app/store/api.ts) | Supabase fetch wrappers — `loadStateFromServer`, `saveStateKey`, `bulkSaveState` |
 | [src/app/components/shared/size-token-utils.ts](src/app/components/shared/size-token-utils.ts) | CMS-side parsing + slot matching for size + breakpoint uploads. Pattern to mirror for fonts. |

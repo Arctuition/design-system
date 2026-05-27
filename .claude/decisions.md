@@ -95,6 +95,6 @@ returns with the backend migration to AWS (CMS/KV/Storage), at which point the
 **Agent-facing canonical moved:** the static `tokens-*.md` are mirrored at
 prebuild from **repo `tokens/*.md`**, so a CMS (KV) token-doc edit no longer
 reaches agents until repo `tokens/*.md` is re-synced and the site redeploys.
-See the §3d / drift-risk notes in `.claude/cms-architecture.md` and the
+See the §3d / drift-risk notes in `ARCHITECTURE.md` and the
 "Token reference MDs" banner in `CLAUDE.md`. (Repo and KV were byte-identical
 as of 2026-05-27.)
