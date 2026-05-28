@@ -1,6 +1,6 @@
 # Design System Website — Claude Context
 
-> **Before opening a substantial PR, open `.claude/cms-architecture.md`.** That file is
+> **Before opening a substantial PR, open `ARCHITECTURE.md`.** That file is
 > a map of where data lives and how it flows across runtime boundaries —
 > it exists specifically to help you spot drift risks before a change
 > goes wrong. The PR template asks you to skim it; the docs-drift CI
@@ -22,7 +22,7 @@
 | **Always-loaded** | `CLAUDE.md` (this file) | Auto-loaded into every session by Claude Code |
 | **Always-loaded** | `~/.claude/projects/<this>/memory/MEMORY.md` | Auto-loaded; index into project-specific lessons & feedback |
 | **Always-loaded** | `~/.claude/memory/MEMORY.md` | Cross-project engineering lessons; index. Auto-loaded by some configurations |
-| **High — data flow / architecture** | [`.claude/cms-architecture.md`](.claude/cms-architecture.md) | Before any substantial PR. Lists drift risks + canonical sources + load-bearing source files + CI gates |
+| **High — data flow / architecture** | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Before any substantial PR. Lists drift risks + canonical sources + load-bearing source files + CI gates |
 | **High — past decisions** | [`.claude/decisions.md`](.claude/decisions.md) | When deciding *how* to implement something; check whether a similar choice was already made and why |
 | **Medium — local setup** | [`.claude/local-dev.md`](.claude/local-dev.md) | First-time local setup; debugging dev env (esp. the Supabase Docker quirks) |
 | **Medium — pattern docs** | [`.claude/pattern-doc-workflow.md`](.claude/pattern-doc-workflow.md) | Editing or creating Pattern docs / images |
@@ -164,9 +164,9 @@ Say **"sync context"** in any session to trigger an update of these files.
 
 > Background: on 2026-05-14 a maintainer-AI shipped a PR that updated only the repo copy of a doc whose canonical source had silently moved to KV two days earlier. The instruction in CLAUDE.md was still literally true but its meaning had flipped. There was no diff in the doc, so reviewers had no signal. We added three guards to prevent recurrence; this section is the cultural one.
 
-For any PR over ~500 LOC, or any PR touching a [load-bearing source file listed in `.claude/cms-architecture.md`](.claude/cms-architecture.md#load-bearing-source-files-ci-watches-these):
+For any PR over ~500 LOC, or any PR touching a [load-bearing source file listed in `ARCHITECTURE.md`](ARCHITECTURE.md#load-bearing-source-files-ci-watches-these):
 
-1. **Skim `.claude/cms-architecture.md` first.** Find the section closest to your change. Re-read its "Drift risks" and "Canonical sources" callouts. If your change makes a risk worse, or moves a canonical, update the map in the same PR.
+1. **Skim `ARCHITECTURE.md` first.** Find the section closest to your change. Re-read its "Drift risks" and "Canonical sources" callouts. If your change makes a risk worse, or moves a canonical, update the map in the same PR.
 2. **Search-and-read meta-docs** for the file/service/concept your change affects:
    - `CLAUDE.md` (start with the §Project doc manifest table at the top) — look for instructions whose *meaning* (not text) might flip
    - `tokens/tokens-*.md` — reference tables can go stale silently
@@ -174,9 +174,9 @@ For any PR over ~500 LOC, or any PR touching a [load-bearing source file listed 
 3. **Fill in the PR template's architectural-impact checklist.** The boxes exist to make you stop and think; mechanical checking defeats the point.
 4. **Search before creating any new project-level doc.** If asked to add a map / runbook / architecture doc / index, run `find . -iname "<topic>*"` first. If a similar file exists (likely listed in §Project doc manifest), extend it instead of creating a parallel file. A duplicated map is itself the drift hazard the system is meant to prevent — on 2026-05-14 this exact mistake was made and the user had to point at the existing file.
 5. **Don't forget regular tasks.** Before opening a PR, check the §Regular task checklist below — there are standing rules (e.g., update the ChangeLog) that apply to every user-visible PR, easy to skip when deep in code. The PR template has a reminder.
-6. **If AI is authoring the PR**, the prompt should include: *"Before opening the PR, re-read `CLAUDE.md` (especially the §Project doc manifest), the relevant section of `.claude/cms-architecture.md`, and check whether any instruction there would become misleading because of this change. Also walk the §Regular task checklist."* AI optimizes for the explicit task; this prompt extends the task to include doc maintenance + the standing rules.
+6. **If AI is authoring the PR**, the prompt should include: *"Before opening the PR, re-read `CLAUDE.md` (especially the §Project doc manifest), the relevant section of `ARCHITECTURE.md`, and check whether any instruction there would become misleading because of this change. Also walk the §Regular task checklist."* AI optimizes for the explicit task; this prompt extends the task to include doc maintenance + the standing rules.
 
-The technical guard for this is `.github/workflows/docs-drift-check.yml` — it posts a warning comment on PRs that touch load-bearing source without `CLAUDE.md`/`.claude/cms-architecture.md`. The warning is advisory, not blocking; it exists to make you *look*, not to gate emergency fixes.
+The technical guard for this is `.github/workflows/docs-drift-check.yml` — it posts a warning comment on PRs that touch load-bearing source without `CLAUDE.md`/`ARCHITECTURE.md`. The warning is advisory, not blocking; it exists to make you *look*, not to gate emergency fixes.
 
 ## Regular task checklist
 
@@ -184,7 +184,7 @@ The technical guard for this is `.github/workflows/docs-drift-check.yml` — it 
 
 - [ ] **ChangeLog updated** if the PR ships a user-visible change. See §"ChangeLog must update on every PR" — grouping multiple small PRs into one entry is fine and preferred, but the rule is "every release of user-visible work has an entry." Skip only for purely-internal changes (CLAUDE.md edits, build tooling, dev-only scripts).
 - [ ] **Project doc manifest updated** if the PR adds, retires, or moves a rule file.
-- [ ] **`.claude/cms-architecture.md` updated** if the PR changes a data flow, a canonical source, or a load-bearing source file's contract (see §Drift risks and guards).
+- [ ] **`ARCHITECTURE.md` updated** if the PR changes a data flow, a canonical source, or a load-bearing source file's contract (see §Drift risks and guards).
 - [ ] **Migration code present** if the PR renames or reshapes any persisted field.
 - [ ] **Architecture impact checklist on the PR description** filled in honestly (or its boxes deliberately cleared with reasons).
 
