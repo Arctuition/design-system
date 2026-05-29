@@ -422,10 +422,11 @@ const defaultChangeLogs: ChangeLogEntry[] = [
     date: "2026-05-29",
     version: "1.15.0",
     title: "CMS sign-in moved to Google Workspace",
-    description: `The CMS now uses Google sign-in instead of a username/password. Editors sign in with their @arcsite.com Google Workspace account.
+    description: `The CMS now uses Google sign-in instead of a username/password.
 
 **What changed**
-- \`/cms\` is gated by Google sign-in (Supabase Auth, Google provider); only @arcsite.com accounts are allowed in.
+- \`/cms\` is gated by Google sign-in (Supabase Auth, Google provider).
+- Editing is limited to specific maintainer accounts; everyone else can browse the public site without signing in.
 - The old username/password login and the "Accounts" manager have been retired.`,
   },
   {

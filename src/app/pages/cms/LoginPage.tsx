@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { useAppData } from "../../store/data-store";
 import { Button } from "../../components/ui/button";
 import { LogIn } from "lucide-react";
-import { ALLOWED_DOMAINS_LABEL } from "/utils/supabase/allowlist";
+import { ALLOWED_LABEL } from "/utils/supabase/allowlist";
 
 export function LoginPage() {
   const { isAuthenticated, loginWithGoogle } = useAppData();
@@ -21,7 +21,7 @@ export function LoginPage() {
   useEffect(() => {
     try {
       if (sessionStorage.getItem("cms-auth-error") === "domain") {
-        setError(`That Google account isn't allowed. Sign in with your @${ALLOWED_DOMAINS_LABEL} account.`);
+        setError(`That account can't edit the CMS. Editing is limited to: ${ALLOWED_LABEL}.`);
         sessionStorage.removeItem("cms-auth-error");
       }
     } catch {
@@ -54,7 +54,8 @@ export function LoginPage() {
         </div>
 
         <p className="text-muted-foreground mb-6" style={{ fontSize: "var(--text-label)" }}>
-          Sign in with your <strong>@{ALLOWED_DOMAINS_LABEL}</strong> Google Workspace account.
+          CMS editing is limited to <strong>{ALLOWED_LABEL}</strong>. Everyone else
+          can browse the public site without signing in.
         </p>
 
         {error && (

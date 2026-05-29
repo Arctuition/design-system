@@ -119,8 +119,12 @@ choice was made explicitly (the alternative was backend enforcement).
 **Shape:**
 - `utils/supabase/client.ts` — browser Supabase client, used ONLY for auth.
   Data still flows through `src/app/store/api.ts` (raw fetch + public key).
-- `utils/supabase/allowlist.ts` — `isAllowedEmail()`; domains/emails from
-  `VITE_CMS_ALLOWED_DOMAINS` / `VITE_CMS_ALLOWED_EMAILS` (default `arcsite.com`).
+- `utils/supabase/allowlist.ts` — `isAllowedEmail()`; emails/domains from
+  `VITE_CMS_ALLOWED_EMAILS` / `VITE_CMS_ALLOWED_DOMAINS`. **Edit access is
+  limited to a per-email allowlist** (default `hongyu@arcsite.com,
+  haowei@arcsite.com`; no whole-domain by default). Everyone else can VIEW the
+  public site (no login) but cannot sign in to the CMS. To re-open to the whole
+  Workspace, set `VITE_CMS_ALLOWED_DOMAINS=arcsite.com`.
 - `src/app/store/data-store.tsx` — an effect mirrors the Supabase session into
   the existing `isAuthenticated` / `currentUser` fields, so every CMS page's
   `if (!isAuthenticated) <Navigate to="/cms/login">` guard is unchanged. A
@@ -128,6 +132,10 @@ choice was made explicitly (the alternative was backend enforcement).
   `login(user,pass)` → `loginWithGoogle()`; `logout()` → `supabase.auth.signOut()`.
 - `src/app/pages/cms/LoginPage.tsx` — "Sign in with Google" button.
 - `cms/accounts` route + dashboard tile removed; `AccountManager.tsx` orphaned.
+- **No visible CMS entry for non-signed-in users**: the sidebar footer "CMS
+  Login" link in `AppLayout.tsx` is gone — the footer only renders when
+  `isAuthenticated`. Maintainers reach the login by visiting `/cms/login`
+  directly (the route still exists); everyone else never sees an entry.
 
 **Why frontend-only:** quickest path that matches the existing gate (which was
 also client-side). The KV write API was already open to anyone holding the
