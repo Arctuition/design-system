@@ -70,6 +70,117 @@ By registering as `make-server-067f252d`, the local and production path behavior
 
 ---
 
+## 8. Supabase front-end config is env-overridable for Amplify deploys
+**Decision:** `utils/supabase/info.tsx` resolves `projectId` / `publicAnonKey`
+from Vite env vars with the previous committed values as fallback:
+
+```typescript
+export const projectId =
+  import.meta.env.VITE_SUPABASE_PROJECT_ID || "dnfzdqyiepjzqrigpvzw"
+export const publicAnonKey =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_…"
+```
+
+The per-environment values live in a committed `.env` (the production
+**publishable** key `sb_publishable_…` is there). Production deploys via AWS
+Amplify; set the same `VITE_SUPABASE_*` names in Amplify's env-var settings to
+override at deploy time — Vite gives real host env vars priority over `.env`,
+which has priority over the fallback literals.
+
+**Project moved (decision #10):** the canonical Supabase project is now
+`dnfzdqyiepjzqrigpvzw` (was `qcqtnrrprgqlckzywnkt`). The fallback literals here
+and in `info.tsx` track `.env`. The edge-function deploy target is driven by the
+`SUPABASE_PROJECT_REF` GitHub repo variable (default `dnfzdqyiepjzqrigpvzw`), not
+a hard-coded ref. Edge runtime code is project-agnostic (it reads
+`Deno.env.get("SUPABASE_URL")`), and all front-end URLs interpolate `projectId`,
+so switching projects is now an env/`.env` change, not a code edit.
+
+**Why:** Prod moved to AWS Amplify and the key had to be swappable per deploy
+without editing source. Publishable/anon keys are public (they ship in the
+client bundle), so committing `.env` is consistent with the anon key already
+living in committed source — and keeps local dev + CI working with zero setup.
+
+**Drift trap (important):** `scripts/safe-changelog-sync.mjs` and
+`scripts/generate-icons-json.mjs` parse `info.tsx` **as text** to get the key.
+The match was relaxed from `…=\s*"([^"]+)"` to `…=[^"]*"([^"]+)"` so it reads
+the literal out of the new `import.meta.env.X || "literal"` form, and both
+scripts now prefer `process.env.VITE_SUPABASE_*` first (so Amplify-injected
+vars reach the build scripts too). If you change the shape of those exports in
+`info.tsx`, re-check those two regexes.
+
+---
+
+## 9. CMS login moved to Google Workspace (Supabase Auth) — frontend gate only
+**Decision:** Replace the homegrown username/password CMS gate (KV `editors`
+slot + `AccountManager`) with **Google sign-in via Supabase Auth** (Google
+provider), restricted to `@arcsite.com`. It is a **frontend gate only** — the
+choice was made explicitly (the alternative was backend enforcement).
+
+**Shape:**
+- `utils/supabase/client.ts` — browser Supabase client, used ONLY for auth.
+  Data still flows through `src/app/store/api.ts` (raw fetch + public key).
+- `utils/supabase/allowlist.ts` — `isAllowedEmail()`; domains/emails from
+  `VITE_CMS_ALLOWED_DOMAINS` / `VITE_CMS_ALLOWED_EMAILS` (default `arcsite.com`).
+- `src/app/store/data-store.tsx` — an effect mirrors the Supabase session into
+  the existing `isAuthenticated` / `currentUser` fields, so every CMS page's
+  `if (!isAuthenticated) <Navigate to="/cms/login">` guard is unchanged. A
+  signed-in account outside the allowlist is signed straight back out.
+  `login(user,pass)` → `loginWithGoogle()`; `logout()` → `supabase.auth.signOut()`.
+- `src/app/pages/cms/LoginPage.tsx` — "Sign in with Google" button.
+- `cms/accounts` route + dashboard tile removed; `AccountManager.tsx` orphaned.
+
+**Why frontend-only:** quickest path that matches the existing gate (which was
+also client-side). The KV write API was already open to anyone holding the
+public anon/publishable key, so this changes nothing about API exposure.
+
+**⚠️ Trade-off / drift trap:** a determined user with the public key can still
+`curl` a write — the gate hides the UI, it doesn't protect the data. To make it
+real, add a token check on mutating routes in `make-server-067f252d/index.ts`
+(verify the user's Supabase JWT + email domain) AND move scripted writers
+(`safe-changelog-sync.mjs`, token-doc curl) onto an automation token. Not done.
+
+**Setup (NOT in the repo — the Google client secret must never be committed):**
+1. GCP OAuth client → Authorized redirect URI:
+   `https://<project>.supabase.co/auth/v1/callback`.
+2. Supabase dashboard → Authentication → Providers → Google: enable, paste
+   Client ID + Client Secret.
+3. Supabase dashboard → Authentication → URL Configuration: Site URL +
+   `http://localhost:5173/**` and the prod origin in the redirect allowlist.
+
+**Note:** the Supabase project + publishable key now come from `.env`
+(decision #8), so this targets whatever project `VITE_SUPABASE_PROJECT_ID`
+points at. The Google provider must be configured on that same project.
+
+---
+
+## 10. Canonical Supabase project moved to `dnfzdqyiepjzqrigpvzw`
+**Decision:** The production Supabase project is now `dnfzdqyiepjzqrigpvzw`
+(was `qcqtnrrprgqlckzywnkt`). Nothing about the project is hard-coded in
+shippable code:
+
+- **Front-end** — every Supabase URL interpolates `projectId` from
+  `utils/supabase/info.tsx`, which reads `VITE_SUPABASE_PROJECT_ID` (`.env` /
+  Amplify) with a fallback literal that tracks `.env`.
+- **Edge runtime** (`kv_store.ts`, `storage.ts`, `design-tokens-storage.ts`) —
+  project-agnostic already; reads `Deno.env.get("SUPABASE_URL")`, which Supabase
+  injects per deployed project. No change needed to switch projects.
+- **CI deploy** (`.github/workflows/deploy-edge-functions.yml`) — target is the
+  `SUPABASE_PROJECT_REF` GitHub **repo variable** (default
+  `dnfzdqyiepjzqrigpvzw`), so the deploy project is config, not a code edit.
+
+So switching projects again = change `.env` / Amplify var / the repo variable.
+The only remaining literals are fallbacks (info.tsx, decisions #8 example) +
+doc references, all marked as tracking `.env`.
+
+**Migration cost (one-time, per move):** the new project starts empty —
+`supabase db push` (KV table) + `supabase functions deploy` + copy the 13
+`STATE_KEYS` from the old project's KV + re-upload Storage assets (pattern
+images live at absolute `<old-ref>.supabase.co` URLs until re-published). Keep
+the old project alive until Storage is migrated. The Google auth provider must
+be configured on the new project (decision #9).
+
+---
+
 ## 7. AI-agent token artifacts are self-contained static files, not Supabase Storage
 
 **Decision:** `llms.txt` points AI agents at `bootstrap.css`, `breakpoints.js`,

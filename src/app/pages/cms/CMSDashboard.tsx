@@ -2,7 +2,7 @@ import React from "react";
 import { Link, Navigate } from "react-router";
 import { useAppData } from "../../store/data-store";
 import {
-  FileText, Palette, Image, LayoutGrid, Clock, Users, RefreshCw, Ruler, Type, BookText
+  FileText, Palette, Image, LayoutGrid, Clock, RefreshCw, Ruler, Type, BookText
 } from "lucide-react";
 
 interface Section {
@@ -24,7 +24,6 @@ const sections: Section[] = [
   { path: "/cms/typography-editor", label: "Typography Doc", description: "Edit the /typography reference Markdown", icon: BookText },
   { path: "/cms/icon-editor", label: "Iconology", description: "Upload, tag, and manage icons", icon: Image },
   { path: "/cms/patterns-editor", label: "Patterns", description: "Create, edit, and manage pattern articles", icon: LayoutGrid },
-  { path: "/cms/accounts", label: "Accounts", description: "Manage editor accounts (admin only)", icon: Users },
   { path: "/admin/data-cleanup", label: "Data Cleanup", description: "Reset all content formatting to design system defaults", icon: RefreshCw, adminOnly: true },
 ];
 

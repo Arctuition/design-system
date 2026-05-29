@@ -24,6 +24,8 @@ function capArticleVersions(versions: ArticleVersion[]): ArticleVersion[] {
   return kept;
 }
 import { projectId, publicAnonKey } from "/utils/supabase/info";
+import { supabase } from "/utils/supabase/client";
+import { isAllowedEmail, PRIMARY_ALLOWED_DOMAIN } from "/utils/supabase/allowlist";
 import { buildIconTagsFromName, enrichAllIconTags, rebuildIconTags } from "./icon-tag-enrichment";
 import { chromeIconSeeds } from "./chrome-icon-seeds";
 
@@ -274,7 +276,9 @@ interface AppContextType extends AppState {
   addUser: (editor: Omit<EditorAccount, "id" | "createdAt">) => void;
   updateUser: (id: string, updates: Partial<Pick<EditorAccount, "role" | "password">>) => void;
   removeUser: (id: string) => void;
-  login: (username: string, password: string, rememberMe?: boolean) => boolean;
+  /** Start the Google (Supabase) OAuth redirect. Resolves only on the rare
+   *  synchronous failure — success navigates away to Google. */
+  loginWithGoogle: () => Promise<void>;
   logout: () => void;
   saveArticleWithVersion: (articleKey: string, content: string, saveFn: (html: string) => void) => void;
   getArticleVersions: (articleKey: string) => ArticleVersion[];
@@ -413,6 +417,17 @@ const defaultTokenDocs: TokenDocs = {
 };
 
 const defaultChangeLogs: ChangeLogEntry[] = [
+  {
+    id: uid(),
+    date: "2026-05-29",
+    version: "1.15.0",
+    title: "CMS sign-in moved to Google Workspace",
+    description: `The CMS now uses Google sign-in instead of a username/password. Editors sign in with their @arcsite.com Google Workspace account.
+
+**What changed**
+- \`/cms\` is gated by Google sign-in (Supabase Auth, Google provider); only @arcsite.com accounts are allowed in.
+- The old username/password login and the "Accounts" manager have been retired.`,
+  },
   {
     id: uid(),
     date: "2026-05-27",
@@ -1176,26 +1191,46 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const initialState = cachedLocal ?? getDefaults();
     const initialIcons = enrichAllIconTags(initialState.icons) ?? initialState.icons;
     const hydratedInitialState = { ...initialState, icons: initialIcons };
-    // Restore auth session from localStorage if available and not expired
-    try {
-      const authSession = localStorage.getItem('ds-auth-session');
-      if (authSession) {
-        const { isAuthenticated, currentUser, authExpiry } = JSON.parse(authSession);
-        // Check if session has expired
-        if (authExpiry && authExpiry < Date.now()) {
-          // Session expired, remove it
-          localStorage.removeItem('ds-auth-session');
-          console.log('🔒 Auth session expired, logged out');
-        } else if (isAuthenticated && currentUser) {
-          // Session valid, restore it
-          return { ...hydratedInitialState, isAuthenticated, currentUser, authExpiry };
-        }
-      }
-    } catch (err) {
-      console.error("Failed to restore auth session:", err);
-    }
+    // Auth is driven by the Supabase Google session (see the auth effect
+    // below + .claude/decisions.md #9), not by this cached snapshot — always
+    // start unauthenticated and let onAuthStateChange paint the real state.
+    // Clear any legacy username/password session from the old gate.
+    try { localStorage.removeItem('ds-auth-session'); } catch {}
     return hydratedInitialState;
   });
+
+  // ── CMS auth: Supabase Google session → isAuthenticated / currentUser ──
+  // Frontend gate only. We mirror the Supabase session into the existing
+  // isAuthenticated / currentUser fields so every CMS page's
+  // `if (!isAuthenticated) <Navigate to="/cms/login">` guard keeps working
+  // unchanged. A signed-in account outside the allowlist is signed straight
+  // back out (and flagged for the login screen). See .claude/decisions.md #9.
+  useEffect(() => {
+    let active = true;
+    const apply = (session: { user?: { id?: string; email?: string | null } } | null) => {
+      if (!active) return;
+      const email = session?.user?.email ?? null;
+      if (session && isAllowedEmail(email)) {
+        const user: EditorAccount = {
+          id: session.user?.id ?? "google",
+          username: email as string,
+          password: "",
+          role: "admin",
+          createdAt: "",
+        };
+        setState((prev) => ({ ...prev, isAuthenticated: true, currentUser: user, authExpiry: null }));
+      } else {
+        if (session && email && !isAllowedEmail(email)) {
+          try { sessionStorage.setItem("cms-auth-error", "domain"); } catch {}
+          void supabase.auth.signOut();
+        }
+        setState((prev) => ({ ...prev, isAuthenticated: false, currentUser: null, authExpiry: null }));
+      }
+    };
+    void supabase.auth.getSession().then(({ data }) => apply(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => apply(session));
+    return () => { active = false; sub.subscription.unsubscribe(); };
+  }, []);
   // Only show the full-screen spinner when there is no cached data to render.
   // With a cache hit, paint immediately and let the server response merge in.
   const [isLoading, setIsLoading] = useState(cachedLocal === null);
@@ -1941,33 +1976,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }, "editors"),
     removeUser: (id) =>
       update({ editors: state.editors.filter((e) => e.id !== id) }, "editors"),
-    login: (username: string, password: string, rememberMe?: boolean) => {
-      const user = state.editors.find((e) => e.username === username && e.password === password);
-      if (user) {
-        const expiry = rememberMe ? Date.now() + (7 * 24 * 60 * 60 * 1000) : null; // 7 days in milliseconds
-        setState((prev) => ({ ...prev, isAuthenticated: true, currentUser: user, authExpiry: expiry }));
-        // Persist auth state to localStorage for session persistence
-        try {
-          localStorage.setItem('ds-auth-session', JSON.stringify({ 
-            isAuthenticated: true, 
-            currentUser: user,
-            authExpiry: expiry
-          }));
-        } catch (err) {
-          console.error("Failed to persist auth session:", err);
-        }
-        return true;
-      }
-      return false;
+    loginWithGoogle: async () => {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      // hd preselects the Workspace domain in Google's account chooser; the
+      // real allowlist check runs in the auth effect after the redirect back.
+      const queryParams = PRIMARY_ALLOWED_DOMAIN
+        ? { hd: PRIMARY_ALLOWED_DOMAIN, prompt: "select_account" }
+        : { prompt: "select_account" };
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${origin}/cms`, queryParams },
+      });
+      if (error) throw error;
     },
     logout: () => {
+      void supabase.auth.signOut().catch((err) => console.error("Sign-out failed:", err));
       update({ isAuthenticated: false, currentUser: null, authExpiry: null });
-      // Clear persisted auth session
-      try {
-        localStorage.removeItem('ds-auth-session');
-      } catch (err) {
-        console.error("Failed to clear auth session:", err);
-      }
+      try { localStorage.removeItem('ds-auth-session'); } catch {}
     },
 
     // Versioning

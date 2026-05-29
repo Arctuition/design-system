@@ -27,9 +27,13 @@ const ROOT = resolve(__dirname, "..");
 
 // ── Supabase config (read from the same file the React app uses) ──────────
 
+// Prefer the VITE_* env vars (set by AWS Amplify at deploy time, or by a
+// local `.env`); otherwise fall back to the committed literals in info.tsx.
+// The regex matches both the plain literal form (`projectId = "..."`) and
+// the env-fallback form (`projectId = import.meta.env.X || "..."`).
 const infoSrc = readFileSync(resolve(ROOT, "utils/supabase/info.tsx"), "utf-8");
-const projectId    = infoSrc.match(/projectId\s*=\s*"([^"]+)"/)?.[1];
-const publicAnonKey = infoSrc.match(/publicAnonKey\s*=\s*"([^"]+)"/)?.[1];
+const projectId    = process.env.VITE_SUPABASE_PROJECT_ID || infoSrc.match(/projectId\s*=[^"]*"([^"]+)"/)?.[1];
+const publicAnonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || infoSrc.match(/publicAnonKey\s*=[^"]*"([^"]+)"/)?.[1];
 
 if (!projectId || !publicAnonKey) {
   console.error("[icons.json] could not parse Supabase config; aborting");

@@ -46,7 +46,8 @@ React + Vite + TypeScript design system CMS. Content is managed through `/src/ap
 |------|---------|
 | `src/app/pages/cms/IconEditor.tsx` | Icon upload, deduplication, bulk import |
 | `src/app/store/api.ts` | All backend API calls (switches local/prod automatically) |
-| `supabase/functions/server/index.tsx` | Hono-based edge function (state CRUD) |
+| `supabase/functions/make-server-067f252d/index.ts` | Hono-based edge function (state CRUD). Deployed as `make-server-067f252d`; this is the canonical source (there is no `server/index.tsx`) |
+| `utils/supabase/client.ts` + `utils/supabase/allowlist.ts` | CMS Google sign-in (Supabase Auth). Frontend gate only — see `.claude/decisions.md` #9 |
 | `supabase/functions/server/kv_store.tsx` | Supabase KV store helper |
 | `supabase/migrations/20260101000000_create_kv_store.sql` | Local DB migration |
 | `.claude/launch.json` | Dev server config for `preview_start` |
@@ -88,12 +89,12 @@ In dev mode, the app automatically routes API calls to `http://127.0.0.1:54321` 
 
 ⚠️ **Historical framing — still true for the runtime CMS / public website, but NOT for the AI-agent fetch path:** `tokens/tokens-color.md`, `tokens/tokens-size-space.md`, `tokens/tokens-typography.md` are NOT the source of truth for the public website pages. They're a seed for those.
 
-The canonical for the **public website + CMS** lives in KV (`tokenDocs.{color,size,typography}`) and is published to Supabase Storage by the same `/design-tokens/publish` endpoint that publishes `bootstrap.css`. Before decision #7, `public/llms.txt` pointed AI agents at those Storage URLs (it no longer does):
+The canonical for the **public website + CMS** lives in KV (`tokenDocs.{color,size,typography}`) and is published to Supabase Storage by the same `/design-tokens/publish` endpoint that publishes `bootstrap.css`. Before decision #7, `public/llms.txt` pointed AI agents at those Storage URLs (it no longer does). `<ref>` below is the Supabase project ref (`VITE_SUPABASE_PROJECT_ID` in `.env` — currently `dnfzdqyiepjzqrigpvzw`; see decisions.md #10):
 
 ```
-https://qcqtnrrprgqlckzywnkt.supabase.co/storage/v1/object/public/design-tokens/tokens-color.md
-https://qcqtnrrprgqlckzywnkt.supabase.co/storage/v1/object/public/design-tokens/tokens-size-space.md
-https://qcqtnrrprgqlckzywnkt.supabase.co/storage/v1/object/public/design-tokens/tokens-typography.md
+https://<ref>.supabase.co/storage/v1/object/public/design-tokens/tokens-color.md
+https://<ref>.supabase.co/storage/v1/object/public/design-tokens/tokens-size-space.md
+https://<ref>.supabase.co/storage/v1/object/public/design-tokens/tokens-typography.md
 ```
 
 To edit these docs, do NOT make a PR to `tokens/*.md`. Instead:
@@ -101,8 +102,9 @@ To edit these docs, do NOT make a PR to `tokens/*.md`. Instead:
 1. **Via the CMS** (preferred when the change is human-authored): open `/cms`, navigate to the Markdown editor for the target doc, edit, Save (writes KV via `setTokenDoc`), then click "Publish to Production" (mirrors KV → Storage).
 2. **Via curl** (for scripted / batch updates):
    ```bash
-   ANON=<from utils/supabase/info.tsx>
-   BASE="https://qcqtnrrprgqlckzywnkt.supabase.co/functions/v1/make-server-067f252d"
+   ANON=<publishable key from .env / utils/supabase/info.tsx>
+   REF=<VITE_SUPABASE_PROJECT_ID from .env>   # currently dnfzdqyiepjzqrigpvzw
+   BASE="https://$REF.supabase.co/functions/v1/make-server-067f252d"
    # Read current
    curl -s "$BASE/state/tokenDocs" -H "Authorization: Bearer $ANON"
    # Write new (full {color,size,typography} payload)

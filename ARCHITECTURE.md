@@ -55,6 +55,7 @@ The table summarises known places where data can silently diverge between code p
 | `NaNpx` / `undefined` values leak into published CSS | §3a token pipeline | `sizeRowsToFlat` filters non-finite values; byte-identical CI test would catch any reintroduction |
 | Multi-scope font tokens emit wrong CSS unit | §3a token pipeline | `flattenFont` and `fontRowsToFlat` both read full `com.figma.scopes` array (regression fix PR #36) |
 | In-repo `public/icons/` snapshot drifts from Supabase when designer uploads via CMS | §3e icon pipeline | `public/icons/`, `icons.json`, `icons.index.json` are gitignored (PR #50). Regenerated on every dev start and CI build from Supabase. |
+| CMS "login" is a **frontend gate only** — the public write API stays open | §CMS authentication | None. Documented trade-off (decision #9). Add an edge-function token check on mutating routes for real protection. |
 
 ## Substantial-PR checklist
 
@@ -66,6 +67,37 @@ For any PR over ~500 LOC or touching a load-bearing source file:
 - [ ] **Migrations**: am I renaming or reshaping a persisted field? If yes, the migration goes in this PR, not a follow-up. Comment it `// Migration: shape X used before PR #N.`
 - [ ] **Deploy topology**: am I adding a new runtime artifact? If yes, it needs its own auto-deploy.
 - [ ] **AI-authored only**: when AI authors a substantial PR, the prompt should include: *"Before opening the PR, re-read this file and CLAUDE.md and check whether any instructions would become misleading."*
+
+## CMS authentication (frontend gate)
+
+The CMS pages under `/cms/*` are gated by a Google Workspace sign-in (Supabase
+Auth, Google provider). It is a **frontend gate only**: it hides the CMS UI from
+non-`@arcsite.com` users but does **not** protect the edge-function write API,
+which still accepts the public anon/publishable key as Bearer. Anyone with that
+public key can still `curl` a write. Real protection would mean verifying the
+user's identity in `make-server-067f252d/index.ts` on mutating routes — see
+[decision #9](.claude/decisions.md) for the trade-off.
+
+Flow:
+
+- `utils/supabase/client.ts` — browser Supabase client (auth only; data still
+  flows through `src/app/store/api.ts`). Always targets the cloud project.
+- `utils/supabase/allowlist.ts` — `isAllowedEmail()`; allowed domains/emails
+  from `VITE_CMS_ALLOWED_DOMAINS` / `VITE_CMS_ALLOWED_EMAILS` (default
+  `arcsite.com`).
+- `src/app/store/data-store.tsx` — an effect mirrors the Supabase session into
+  the existing `isAuthenticated` / `currentUser` fields; non-allowed accounts
+  are signed straight back out. `loginWithGoogle()` starts the redirect;
+  `logout()` calls `supabase.auth.signOut()`.
+- `src/app/pages/cms/LoginPage.tsx` — "Sign in with Google" button.
+- Every CMS page keeps its `if (!isAuthenticated) <Navigate to="/cms/login">`
+  guard unchanged.
+
+Provider config (Supabase dashboard + Google Cloud OAuth client) lives outside
+the repo — the Google client secret is never committed. The retired
+username/password machinery (`editors` KV slot, `addUser` etc.,
+`AccountManager.tsx`) is now dead code: `AccountManager` is unrouted, and the
+slot/helpers remain only to avoid a wider refactor.
 
 ## Article model — MD-canonical for token docs
 

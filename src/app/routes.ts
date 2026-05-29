@@ -69,7 +69,8 @@ export const router = createBrowserRouter([
           { path: "cms/icon-editor/article", lazy: lazyComponent(() => import("./pages/cms/IconEditor"), "IconArticleEditor") },
           { path: "cms/patterns-editor", lazy: lazyComponent(() => import("./pages/cms/PatternsEditor"), "PatternsEditor") },
           { path: "cms/patterns-editor/:id/edit", lazy: lazyComponent(() => import("./pages/cms/PatternArticleEditor"), "PatternArticleEditor") },
-          { path: "cms/accounts", lazy: lazyComponent(() => import("./pages/cms/AccountManager"), "AccountManager") },
+          // cms/accounts (username/password editor management) retired — auth is
+          // now Google Workspace via Supabase Auth. See .claude/decisions.md #9.
           { path: "admin/data-cleanup", lazy: lazyComponent(() => import("./components/admin/DataCleanup"), "DataCleanup") },
         ],
       },
