@@ -371,14 +371,14 @@ export function AppLayout() {
           </nav>
         </ScrollArea>
 
-        {/* Footer — CMS entry. Only rendered for signed-in maintainers; everyone
-            else sees no entry at all (they can browse the public site without an
-            account). Maintainers reach the login by visiting /cms/login directly. */}
-        {isAuthenticated && (
-          <div
-            className={`shrink-0 border-t border-border bg-secondary ${sidebarOpen ? "px-3 pt-[13px] pb-3" : "p-1.5"}`}
-          >
-            {sidebarOpen ? (
+        {/* Footer — CMS entry. The login link is visible to everyone (it's not
+            a secret — the email allowlist is the real gate, not hiding the
+            button). Signed-in maintainers see the dashboard + sign-out instead. */}
+        <div
+          className={`shrink-0 border-t border-border bg-secondary ${sidebarOpen ? "px-3 pt-[13px] pb-3" : "p-1.5"}`}
+        >
+          {isAuthenticated ? (
+            sidebarOpen ? (
               <div className="space-y-1">
                 <div
                   className="flex items-center gap-2 px-3 py-1.5 text-muted-foreground"
@@ -436,9 +436,34 @@ export function AppLayout() {
                   </Tooltip>
                 </div>
               </TooltipProvider>
-            )}
-          </div>
-        )}
+            )
+          ) : (
+            sidebarOpen ? (
+              <Link
+                to="/cms/login"
+                className="flex items-center gap-3 h-[41.5px] px-3 rounded-[var(--radius-card)] text-foreground transition-colors hover:bg-sidebar-accent/50"
+                style={{ fontSize: "var(--text-p)" }}
+              >
+                <LibraryIcon name="lock" size={24} />
+                <span>CMS Login</span>
+              </Link>
+            ) : (
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to="/cms/login"
+                      className="flex items-center justify-center p-2 rounded-[var(--radius-card)] text-foreground transition-colors hover:bg-sidebar-accent/50"
+                    >
+                      <LibraryIcon name="lock" size={24} />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">CMS Login</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )
+          )}
+        </div>
       </aside>
 
       {/* Main area */}

@@ -132,10 +132,12 @@ choice was made explicitly (the alternative was backend enforcement).
   `login(user,pass)` → `loginWithGoogle()`; `logout()` → `supabase.auth.signOut()`.
 - `src/app/pages/cms/LoginPage.tsx` — "Sign in with Google" button.
 - `cms/accounts` route + dashboard tile removed; `AccountManager.tsx` orphaned.
-- **No visible CMS entry for non-signed-in users**: the sidebar footer "CMS
-  Login" link in `AppLayout.tsx` is gone — the footer only renders when
-  `isAuthenticated`. Maintainers reach the login by visiting `/cms/login`
-  directly (the route still exists); everyone else never sees an entry.
+- The sidebar footer "CMS Login" link in `AppLayout.tsx` is **visible to
+  everyone** — the login entry is not a secret. Hiding it from signed-out users
+  was tried and reverted: it's a chicken-and-egg (you can't tell who someone is
+  before they log in) that only inconveniences the real maintainers while a
+  determined visitor still has the `/cms/login` URL. The **email allowlist is
+  the gate**, not button-hiding. Signed-in maintainers see dashboard + sign-out.
 
 **Why frontend-only:** quickest path that matches the existing gate (which was
 also client-side). The KV write API was already open to anyone holding the
