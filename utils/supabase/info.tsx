@@ -14,9 +14,13 @@
 // via regex (and also read these same VITE_* vars from process.env). Keep
 // each fallback as a plain quoted string literal.
 
+// Fallback literals match the committed `.env` (the dnfzdqyiepjzqrigpvzw
+// project + its publishable key). They exist only so a missing `.env` / unset
+// env var still points at the right project rather than nowhere — `.env` and
+// Amplify remain the real source of truth. Keep them in sync with `.env`.
 export const projectId =
-  import.meta.env.VITE_SUPABASE_PROJECT_ID || "qcqtnrrprgqlckzywnkt"
+  import.meta.env.VITE_SUPABASE_PROJECT_ID || "dnfzdqyiepjzqrigpvzw"
 
 export const publicAnonKey =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjcXRucnJwcmdxbGNrenl3bmt0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzA4MTUsImV4cCI6MjA4OTIwNjgxNX0.ar0WljUDjGToELURy8JZkrPSroCuBe7GjLRcLMko1Rk"
+  "sb_publishable_AbBNYAJCE4TWCWux_7WYkA_sSM9CMvY"

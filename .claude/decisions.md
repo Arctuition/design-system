@@ -76,16 +76,24 @@ from Vite env vars with the previous committed values as fallback:
 
 ```typescript
 export const projectId =
-  import.meta.env.VITE_SUPABASE_PROJECT_ID || "qcqtnrrprgqlckzywnkt"
+  import.meta.env.VITE_SUPABASE_PROJECT_ID || "dnfzdqyiepjzqrigpvzw"
 export const publicAnonKey =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJ…legacy-anon-JWT…"
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_…"
 ```
 
-The per-environment values live in a committed `.env` (the new production
+The per-environment values live in a committed `.env` (the production
 **publishable** key `sb_publishable_…` is there). Production deploys via AWS
 Amplify; set the same `VITE_SUPABASE_*` names in Amplify's env-var settings to
 override at deploy time — Vite gives real host env vars priority over `.env`,
 which has priority over the fallback literals.
+
+**Project moved (decision #10):** the canonical Supabase project is now
+`dnfzdqyiepjzqrigpvzw` (was `qcqtnrrprgqlckzywnkt`). The fallback literals here
+and in `info.tsx` track `.env`. The edge-function deploy target is driven by the
+`SUPABASE_PROJECT_REF` GitHub repo variable (default `dnfzdqyiepjzqrigpvzw`), not
+a hard-coded ref. Edge runtime code is project-agnostic (it reads
+`Deno.env.get("SUPABASE_URL")`), and all front-end URLs interpolate `projectId`,
+so switching projects is now an env/`.env` change, not a code edit.
 
 **Why:** Prod moved to AWS Amplify and the key had to be swappable per deploy
 without editing source. Publishable/anon keys are public (they ship in the
@@ -142,6 +150,34 @@ real, add a token check on mutating routes in `make-server-067f252d/index.ts`
 **Note:** the Supabase project + publishable key now come from `.env`
 (decision #8), so this targets whatever project `VITE_SUPABASE_PROJECT_ID`
 points at. The Google provider must be configured on that same project.
+
+---
+
+## 10. Canonical Supabase project moved to `dnfzdqyiepjzqrigpvzw`
+**Decision:** The production Supabase project is now `dnfzdqyiepjzqrigpvzw`
+(was `qcqtnrrprgqlckzywnkt`). Nothing about the project is hard-coded in
+shippable code:
+
+- **Front-end** — every Supabase URL interpolates `projectId` from
+  `utils/supabase/info.tsx`, which reads `VITE_SUPABASE_PROJECT_ID` (`.env` /
+  Amplify) with a fallback literal that tracks `.env`.
+- **Edge runtime** (`kv_store.ts`, `storage.ts`, `design-tokens-storage.ts`) —
+  project-agnostic already; reads `Deno.env.get("SUPABASE_URL")`, which Supabase
+  injects per deployed project. No change needed to switch projects.
+- **CI deploy** (`.github/workflows/deploy-edge-functions.yml`) — target is the
+  `SUPABASE_PROJECT_REF` GitHub **repo variable** (default
+  `dnfzdqyiepjzqrigpvzw`), so the deploy project is config, not a code edit.
+
+So switching projects again = change `.env` / Amplify var / the repo variable.
+The only remaining literals are fallbacks (info.tsx, decisions #8 example) +
+doc references, all marked as tracking `.env`.
+
+**Migration cost (one-time, per move):** the new project starts empty —
+`supabase db push` (KV table) + `supabase functions deploy` + copy the 13
+`STATE_KEYS` from the old project's KV + re-upload Storage assets (pattern
+images live at absolute `<old-ref>.supabase.co` URLs until re-published). Keep
+the old project alive until Storage is migrated. The Google auth provider must
+be configured on the new project (decision #9).
 
 ---
 

@@ -89,12 +89,12 @@ In dev mode, the app automatically routes API calls to `http://127.0.0.1:54321` 
 
 ⚠️ **Historical framing — still true for the runtime CMS / public website, but NOT for the AI-agent fetch path:** `tokens/tokens-color.md`, `tokens/tokens-size-space.md`, `tokens/tokens-typography.md` are NOT the source of truth for the public website pages. They're a seed for those.
 
-The canonical for the **public website + CMS** lives in KV (`tokenDocs.{color,size,typography}`) and is published to Supabase Storage by the same `/design-tokens/publish` endpoint that publishes `bootstrap.css`. Before decision #7, `public/llms.txt` pointed AI agents at those Storage URLs (it no longer does):
+The canonical for the **public website + CMS** lives in KV (`tokenDocs.{color,size,typography}`) and is published to Supabase Storage by the same `/design-tokens/publish` endpoint that publishes `bootstrap.css`. Before decision #7, `public/llms.txt` pointed AI agents at those Storage URLs (it no longer does). `<ref>` below is the Supabase project ref (`VITE_SUPABASE_PROJECT_ID` in `.env` — currently `dnfzdqyiepjzqrigpvzw`; see decisions.md #10):
 
 ```
-https://qcqtnrrprgqlckzywnkt.supabase.co/storage/v1/object/public/design-tokens/tokens-color.md
-https://qcqtnrrprgqlckzywnkt.supabase.co/storage/v1/object/public/design-tokens/tokens-size-space.md
-https://qcqtnrrprgqlckzywnkt.supabase.co/storage/v1/object/public/design-tokens/tokens-typography.md
+https://<ref>.supabase.co/storage/v1/object/public/design-tokens/tokens-color.md
+https://<ref>.supabase.co/storage/v1/object/public/design-tokens/tokens-size-space.md
+https://<ref>.supabase.co/storage/v1/object/public/design-tokens/tokens-typography.md
 ```
 
 To edit these docs, do NOT make a PR to `tokens/*.md`. Instead:
@@ -102,8 +102,9 @@ To edit these docs, do NOT make a PR to `tokens/*.md`. Instead:
 1. **Via the CMS** (preferred when the change is human-authored): open `/cms`, navigate to the Markdown editor for the target doc, edit, Save (writes KV via `setTokenDoc`), then click "Publish to Production" (mirrors KV → Storage).
 2. **Via curl** (for scripted / batch updates):
    ```bash
-   ANON=<from utils/supabase/info.tsx>
-   BASE="https://qcqtnrrprgqlckzywnkt.supabase.co/functions/v1/make-server-067f252d"
+   ANON=<publishable key from .env / utils/supabase/info.tsx>
+   REF=<VITE_SUPABASE_PROJECT_ID from .env>   # currently dnfzdqyiepjzqrigpvzw
+   BASE="https://$REF.supabase.co/functions/v1/make-server-067f252d"
    # Read current
    curl -s "$BASE/state/tokenDocs" -H "Authorization: Bearer $ANON"
    # Write new (full {color,size,typography} payload)
