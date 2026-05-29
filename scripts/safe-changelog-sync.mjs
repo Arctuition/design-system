@@ -37,11 +37,19 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const APPLY = process.argv.includes("--apply");
 
-// Pull project id + anon key from the committed info file — these are
-// the public front-end values, fine to read at build time.
+// Pull project id + anon key — these are the public front-end values, fine
+// to read at build time. Prefer the VITE_* env vars (set by AWS Amplify at
+// deploy time, or by a local `.env`); otherwise fall back to the committed
+// literals in info.tsx. The regex matches both the plain literal form
+// (`projectId = "..."`) and the env-fallback form
+// (`projectId = import.meta.env.X || "..."`).
 const INFO_SRC = readFileSync(resolve(ROOT, "utils/supabase/info.tsx"), "utf-8");
-const PROJECT_ID = INFO_SRC.match(/projectId\s*=\s*"([^"]+)"/)?.[1];
-const ANON = INFO_SRC.match(/publicAnonKey\s*=\s*"([^"]+)"/)?.[1];
+const PROJECT_ID =
+  process.env.VITE_SUPABASE_PROJECT_ID ||
+  INFO_SRC.match(/projectId\s*=[^"]*"([^"]+)"/)?.[1];
+const ANON =
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  INFO_SRC.match(/publicAnonKey\s*=[^"]*"([^"]+)"/)?.[1];
 if (!PROJECT_ID || !ANON) {
   throw new Error("Could not read projectId / publicAnonKey from utils/supabase/info.tsx");
 }
