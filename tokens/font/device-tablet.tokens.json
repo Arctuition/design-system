@@ -122,7 +122,7 @@
       "title": {
         "large": {
           "$type": "number",
-          "$value": 34,
+          "$value": 26,
           "$extensions": {
             "com.figma.variableId": "VariableID:10340:4896",
             "com.figma.scopes": [
@@ -312,6 +312,90 @@
             "ALL_SCOPES"
           ],
           "com.figma.isOverride": true
+        }
+      }
+    },
+    "line-height": {
+      "single": {
+        "$type": "number",
+        "$value": 1.0,
+        "$extensions": {
+          "com.figma.scopes": ["LINE_HEIGHT"],
+          "com.figma.description": "Table cells"
+        }
+      },
+      "tight": {
+        "$type": "number",
+        "$value": 1.15,
+        "$extensions": {
+          "com.figma.scopes": ["LINE_HEIGHT"],
+          "com.figma.description": "H1 / H2 / H3 / blockTitle"
+        }
+      },
+      "normal": {
+        "$type": "number",
+        "$value": 1.5,
+        "$extensions": {
+          "com.figma.scopes": ["LINE_HEIGHT"],
+          "com.figma.description": "Body / BodySmall / label / caption"
+        }
+      },
+      "loose": {
+        "$type": "number",
+        "$value": 1.75,
+        "$extensions": {
+          "com.figma.scopes": ["LINE_HEIGHT"],
+          "com.figma.description": "Quote"
+        }
+      },
+      "double": {
+        "$type": "number",
+        "$value": 2.0,
+        "$extensions": {
+          "com.figma.scopes": ["LINE_HEIGHT"],
+          "com.figma.description": "Editor user override only"
+        }
+      }
+    },
+    "paragraph-spacing": {
+      "h1": {
+        "$type": "number",
+        "$value": 16,
+        "$extensions": {
+          "com.figma.scopes": ["GAP"],
+          "com.figma.description": "Paragraph spacing after H1"
+        }
+      },
+      "h2": {
+        "$type": "number",
+        "$value": 12,
+        "$extensions": {
+          "com.figma.scopes": ["GAP"],
+          "com.figma.description": "Paragraph spacing after H2"
+        }
+      },
+      "h3": {
+        "$type": "number",
+        "$value": 8,
+        "$extensions": {
+          "com.figma.scopes": ["GAP"],
+          "com.figma.description": "Paragraph spacing after H3"
+        }
+      },
+      "body": {
+        "$type": "number",
+        "$value": 6,
+        "$extensions": {
+          "com.figma.scopes": ["GAP"],
+          "com.figma.description": "Paragraph spacing after body text"
+        }
+      },
+      "body-small": {
+        "$type": "number",
+        "$value": 4,
+        "$extensions": {
+          "com.figma.scopes": ["GAP"],
+          "com.figma.description": "Paragraph spacing after small body text"
         }
       }
     }

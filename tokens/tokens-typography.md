@@ -93,8 +93,9 @@ All weights are mode-invariant.
 | ------------------------ | ----------- | ---------- | ------------- | ------------- |
 | `font/size/title/small`  | 16          | 16         | 17            | 17            |
 | `font/size/title/medium` | 24          | 20         | 28            | 22            |
-| `font/size/title/large`  | 32          | 28         | 34            | 28            |
+| `font/size/title/large`  | 26          | 26         | 26            | 26            |
 
+> v4.13 change: `title/large` unified to 26pt across all modes (previously 32/28/34/28).
 
 ### Title line-heights
 
@@ -107,6 +108,38 @@ All weights are mode-invariant.
 
 
 > Migration note: these size tokens previously lived in the `size` collection as `size/font/...`. Migrated to `font/size/...` on 2026-04-28 so all typography primitives sit in one collection. All `font/*` text styles re-bound; old tokens deleted.
+
+### Line height scale (v4.13+ — unitless multipliers, Google-aligned)
+
+New semantic line-height tokens using unitless multipliers. These are mode-independent (same value across all platforms) and should be used for new work instead of the per-size px values above.
+
+
+| Token                  | Value | Role                              |
+| ---------------------- | ----- | --------------------------------- |
+| `font/line-height/single` | 1.0   | Table cells                       |
+| `font/line-height/tight`  | 1.15  | H1 / H2 / H3 / blockTitle         |
+| `font/line-height/normal` | 1.5   | Body / BodySmall / label / caption |
+| `font/line-height/loose`  | 1.75  | Quote                             |
+| `font/line-height/double` | 2.0   | Editor user override only         |
+
+
+> v4.13 migration: deleted `relaxed (1.55)` and `small (1.4)` — v3 remnants.
+
+### Paragraph spacing (v4.13+ — unified across all 3 styles)
+
+Paragraph spacing tokens are now unified across Simple, Modern, and Classic styles (previously each style had different values). These use the original Simple values, which were the mean of all three.
+
+
+| Token                          | Value (pt) | Role                          |
+| ------------------------------ | ---------- | ----------------------------- |
+| `font/paragraph-spacing/h1`    | 16         | Paragraph spacing after H1    |
+| `font/paragraph-spacing/h2`    | 12         | Paragraph spacing after H2    |
+| `font/paragraph-spacing/h3`    | 8          | Paragraph spacing after H3    |
+| `font/paragraph-spacing/body`  | 6          | Paragraph spacing after body  |
+| `font/paragraph-spacing/body-small` | 4     | Paragraph spacing after small body |
+
+
+> v4.13 benefit: users switching styles no longer see layout jumps; custom content reuses cleanly across styles.
 
 ---
 
@@ -250,9 +283,9 @@ Use this for migration. Sizes are now close enough that the `device-tablet` mode
 | `app/title-medium`                     | `font/title-medium`                     | 24                    | 28 ✓                    |
 | `app/title-medium-semibold`            | `font/title-medium-semibold`            | 24                    | 28 ✓                    |
 | `app/title-medium-extra-bold`          | `font/title-medium-extrabold`           | 24                    | 28 ✓                    |
-| `app/title-large`                      | `font/title-large`                      | 32                    | 34 ✓                    |
-| `app/title-large-semibold`             | `font/title-large-semibold`             | 32                    | 34 ✓                    |
-| `app/title-large-extrabold`            | `font/title-large-extrabold`            | 32                    | 34 ✓                    |
+| `app/title-large`                      | `font/title-large`                      | 26                    | 26 ✓                    |
+| `app/title-large-semibold`             | `font/title-large-semibold`             | 26                    | 26 ✓                    |
+| `app/title-large-extrabold`            | `font/title-large-extrabold`            | 26                    | 26 ✓                    |
 
 
 > The `app/*` set used Roboto; `font/*` uses Inter on web and SF Pro on device. There will be a visible glyph shift after migration — most noticeable on titles. Plan a screenshot pass after the swap.
@@ -262,7 +295,8 @@ Use this for migration. Sizes are now close enough that the `device-tablet` mode
 ## 5. Implementation notes
 
 - Letter spacing on `font/*` body and header styles is implicit zero. Only the title styles (medium / large) have a letter-spacing token bound, and only on the web modes (-1.05 / -0.45). Device modes zero them out.
-- Line heights are in **pixels**, not unitless multipliers. When emitting CSS, output as `line-height: 22px` (not `1.375`).
+- **Line heights (v4.13+):** Use the new unitless `font/line-height/*` tokens (`single`/`tight`/`normal`/`loose`/`double`) for new work. The legacy per-size px values remain for backwards compatibility.
+- Line heights (legacy): The per-size line-height values are in **pixels**, not unitless multipliers. When emitting CSS, output as `line-height: 22px` (not `1.375`).
 - For web work, load Inter weights 400 / 500 / 600 / 800 (medium is needed for `header-tiny-medium-upper-case`). Add 700 / 900 if you start using bold or black weights.
 - For native, SF Pro Text and SF Pro Display ship with iOS/macOS — no font loading needed.
 - `textCase: UPPER` lives on the text style itself in Figma, not on a variable. In CSS, `text-transform: uppercase`.
@@ -294,7 +328,7 @@ Use this for migration. Sizes are now close enough that the `device-tablet` mode
   /* Title sizes (web-desktop) */
   --font-size-title-small: 16px;
   --font-size-title-medium: 24px;
-  --font-size-title-large: 32px;
+  --font-size-title-large: 26px;
   --font-size-title-lh-small: 22px;
   --font-size-title-lh-medium: 30px;
   --font-size-title-lh-large: 40px;
@@ -302,6 +336,20 @@ Use this for migration. Sizes are now close enough that the `device-tablet` mode
   /* Letter spacing */
   --font-letter-spacing-title-medium: -0.45px;
   --font-letter-spacing-title-large: -1.05px;
+
+  /* Line height scale (v4.13+ — unitless, Google-aligned) */
+  --font-line-height-single: 1;
+  --font-line-height-tight: 1.15;
+  --font-line-height-normal: 1.5;
+  --font-line-height-loose: 1.75;
+  --font-line-height-double: 2;
+
+  /* Paragraph spacing (v4.13+ — unified across styles) */
+  --font-paragraph-spacing-h1: 16px;
+  --font-paragraph-spacing-h2: 12px;
+  --font-paragraph-spacing-h3: 8px;
+  --font-paragraph-spacing-body: 6px;
+  --font-paragraph-spacing-body-small: 4px;
 }
 
 /* Semantic */
