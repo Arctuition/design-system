@@ -422,3 +422,76 @@ export function extractBreakpointPxFromRows(rows) {
   }
   return out;
 }
+
+// ── KV state → bootstrap.css / breakpoints.js (single source of truth) ───────
+//
+// Converts the CMS KV token slots (the shape returned by GET /state) into the
+// two generated artifacts. This is the ONE reconstruction used by every
+// producer:
+//   • the edge function's POST /design-tokens/publish (KV → Storage), and
+//   • the prebuild script scripts/generate-llms-txt.mjs (KV → static site),
+// so the published CSS can never drift between the two. The byte-identical
+// test (scripts/test-bootstrap-byte-identical.mjs) pins this against the
+// repo-JSON path.
+//
+// `state` is `{ colorTokens, sizeTokens, fontTokens, breakpointTokens }` —
+// each slot the CMS shape: colorTokens.{global,semanticLight,semanticDark},
+// sizeTokens.{global,webMobile,webTablet,webDesktop,webDesktopLarge,
+// deviceMobile,deviceTablet}, fontTokens.{webDesktop,webMobile,deviceMobile,
+// deviceTablet}, breakpointTokens.tokens.
+
+/** Reduce the KV token slots to the flat input `buildBootstrapCss` expects. */
+export function kvStateToBootstrapInput({ colorTokens, sizeTokens, fontTokens, breakpointTokens }) {
+  if (!colorTokens || !sizeTokens || !breakpointTokens) {
+    throw new Error("kvStateToBootstrapInput: missing colorTokens / sizeTokens / breakpointTokens");
+  }
+  const globalColor = colorRowsToFlat(colorTokens.global);
+  const lightTokens = colorRowsToFlat(colorTokens.semanticLight);
+  const darkTokens  = colorRowsToFlat(colorTokens.semanticDark);
+
+  const sizeGlobal          = sizeRowsToFlat(sizeTokens.global);
+  const sizeWebMobile       = sizeRowsToFlat(sizeTokens.webMobile);
+  const sizeWebTablet       = sizeRowsToFlat(sizeTokens.webTablet);
+  const sizeWebDesktop      = sizeRowsToFlat(sizeTokens.webDesktop);
+  const sizeWebDesktopLarge = sizeRowsToFlat(sizeTokens.webDesktopLarge);
+  const sizeDeviceMobile    = sizeRowsToFlat(sizeTokens.deviceMobile);
+  const sizeDeviceTablet    = sizeRowsToFlat(sizeTokens.deviceTablet);
+
+  const breakpoints  = sizeRowsToFlat(breakpointTokens.tokens);
+  const breakpointPx = extractBreakpointPxFromRows(breakpointTokens.tokens);
+
+  // Typography: prefer web-desktop slot, fall back to web-mobile if only one
+  // mode was uploaded. Mirrors the publish endpoint + prebuild (desktop only).
+  const fontDesktop = fontRowsToFlat(
+    fontTokens?.webDesktop?.length ? fontTokens.webDesktop : fontTokens?.webMobile ?? []
+  );
+  const fontDeviceMobile = fontRowsToFlat(fontTokens?.deviceMobile ?? []);
+  const fontDeviceTablet = fontRowsToFlat(fontTokens?.deviceTablet ?? []);
+
+  return {
+    globalColor,
+    lightTokens,
+    darkTokens,
+    sizeGlobal,
+    breakpoints,
+    sizeWebMobile,
+    sizeTabletDiff:       diffFromBase(sizeWebMobile, sizeWebTablet),
+    sizeDesktopDiff:      diffFromBase(sizeWebMobile, sizeWebDesktop),
+    sizeDesktopLargeDiff: diffFromBase(sizeWebMobile, sizeWebDesktopLarge),
+    fontDesktop,
+    breakpointPx,
+    sizeDeviceMobileDiff: diffFromBase(sizeWebMobile, sizeDeviceMobile),
+    sizeDeviceTabletDiff: diffFromBase(sizeWebMobile, sizeDeviceTablet),
+    fontDeviceMobileDiff: diffFromBase(fontDesktop, fontDeviceMobile, "value"),
+    fontDeviceTabletDiff: diffFromBase(fontDesktop, fontDeviceTablet, "value"),
+  };
+}
+
+/** Build both artifacts from KV state: `{ bootstrapCss, breakpointsJs }`. */
+export function buildArtifactsFromKvState(state) {
+  const input = kvStateToBootstrapInput(state);
+  return {
+    bootstrapCss: buildBootstrapCss(input),
+    breakpointsJs: buildBreakpointsJs(input.breakpointPx),
+  };
+}

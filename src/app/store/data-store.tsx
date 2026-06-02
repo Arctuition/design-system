@@ -420,6 +420,20 @@ const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
     date: "2026-05-29",
+    version: "1.16.0",
+    title: "Token CSS rebuilds from the CMS automatically",
+    description: `Editing tokens in the CMS now updates the published \`bootstrap.css\` and token docs on its own — no code change or PR needed.
+
+**What changed**
+- The site build now reads the **live token state from the CMS** and generates \`bootstrap.css\`, \`breakpoints.js\`, and the token reference docs from it. Previously it built from a copy committed in the repo, so CMS edits didn't reach the published files until someone hand-edited that copy and opened a PR.
+- "Publish to Production" now also kicks off a site rebuild, so a token change goes live within a minute or two.
+
+**Why**
+- The published CSS had silently fallen behind the CMS — it was missing several color tokens designers had added (the \`*-tertiary\` fill colors). Reading straight from the CMS makes it the single source of truth again, while keeping everything served from our own domain.`,
+  },
+  {
+    id: uid(),
+    date: "2026-05-29",
     version: "1.15.0",
     title: "CMS sign-in moved to Google Workspace",
     description: `The CMS now uses Google sign-in instead of a username/password.

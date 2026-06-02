@@ -1028,10 +1028,31 @@ app.post("/make-server-067f252d/design-tokens/publish", async (c) => {
       bytes[r.key] = r.bytes;
     }
 
+    // Trigger a static-site rebuild so the token change reaches the public site
+    // (decision #11): the prebuild reads token state from KV and regenerates the
+    // self-contained bootstrap.css / breakpoints.js / token MDs served from
+    // design-system.arcsite.com. Set AMPLIFY_BUILD_HOOK_URL (Supabase edge
+    // function secret) to the Amplify incoming build webhook. The Storage
+    // uploads above are now vestigial — the static site, not Storage, is what
+    // consumers fetch (decision #7). Best-effort: a hook failure never fails the
+    // publish, and an unset hook just skips (e.g. local dev).
+    let rebuild: { triggered: boolean; status?: number; error?: string } = { triggered: false };
+    const hookUrl = Deno.env.get("AMPLIFY_BUILD_HOOK_URL");
+    if (hookUrl) {
+      try {
+        const r = await fetch(hookUrl, { method: "POST" });
+        rebuild = { triggered: r.ok, status: r.status };
+        if (!r.ok) rebuild.error = `hook HTTP ${r.status}`;
+      } catch (e) {
+        rebuild = { triggered: false, error: (e as Error).message };
+      }
+    }
+
     return c.json({
       ok: true,
       urls,
       bytes,
+      rebuild,
       publishedAt: new Date().toISOString(),
     });
   } catch (err) {

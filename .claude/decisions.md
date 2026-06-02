@@ -219,3 +219,54 @@ reaches agents until repo `tokens/*.md` is re-synced and the site redeploys.
 See the §3d / drift-risk notes in `ARCHITECTURE.md` and the
 "Token reference MDs" banner in `CLAUDE.md`. (Repo and KV were byte-identical
 as of 2026-05-27.)
+
+> **Partly superseded by #11:** the prebuild now reads token state (and the
+> token MDs) from **live KV**, not repo files. So a CMS edit *does* reach agents
+> on the next deploy — repo `tokens/*` is only an offline fallback now. The
+> static-not-Supabase serving decision from #7 still stands.
+
+---
+
+## 11. Build reads token state from live KV; CMS Publish triggers a rebuild
+
+**Decision:** The prebuild (`scripts/generate-llms-txt.mjs`) fetches the token
+state from Supabase KV (`GET /state`) and generates `bootstrap.css` /
+`breakpoints.js` / `tokens-*.md` from it via the shared
+`buildArtifactsFromKvState` helper in `_shared/token-generators.mjs`. Committed
+`tokens/*.json` + `tokens/*.md` are now an **offline fallback** only (used when
+Supabase is unreachable at build time, or when forced with `BUILD_FROM_REPO=1`;
+the byte-identical parity test also stays on the repo path). The CMS
+"Publish to Production" endpoint (`POST /design-tokens/publish`) additionally
+POSTs to an Amplify incoming build webhook (`AMPLIFY_BUILD_HOOK_URL`, an edge
+secret) to trigger that rebuild.
+
+**Why:** After #7 made the served artifacts static (built from repo files),
+token edits made via the CMS no longer reached the site without a hand-edit of
+`tokens/*.json` + a PR — and they silently drifted: when this was built, live
+KV already had **6 tokens the repo JSON was missing** (`color-fill-*-tertiary`
+×5 + `size-comp-button-padding-horizontal-xl`), so the live site was serving
+stale CSS. Reading from KV makes KV the single source of truth again and a
+designer's Publish reaches the public site on the next deploy — **without
+reintroducing the egress problem #7 fixed**, because the artifacts are still
+self-contained static files served from `design-system.arcsite.com` (the build,
+running in Amplify CI, is not behind the org egress allowlist, so it can read
+Supabase freely). This is the egress-clean alternative to reverting #7 and
+serving CSS live from Supabase Storage (which would re-break agents behind the
+allowlist).
+
+**Trade-off:** A token change goes live on the next build (~1–2 min) rather
+than instantly. Acceptable; the instant path required serving from Supabase,
+which is what #7 had to stop doing.
+
+**External config required (not in the repo):**
+1. AWS Amplify → App settings → Build settings → **Incoming webhooks** → create
+   a build hook → copy its URL.
+2. Supabase → Edge Functions → `make-server-067f252d` → Secrets → set
+   `AMPLIFY_BUILD_HOOK_URL` to that URL. Until set, Publish still works (writes
+   Storage + KV) but does not auto-rebuild — `rebuild.triggered` is `false` in
+   the response.
+
+**Keep in sync:** the reconstruction lives once in `buildArtifactsFromKvState`.
+If you change token KV shapes or the bootstrap template, re-run
+`npm run test:bootstrap`. Optionally re-sync repo `tokens/*` from KV
+periodically so the offline fallback doesn't drift far.

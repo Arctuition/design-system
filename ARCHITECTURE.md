@@ -49,7 +49,7 @@ The table summarises known places where data can silently diverge between code p
 | Edge function source updated but not deployed | §5 deploy topology | `.github/workflows/deploy-edge-functions.yml` auto-deploys on `supabase/functions/**` push to main |
 | Client adds a new KV slot without registering on server → silent 400 → swallowed | §3 KV state sync | `supabase/functions/_shared/state-keys.mjs` is the single source; `assertValidStateKey` runs on client outbound |
 | Schema rename inside a slot payload drops old-shape data on upgrade | §3 KV state sync | Migration code lives in `buildStateFromServer`; never delete a migration branch |
-| Repo `tokens/*.md` and canonical KV `tokenDocs` diverge silently | §3d token reference MD docs | None automated yet — only the discipline documented in CLAUDE.md. **Open follow-up.** |
+| Repo `tokens/*` (fallback) drifts from canonical KV | §3a/§3d token pipeline | Mostly mooted by decision #11 — the build reads **live KV**, so KV-vs-repo drift no longer affects what ships (repo is offline fallback only). Residual: if Supabase is down at build time the fallback ships stale values. Re-sync repo `tokens/*` from KV occasionally. |
 | Bundled `tokens/*.json` and KV diverge | §3a token pipeline | Public token pages prefer KV via `useAppData()` since PR #32; the bundled JSON is fallback only |
 | Meta-docs (this file, CLAUDE.md) go stale after architecture changes | this whole document | `.github/workflows/docs-drift-check.yml` advisory comment; PR template architectural-impact checklist; CLAUDE.md substantial-PR rule |
 | `NaNpx` / `undefined` values leak into published CSS | §3a token pipeline | `sizeRowsToFlat` filters non-finite values; byte-identical CI test would catch any reintroduction |
@@ -169,7 +169,7 @@ The HTML slots that used to exist for `sizeArticle` / `colorArticle` / `typograp
 │  │   <slug>/<filename>.png                                   │      │
 │  │   _inline/<articleKey>/<sha256>.<ext>                     │      │
 │  │                                                           │      │
-│  │ design-tokens/    (proposed — new bucket)                 │      │
+│  │ design-tokens/    (exists; now VESTIGIAL — see #7/#11)    │      │
 │  │   bootstrap.css                                           │      │
 │  │   breakpoints.js                                          │      │
 │  │   size-tokens.zip                                         │      │
@@ -232,17 +232,12 @@ The HTML slots that used to exist for `sizeArticle` / `colorArticle` / `typograp
                        └────────────────────────────────────┘
 ```
 
-> **Superseded by `.claude/decisions.md` #7 (2026-05-27).** Prebuild no longer
-> emits a shim, and `llms.txt` no longer points agents at Supabase Storage for
-> token artifacts — `bootstrap.css` / `breakpoints.js` / `tokens-*.md` are now
-> served self-contained from the static site (`design-system.arcsite.com/tokens/…`).
-> The CMS-publish-to-Storage path below still runs for the public React pages,
-> but it is no longer the agent-facing canonical. (A fuller rewrite of this map
-> is a follow-up PR.)
+> **Current model — decisions `.claude/decisions.md` #7 + #11 (the diagram above is the old Storage-served model).**
+> - **#7:** the served artifacts (`bootstrap.css` / `breakpoints.js` / `tokens-*.md`) are **self-contained static files on `design-system.arcsite.com`**, not served live from Supabase Storage (egress-clean; no `@import` shim).
+> - **#11:** the prebuild **reads token state from live KV** (`GET /state`) and generates those static files via `buildArtifactsFromKvState`. KV is the single source of truth; **CMS Publish triggers an Amplify rebuild** so a token edit reaches the site on the next build. Committed `tokens/*.json` + `tokens/*.md` are an offline fallback only.
+> - The CMS publish-to-Storage write still happens but is **vestigial** — nothing reads the Storage `design-tokens/` objects now (React token pages read KV via `useAppData`; prototypes/agents fetch the static site).
 
-**Two paths produce `bootstrap.css`**:
-1. **CMS publish** (above) — reads current KV state, regenerates bootstrap.css, writes to Storage. Drives the public React pages; **no longer what AI agents fetch** (see decision #7).
-2. **Prebuild** (`scripts/generate-llms-txt.mjs`) — runs at `npm run build` / `npm run dev`, reads bundled `tokens/*.json`, writes a **fully-inlined, self-contained** `public/tokens/bootstrap.css` in *every* mode (the production `@import` shim was removed). This static file, served at `design-system.arcsite.com/tokens/bootstrap.css`, is the canonical artifact AI agents import.
+**bootstrap.css is produced by the prebuild from KV** (`scripts/generate-llms-txt.mjs` → `buildArtifactsFromKvState`), served static at `design-system.arcsite.com/tokens/bootstrap.css`. The CMS `POST /design-tokens/publish` endpoint runs the *same* reconstruction (shared `_shared/token-generators.mjs` helpers) and triggers the rebuild. The byte-identical parity test (`test-bootstrap-parity.yml`) pins the prebuild's repo-fallback path against the CMS-round-trip path so the two reconstructions can't drift.
 
 Both paths share the same flatten + buildBootstrapCss functions in `supabase/functions/_shared/token-generators.mjs`. CI (`test-bootstrap-parity.yml`) diffs the two outputs byte-by-byte and fails the PR if they disagree. This was the cure for the May 14 2026 `flattenFont` scope bug.
 

@@ -20,6 +20,7 @@ import {
   formatTokenLines,
   buildBootstrapCss,
   buildBreakpointsJs,
+  buildArtifactsFromKvState,
 } from "../supabase/functions/_shared/token-generators.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -27,6 +28,54 @@ const ROOT = resolve(__dirname, "..");
 
 function readJson(rel) {
   return JSON.parse(readFileSync(resolve(ROOT, rel), "utf-8"));
+}
+
+// ── Token source: live CMS KV (primary) → committed repo files (fallback) ────
+//
+// The canonical token data is the CMS KV state (what the team edits via /cms).
+// The build fetches it from Supabase so a CMS edit reaches the static site on
+// the next deploy with NO repo edit — KV is the single source of truth for
+// bootstrap.css / breakpoints.js / the token-reference MDs. The committed
+// tokens/*.json + tokens/*.md remain a fallback used only when Supabase is
+// unreachable at build time (offline, CI without network) or when forced via
+// BUILD_FROM_REPO=1 (deterministic local builds; the byte-identical parity
+// test also stays on the repo path). Project id + publishable key resolve the
+// same way as scripts/safe-changelog-sync.mjs (env → info.tsx fallback).
+const INFO_SRC = readFileSync(resolve(ROOT, "utils/supabase/info.tsx"), "utf-8");
+const KV_PROJECT_ID =
+  process.env.VITE_SUPABASE_PROJECT_ID ||
+  INFO_SRC.match(/projectId\s*=[^"]*"([^"]+)"/)?.[1];
+const KV_KEY =
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  INFO_SRC.match(/publicAnonKey\s*=[^"]*"([^"]+)"/)?.[1];
+
+async function tryLoadKvState() {
+  if (process.env.BUILD_FROM_REPO === "1") {
+    console.log("[tokens] BUILD_FROM_REPO=1 — using committed repo tokens, skipping KV");
+    return null;
+  }
+  if (!KV_PROJECT_ID || !KV_KEY) {
+    console.warn("[tokens] no projectId/key resolved — falling back to repo tokens");
+    return null;
+  }
+  const url = `https://${KV_PROJECT_ID}.supabase.co/functions/v1/make-server-067f252d/state`;
+  try {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${KV_KEY}`, apikey: KV_KEY },
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const data = json?.data ?? json?.value ?? json;
+    if (!data?.colorTokens || !data?.sizeTokens || !data?.breakpointTokens) {
+      throw new Error("KV missing color/size/breakpoint slots");
+    }
+    console.log(`[tokens] loaded live token state from KV (${KV_PROJECT_ID})`);
+    return data;
+  } catch (e) {
+    console.warn(`[tokens] KV fetch failed (${e.message}) — falling back to committed repo tokens`);
+    return null;
+  }
 }
 
 // ── Build llms.txt ─────────────────────────────────────────────────────────
@@ -305,57 +354,66 @@ console.log(
   `[llms.txt] wrote ${outPath} — ${content.length} chars, ${content.split("\n").length} lines`
 );
 
-// Mirror the canonical token markdown into public/tokens/ so the URLs listed
-// in llms.txt (and consumed by AI agents) serve the same content the React
-// pages import via `?raw`. The source-of-truth lives in /tokens — this is
-// just a build-time copy.
-const TOKEN_DOCS = [
-  "tokens-color.md",
-  "tokens-typography.md",
-  "tokens-size-space.md",
-];
+// Resolve the token source once: live CMS KV (primary) or repo files (fallback).
+const kvState = await tryLoadKvState();
+
 const publicTokensDir = resolve(ROOT, "public/tokens");
 mkdirSync(publicTokensDir, { recursive: true });
-for (const name of TOKEN_DOCS) {
-  copyFileSync(resolve(ROOT, "tokens", name), resolve(publicTokensDir, name));
+
+// ── bootstrap.css + breakpoints.js ──────────────────────────────────────────
+// Fully-inlined token stylesheet (Inter + every CSS variable + dark-mode swap),
+// emitted self-contained so the file served at
+// ${SITE_BASE_URL}/tokens/bootstrap.css has zero cross-origin dependencies
+// (no @import shim — see .claude/decisions.md #7). Built from live KV when
+// reachable so CMS token edits reach the static site on deploy with no repo
+// edit (decision #11); repo tokens/*.json is the offline fallback.
+let bootstrapCss, breakpointsJs;
+if (kvState) {
+  ({ bootstrapCss, breakpointsJs } = buildArtifactsFromKvState(kvState));
+} else {
+  bootstrapCss = buildBootstrapCss({
+    globalColor,
+    lightTokens,
+    darkTokens,
+    sizeGlobal,
+    breakpoints,
+    sizeWebMobile,
+    sizeTabletDiff,
+    sizeDesktopDiff,
+    sizeDesktopLargeDiff,
+    fontDesktop,
+    breakpointPx,
+    sizeDeviceMobileDiff,
+    sizeDeviceTabletDiff,
+    fontDeviceMobileDiff,
+    fontDeviceTabletDiff,
+  });
+  breakpointsJs = buildBreakpointsJs(breakpointPx);
 }
-console.log(`[llms.txt] mirrored ${TOKEN_DOCS.length} token docs to public/tokens/`);
-
-// Generate bootstrap.css as a fully-inlined token stylesheet (Inter + every
-// CSS variable + dark-mode swap), emitted self-contained in every mode so the
-// file served at ${SITE_BASE_URL}/tokens/bootstrap.css has zero cross-origin
-// dependencies. (It previously emitted a 1-line `@import` shim to Supabase
-// Storage in production — which gave designers instant token publishing but
-// made the file useless behind a network egress allowlist that didn't include
-// Supabase. That instant-publish path returns with the AWS backend migration;
-// until then bootstrap is a build-time snapshot. See .claude/decisions.md.)
-const bootstrapCss = buildBootstrapCss({
-  globalColor,
-  lightTokens,
-  darkTokens,
-  sizeGlobal,
-  breakpoints,
-  sizeWebMobile,
-  sizeTabletDiff,
-  sizeDesktopDiff,
-  sizeDesktopLargeDiff,
-  fontDesktop,
-  breakpointPx,
-  sizeDeviceMobileDiff,
-  sizeDeviceTabletDiff,
-  fontDeviceMobileDiff,
-  fontDeviceTabletDiff,
-});
-const bootstrapPath = resolve(publicTokensDir, "bootstrap.css");
-writeFileSync(bootstrapPath, bootstrapCss, "utf-8");
+writeFileSync(resolve(publicTokensDir, "bootstrap.css"), bootstrapCss, "utf-8");
+writeFileSync(resolve(publicTokensDir, "breakpoints.js"), breakpointsJs, "utf-8");
 console.log(
-  `[bootstrap.css] wrote ${bootstrapPath} — ${bootstrapCss.length} chars (inline)`
+  `[bootstrap.css] wrote ${bootstrapCss.length} chars (inline, source: ${kvState ? "KV" : "repo"})`
 );
+console.log(`[breakpoints.js] wrote ${breakpointsJs.length} chars`);
 
-// Also emit a JS module so consumers can use the raw breakpoint pixels in
-// matchMedia / Tailwind / container queries (CSS vars don't work inside
-// @media). Single source of truth — generated from the same JSON.
-const breakpointsJs = buildBreakpointsJs(breakpointPx);
-const breakpointsJsPath = resolve(publicTokensDir, "breakpoints.js");
-writeFileSync(breakpointsJsPath, breakpointsJs, "utf-8");
-console.log(`[breakpoints.js] wrote ${breakpointsJsPath}`);
+// ── Token reference MDs ─────────────────────────────────────────────────────
+// Served at ${SITE_BASE_URL}/tokens/tokens-*.md for AI agents. From live KV
+// `tokenDocs` when reachable; else the committed repo copies. MD filename →
+// KV tokenDocs key: color→color, typography→typography, size-space→size.
+const TOKEN_DOC_MAP = {
+  "tokens-color.md": "color",
+  "tokens-typography.md": "typography",
+  "tokens-size-space.md": "size",
+};
+for (const [name, kvKey] of Object.entries(TOKEN_DOC_MAP)) {
+  const fromKv = kvState?.tokenDocs?.[kvKey];
+  if (fromKv) {
+    writeFileSync(resolve(publicTokensDir, name), fromKv, "utf-8");
+  } else {
+    copyFileSync(resolve(ROOT, "tokens", name), resolve(publicTokensDir, name));
+  }
+}
+console.log(
+  `[token-docs] wrote ${Object.keys(TOKEN_DOC_MAP).length} MDs to public/tokens/ (source: ${kvState?.tokenDocs ? "KV" : "repo"})`
+);
