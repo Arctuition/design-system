@@ -420,6 +420,20 @@ const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
     date: "2026-05-29",
+    version: "1.16.0",
+    title: "Token changes publish instantly again",
+    description: `Editing tokens in the CMS and hitting "Publish to Production" now updates the live \`bootstrap.css\` and token docs within seconds — no rebuild or deploy needed.
+
+**What changed**
+- AI agents and prototypes once again read the token stylesheet + reference docs **straight from the CMS's published copy**, so a Publish takes effect immediately. (For a stretch these were baked into the site build, which meant a token change only went live on the next deploy.)
+- The stable \`design-system.arcsite.com/tokens/bootstrap.css\` URL still works — it now forwards to the live copy.
+
+**Heads-up for prototypes behind a corporate network**
+- The live token files are served from our Supabase storage host. If you're on a network that blocks it, tokens won't load — ask IT to allow \`dnfzdqyiepjzqrigpvzw.supabase.co\` (or ping the design-system maintainers).`,
+  },
+  {
+    id: uid(),
+    date: "2026-05-29",
     version: "1.15.0",
     title: "CMS sign-in moved to Google Workspace",
     description: `The CMS now uses Google sign-in instead of a username/password.

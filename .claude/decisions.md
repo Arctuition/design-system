@@ -193,6 +193,13 @@ be configured on the new project (decision #9).
 
 ## 7. AI-agent token artifacts are self-contained static files, not Supabase Storage
 
+> **⚠️ REVERSED by #12 (2026-05-29).** The team chose instant CMS publishing
+> over the egress-clean static model below: token artifacts are once again
+> served **live from Supabase Storage**, and `bootstrap.css` is a shim again.
+> The egress trade-off this decision avoided is now knowingly accepted (mitigate
+> by allowlisting the Supabase host if it bites). Read #12 for the current model;
+> this entry is kept for history.
+
 **Decision:** `llms.txt` points AI agents at `bootstrap.css`, `breakpoints.js`,
 and the three `tokens-*.md` on the static site (`${SITE_BASE_URL}/tokens/…`),
 and `scripts/generate-llms-txt.mjs` emits a **fully-inlined** `bootstrap.css`
@@ -219,3 +226,42 @@ reaches agents until repo `tokens/*.md` is re-synced and the site redeploys.
 See the §3d / drift-risk notes in `ARCHITECTURE.md` and the
 "Token reference MDs" banner in `CLAUDE.md`. (Repo and KV were byte-identical
 as of 2026-05-27.)
+
+---
+
+## 12. Token artifacts served live from Supabase Storage again (instant CMS publish)
+
+**Decision:** Revert #7's static model. `llms.txt` points AI agents at the
+**Supabase Storage** URLs for `bootstrap.css`, `breakpoints.js`, and the three
+`tokens-*.md`; the stable `design-system.arcsite.com/tokens/bootstrap.css` is a
+1-line `@import` **shim** forwarding to the live Storage copy
+(`buildBootstrapShim` restored). The CMS "Publish to Production" endpoint
+already regenerates these Storage objects from KV on every publish, so a
+designer's edit reaches agents + prototypes **within seconds, with no rebuild
+or PR**. The prebuild emits the shim in production and the full inlined
+stylesheet in dev (offline-friendly); committed `tokens/*` stay the dev/parity
+source.
+
+**Why:** The static model (#7/#11) meant token edits only went live on a
+redeploy (and, in the build-from-KV variant, required wiring an Amplify build
+hook). The team prefers the original instant-publish workflow: edit in the CMS
+→ Publish → live. The backend is now a team-owned Supabase project
+(`dnfzdqyiepjzqrigpvzw`), not a personal one, so depending on it directly is
+acceptable.
+
+**Trade-off (accepted):** The artifacts are served from `*.supabase.co`, a
+shared multi-tenant host. A consumer (AI agent or prototype browser) behind a
+**network egress allowlist** that excludes Supabase will fail to load tokens —
+this is exactly the failure #7 fixed, now knowingly reintroduced. **Mitigation
+if it recurs:** ask the org admin to allowlist the Supabase Storage host
+(`dnfzdqyiepjzqrigpvzw.supabase.co`). Decision owner accepted this on 2026-05-29.
+
+**Supersedes:** #7 (static-serve) and the closed build-from-KV PR (its
+provisional "#11"). Decision #10 (project = `dnfzdqyiepjzqrigpvzw`) still holds;
+the Storage URLs interpolate that project id via `generate-llms-txt.mjs`.
+
+**Operational note:** the new project's Storage `design-tokens/*` were seeded by
+the storage migration from the old project and may be stale (e.g. missing the
+6 tokens KV added). Click **Publish to Production** once after this ships to
+regenerate them from current KV. `bootstrap.css` from KV is ~49 KB (with those
+6 tokens) vs the old ~48 KB.
