@@ -311,6 +311,32 @@ ${fmt(fontDesktop, "value")}
 `;
 }
 
+/**
+ * Build the 1-line `bootstrap.css` shim served at the stable site URL
+ * (design-system.arcsite.com/tokens/bootstrap.css). It `@import`s the live
+ * copy the CMS publishes to Supabase Storage on every token upload, so a
+ * designer hitting "Publish to Production" updates every prototype that
+ * imports the stable URL within seconds — no rebuild, no PR (decision #12).
+ *
+ * Trade-off: the `@import` target is `*.supabase.co`. A consumer behind a
+ * network egress allowlist that doesn't include Supabase won't load tokens —
+ * that's the accepted cost of instant publishing; ask the admin to allowlist
+ * the Supabase host if it bites. `liveUrl` is the full public Storage URL.
+ */
+export function buildBootstrapShim(liveUrl) {
+  return `/*
+ * Arcsite Design System — token bootstrap (shim)
+ *
+ * 1-line forward to the live Supabase Storage copy the CMS regenerates on
+ * every "Publish to Production". Prototypes that import this stable URL pick
+ * up new token values automatically. To pin a snapshot, fetch the live URL
+ * directly: ${liveUrl}
+ */
+
+@import url("${liveUrl}");
+`;
+}
+
 /** Build the breakpoints.js ES module — a tiny export of the same pixel map
  *  that the @media blocks use, for JS consumers that can't reach CSS vars. */
 export function buildBreakpointsJs(breakpointPx) {
