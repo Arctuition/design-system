@@ -540,6 +540,9 @@ app.put("/make-server-067f252d/state/:key", async (c) => {
       value = await processHtmlKeyBeforeSave(key, value);
     }
     await kv.set(`${PREFIX}${key}`, value);
+    // A token-slot write is also a publish (best-effort): regenerate the live
+    // Storage artifacts so bootstrap.css / the token docs never lag the CMS.
+    await maybeAutoPublishTokens([key]);
     return c.json({ ok: true });
   } catch (err) {
     console.error("Error saving state key to KV:", err);
@@ -572,6 +575,8 @@ app.put("/make-server-067f252d/state", async (c) => {
     if (keys.length > 0) {
       await kv.mset(keys, values);
     }
+    // Auto-publish if any token slot was part of this bulk write (best-effort).
+    await maybeAutoPublishTokens(STATE_KEYS.filter((k) => body[k] !== undefined));
     return c.json({ ok: true });
   } catch (err) {
     console.error("Error bulk saving state to KV:", err);
@@ -980,132 +985,181 @@ app.post("/make-server-067f252d/patterns/:slug/bundle", async (c) => {
 });
 
 // ──────────────────────────────────────────────
+// Design-token artifact regeneration (shared)
+// ──────────────────────────────────────────────
+// Token KV slots whose change should trigger an automatic re-publish. Keeps the
+// live Storage artifacts (bootstrap.css / breakpoints.js / tokens-*.md) in
+// lock-step with the CMS — a Save is also a Publish, so there's no "uploaded
+// the token JSON but forgot to Publish → stale CSS" gap. The manual
+// POST /design-tokens/publish endpoint still works as a force-refresh.
+const TOKEN_PUBLISH_KEYS = new Set([
+  "colorTokens",
+  "sizeTokens",
+  "breakpointTokens",
+  "fontTokens",
+  "tokenDocs",
+]);
+
+type RegenResult =
+  | { ok: true; urls: Record<string, string>; bytes: Record<string, number> }
+  | { ok: false; reason: string };
+
+// Regenerate bootstrap.css + breakpoints.js + the tokens-*.md mirror from the
+// current KV token slots and upload them to the design-tokens Storage bucket.
+// Byte-identical to the prebuild script for the same logical input. Shared by
+// the explicit publish endpoint and the auto-publish-on-save hook. Returns
+// `{ ok:false, reason }` (rather than throwing) when required slots are absent,
+// so an auto-publish against a not-yet-seeded store is a quiet no-op.
+async function regenerateDesignTokenArtifacts(): Promise<RegenResult> {
+  await ensureDesignTokensBucket();
+
+  // 1. Fetch every token slot from KV in parallel.
+  const [colorTokens, sizeTokens, fontTokens, breakpointTokens, tokenDocs] = await Promise.all([
+    kv.get(`${PREFIX}colorTokens`),
+    kv.get(`${PREFIX}sizeTokens`),
+    kv.get(`${PREFIX}fontTokens`),
+    kv.get(`${PREFIX}breakpointTokens`),
+    kv.get(`${PREFIX}tokenDocs`),
+  ]);
+
+  if (!colorTokens || !sizeTokens || !breakpointTokens) {
+    return { ok: false, reason: "Missing token data in KV (color / size / breakpoint slots)" };
+  }
+
+  // 2. Flatten each client-normalized slot into the {cssVar, displayValue}
+  //    shape the bootstrap.css template expects. Font slot is optional —
+  //    if absent we publish bootstrap.css without the typography block.
+  const globalColor = colorRowsToFlat(colorTokens.global);
+  const lightTokens = colorRowsToFlat(colorTokens.semanticLight);
+  const darkTokens  = colorRowsToFlat(colorTokens.semanticDark);
+
+  const sizeGlobal          = sizeRowsToFlat(sizeTokens.global);
+  const sizeWebMobile       = sizeRowsToFlat(sizeTokens.webMobile);
+  const sizeWebTablet       = sizeRowsToFlat(sizeTokens.webTablet);
+  const sizeWebDesktop      = sizeRowsToFlat(sizeTokens.webDesktop);
+  const sizeWebDesktopLarge = sizeRowsToFlat(sizeTokens.webDesktopLarge);
+  const sizeDeviceMobile    = sizeRowsToFlat(sizeTokens.deviceMobile);
+  const sizeDeviceTablet    = sizeRowsToFlat(sizeTokens.deviceTablet);
+
+  const breakpoints   = sizeRowsToFlat(breakpointTokens.tokens);
+  const breakpointPx  = extractBreakpointPxFromRows(breakpointTokens.tokens);
+
+  // Typography: prefer web-desktop slot, fall back to web-mobile if the
+  // designer only uploaded one mode. Build script only emits desktop — we
+  // mirror that here. Future: emit per-mode @media blocks too.
+  const fontDesktop = fontRowsToFlat(
+    fontTokens?.webDesktop?.length ? fontTokens.webDesktop : fontTokens?.webMobile ?? []
+  );
+  const fontDeviceMobile = fontRowsToFlat(fontTokens?.deviceMobile ?? []);
+  const fontDeviceTablet = fontRowsToFlat(fontTokens?.deviceTablet ?? []);
+
+  // 3. Build the diff blocks (only tokens that differ from the :root base).
+  //    Web modes diff vs web-mobile; device modes diff vs web-mobile (size)
+  //    and web-desktop (font) — those are the values currently emitted at
+  //    :root for their respective collections.
+  const sizeTabletDiff       = diffFromBase(sizeWebMobile, sizeWebTablet);
+  const sizeDesktopDiff      = diffFromBase(sizeWebMobile, sizeWebDesktop);
+  const sizeDesktopLargeDiff = diffFromBase(sizeWebMobile, sizeWebDesktopLarge);
+  const sizeDeviceMobileDiff = diffFromBase(sizeWebMobile, sizeDeviceMobile);
+  const sizeDeviceTabletDiff = diffFromBase(sizeWebMobile, sizeDeviceTablet);
+  const fontDeviceMobileDiff = diffFromBase(fontDesktop, fontDeviceMobile, "value");
+  const fontDeviceTabletDiff = diffFromBase(fontDesktop, fontDeviceTablet, "value");
+
+  // 4. Render both artifacts via the shared template — byte-identical to
+  //    the prebuild script for the same logical input.
+  const bootstrapCss = buildBootstrapCss({
+    globalColor,
+    lightTokens,
+    darkTokens,
+    sizeGlobal,
+    breakpoints,
+    sizeWebMobile,
+    sizeTabletDiff,
+    sizeDesktopDiff,
+    sizeDesktopLargeDiff,
+    fontDesktop,
+    breakpointPx,
+    sizeDeviceMobileDiff,
+    sizeDeviceTabletDiff,
+    fontDeviceMobileDiff,
+    fontDeviceTabletDiff,
+  });
+  const breakpointsJs = buildBreakpointsJs(breakpointPx);
+
+  // 5. Upload bootstrap.css + breakpoints.js to the design-tokens bucket.
+  //    Also mirror the Markdown reference docs (color / size / typography)
+  //    if the CMS has populated them — AI agents fetch these directly from
+  //    Storage to bypass the React SPA. Missing slots are silently skipped
+  //    (publish stays partially successful).
+  const md: Record<string, string> = {
+    "tokens-color.md": tokenDocs?.color || "",
+    "tokens-size-space.md": tokenDocs?.size || "",
+    "tokens-typography.md": tokenDocs?.typography || "",
+  };
+
+  const uploads: Promise<{ key: string; publicUrl: string; bytes: number } | null>[] = [
+    uploadDesignTokenArtifact("bootstrap.css", bootstrapCss, "text/css; charset=utf-8")
+      .then((r) => ({ key: "bootstrap", publicUrl: r.publicUrl, bytes: bootstrapCss.length })),
+    uploadDesignTokenArtifact("breakpoints.js", breakpointsJs, "application/javascript; charset=utf-8")
+      .then((r) => ({ key: "breakpoints", publicUrl: r.publicUrl, bytes: breakpointsJs.length })),
+  ];
+  for (const [filename, body] of Object.entries(md)) {
+    if (!body) continue;
+    const key = filename.replace(/\.md$/, "");
+    uploads.push(
+      uploadDesignTokenArtifact(filename, body, "text/markdown; charset=utf-8")
+        .then((r) => ({ key, publicUrl: r.publicUrl, bytes: body.length })),
+    );
+  }
+  const results = await Promise.all(uploads);
+
+  const urls: Record<string, string> = {};
+  const bytes: Record<string, number> = {};
+  for (const r of results) {
+    if (!r) continue;
+    urls[r.key] = r.publicUrl;
+    bytes[r.key] = r.bytes;
+  }
+
+  return { ok: true, urls, bytes };
+}
+
+// Best-effort auto-publish after a token KV write. NEVER throws — KV is the
+// source of truth, so if regeneration fails the save still stands and a manual
+// POST /design-tokens/publish can recover. Awaited (not fire-and-forget) so the
+// edge runtime doesn't tear down before the Storage upload completes.
+async function maybeAutoPublishTokens(changedKeys: string[]): Promise<void> {
+  if (!changedKeys.some((k) => TOKEN_PUBLISH_KEYS.has(k))) return;
+  try {
+    const res = await regenerateDesignTokenArtifacts();
+    if (!res.ok) console.warn("Auto-publish skipped after token save:", res.reason);
+  } catch (err) {
+    console.error("Auto-publish after token save failed (KV write still persisted):", err);
+  }
+}
+
+// ──────────────────────────────────────────────
 // POST /design-tokens/publish — Regenerate bootstrap.css + breakpoints.js
 // from the current KV token slots and upload them to the design-tokens
-// Storage bucket. This is Option B's publish step — runs server-side so a
-// stale browser can't ship outdated token values.
+// Storage bucket. Runs server-side so a stale browser can't ship outdated
+// token values. Note: token saves now auto-publish (see maybeAutoPublishTokens),
+// so this endpoint is mainly a manual force-refresh.
 //
 // Returns `{ urls: { bootstrap, breakpoints } }` on success.
 // ──────────────────────────────────────────────
 app.post("/make-server-067f252d/design-tokens/publish", async (c) => {
   try {
-    await ensureDesignTokensBucket();
-
-    // 1. Fetch every token slot from KV in parallel.
-    const [colorTokens, sizeTokens, fontTokens, breakpointTokens, tokenDocs] = await Promise.all([
-      kv.get(`${PREFIX}colorTokens`),
-      kv.get(`${PREFIX}sizeTokens`),
-      kv.get(`${PREFIX}fontTokens`),
-      kv.get(`${PREFIX}breakpointTokens`),
-      kv.get(`${PREFIX}tokenDocs`),
-    ]);
-
-    if (!colorTokens || !sizeTokens || !breakpointTokens) {
+    const res = await regenerateDesignTokenArtifacts();
+    if (!res.ok) {
       return c.json(
-        { error: "Missing token data in KV — upload color / size / breakpoint slots before publishing." },
+        { error: `${res.reason} — upload color / size / breakpoint slots before publishing.` },
         400,
       );
     }
-
-    // 2. Flatten each client-normalized slot into the {cssVar, displayValue}
-    //    shape the bootstrap.css template expects. Font slot is optional —
-    //    if absent we publish bootstrap.css without the typography block.
-    const globalColor = colorRowsToFlat(colorTokens.global);
-    const lightTokens = colorRowsToFlat(colorTokens.semanticLight);
-    const darkTokens  = colorRowsToFlat(colorTokens.semanticDark);
-
-    const sizeGlobal          = sizeRowsToFlat(sizeTokens.global);
-    const sizeWebMobile       = sizeRowsToFlat(sizeTokens.webMobile);
-    const sizeWebTablet       = sizeRowsToFlat(sizeTokens.webTablet);
-    const sizeWebDesktop      = sizeRowsToFlat(sizeTokens.webDesktop);
-    const sizeWebDesktopLarge = sizeRowsToFlat(sizeTokens.webDesktopLarge);
-    const sizeDeviceMobile    = sizeRowsToFlat(sizeTokens.deviceMobile);
-    const sizeDeviceTablet    = sizeRowsToFlat(sizeTokens.deviceTablet);
-
-    const breakpoints   = sizeRowsToFlat(breakpointTokens.tokens);
-    const breakpointPx  = extractBreakpointPxFromRows(breakpointTokens.tokens);
-
-    // Typography: prefer web-desktop slot, fall back to web-mobile if the
-    // designer only uploaded one mode. Build script only emits desktop — we
-    // mirror that here. Future: emit per-mode @media blocks too.
-    const fontDesktop = fontRowsToFlat(
-      fontTokens?.webDesktop?.length ? fontTokens.webDesktop : fontTokens?.webMobile ?? []
-    );
-    const fontDeviceMobile = fontRowsToFlat(fontTokens?.deviceMobile ?? []);
-    const fontDeviceTablet = fontRowsToFlat(fontTokens?.deviceTablet ?? []);
-
-    // 3. Build the diff blocks (only tokens that differ from the :root base).
-    //    Web modes diff vs web-mobile; device modes diff vs web-mobile (size)
-    //    and web-desktop (font) — those are the values currently emitted at
-    //    :root for their respective collections.
-    const sizeTabletDiff       = diffFromBase(sizeWebMobile, sizeWebTablet);
-    const sizeDesktopDiff      = diffFromBase(sizeWebMobile, sizeWebDesktop);
-    const sizeDesktopLargeDiff = diffFromBase(sizeWebMobile, sizeWebDesktopLarge);
-    const sizeDeviceMobileDiff = diffFromBase(sizeWebMobile, sizeDeviceMobile);
-    const sizeDeviceTabletDiff = diffFromBase(sizeWebMobile, sizeDeviceTablet);
-    const fontDeviceMobileDiff = diffFromBase(fontDesktop, fontDeviceMobile, "value");
-    const fontDeviceTabletDiff = diffFromBase(fontDesktop, fontDeviceTablet, "value");
-
-    // 4. Render both artifacts via the shared template — byte-identical to
-    //    the prebuild script for the same logical input.
-    const bootstrapCss = buildBootstrapCss({
-      globalColor,
-      lightTokens,
-      darkTokens,
-      sizeGlobal,
-      breakpoints,
-      sizeWebMobile,
-      sizeTabletDiff,
-      sizeDesktopDiff,
-      sizeDesktopLargeDiff,
-      fontDesktop,
-      breakpointPx,
-      sizeDeviceMobileDiff,
-      sizeDeviceTabletDiff,
-      fontDeviceMobileDiff,
-      fontDeviceTabletDiff,
-    });
-    const breakpointsJs = buildBreakpointsJs(breakpointPx);
-
-    // 5. Upload bootstrap.css + breakpoints.js to the design-tokens bucket.
-    //    Also mirror the Markdown reference docs (color / size / typography)
-    //    if the CMS has populated them — AI agents fetch these directly from
-    //    Storage to bypass the React SPA. Missing slots are silently skipped
-    //    (publish stays partially successful).
-    const md: Record<string, string> = {
-      "tokens-color.md": tokenDocs?.color || "",
-      "tokens-size-space.md": tokenDocs?.size || "",
-      "tokens-typography.md": tokenDocs?.typography || "",
-    };
-
-    const uploads: Promise<{ key: string; publicUrl: string; bytes: number } | null>[] = [
-      uploadDesignTokenArtifact("bootstrap.css", bootstrapCss, "text/css; charset=utf-8")
-        .then((r) => ({ key: "bootstrap", publicUrl: r.publicUrl, bytes: bootstrapCss.length })),
-      uploadDesignTokenArtifact("breakpoints.js", breakpointsJs, "application/javascript; charset=utf-8")
-        .then((r) => ({ key: "breakpoints", publicUrl: r.publicUrl, bytes: breakpointsJs.length })),
-    ];
-    for (const [filename, body] of Object.entries(md)) {
-      if (!body) continue;
-      const key = filename.replace(/\.md$/, "");
-      uploads.push(
-        uploadDesignTokenArtifact(filename, body, "text/markdown; charset=utf-8")
-          .then((r) => ({ key, publicUrl: r.publicUrl, bytes: body.length })),
-      );
-    }
-    const results = await Promise.all(uploads);
-
-    const urls: Record<string, string> = {};
-    const bytes: Record<string, number> = {};
-    for (const r of results) {
-      if (!r) continue;
-      urls[r.key] = r.publicUrl;
-      bytes[r.key] = r.bytes;
-    }
-
     return c.json({
       ok: true,
-      urls,
-      bytes,
+      urls: res.urls,
+      bytes: res.bytes,
       publishedAt: new Date().toISOString(),
     });
   } catch (err) {

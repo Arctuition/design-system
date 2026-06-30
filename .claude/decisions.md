@@ -324,3 +324,39 @@ team already accepted for tokens in #12.
 (auto-deploy via `.github/workflows/deploy-edge-functions.yml`), and the
 repointed `llms.txt` regenerates on the same deploy's prebuild — so both halves
 flip together. Until then, prod still serves the static icon files.
+
+## 14. Token saves auto-publish (Save = Publish)
+
+**Decision:** a write to any token KV slot (`colorTokens`, `sizeTokens`,
+`breakpointTokens`, `fontTokens`, `tokenDocs`) now automatically regenerates and
+mirrors the design-token artifacts to Supabase Storage, so a CMS **Save is also a
+Publish**. The explicit `POST /design-tokens/publish` endpoint stays as a manual
+force-refresh.
+
+**Why:** under #12 the artifacts are served live from Storage, but only the
+explicit Publish step regenerated them. Saving token JSON without clicking
+"Publish to Production" left the live `bootstrap.css` / `tokens-*.md` stale
+indefinitely — a real footgun (hit on 2026-06-30: an import wrote correct KV
+values but Storage served the old device-padding values until a manual publish).
+This closes that gap and matches how icons already serve live (#13).
+
+**How:** the edge function (`make-server-067f252d/index.ts`) extracts the publish
+body into a shared `regenerateDesignTokenArtifacts()`; both the publish endpoint
+and a new `maybeAutoPublishTokens()` call it. `maybeAutoPublishTokens` runs from
+`PUT /state/:key` and the bulk `PUT /state` whenever a token slot is in the
+write. It is **best-effort** — never throws, so a regeneration failure can't fail
+the KV write (KV remains the source of truth; a manual Publish recovers) — and
+**awaited**, so the edge runtime finishes the Storage upload before responding.
+
+**Scope note:** the client only syncs *dirty* keys (`pendingSyncRef` →
+`saveStateKey`), so this fires only on actual token edits, not on every app-state
+sync; the bulk path is fresh-install seeding.
+
+**Trade-off:** every token Save now incurs the regeneration + Storage upload
+(~hundreds of ms, awaited) and loses the implicit "draft in KV, publish later"
+separation. That separation was never a real workflow (there's no draft UI), and
+instant publish is the stated direction since #12, so the trade is accepted.
+
+**Deploy note:** takes effect when `supabase/functions/**` lands on `main`
+(auto-deploy via `.github/workflows/deploy-edge-functions.yml`). Until then,
+Save-without-Publish still leaves Storage stale.

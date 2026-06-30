@@ -50,7 +50,7 @@ The table summarises known places where data can silently diverge between code p
 | Edge function source updated but not deployed | §5 deploy topology | `.github/workflows/deploy-edge-functions.yml` auto-deploys on `supabase/functions/**` push to main |
 | Client adds a new KV slot without registering on server → silent 400 → swallowed | §3 KV state sync | `supabase/functions/_shared/state-keys.mjs` is the single source; `assertValidStateKey` runs on client outbound |
 | Schema rename inside a slot payload drops old-shape data on upgrade | §3 KV state sync | Migration code lives in `buildStateFromServer`; never delete a migration branch |
-| Repo `tokens/*.md` and canonical KV `tokenDocs` diverge silently | §3d token reference MD docs | Mostly mooted by #12 — agents fetch the **live Supabase Storage** copy (regenerated from KV on CMS Publish), not the repo files. Repo `tokens/*.md` only feed dev/offline + the static back-compat mirrors. Residual: those static `design-system.arcsite.com/tokens/*.md` mirrors can lag KV; agents are told to use the Storage URLs. |
+| Repo `tokens/*.md` and canonical KV `tokenDocs` diverge silently | §3d token reference MD docs | Mostly mooted by #12 — agents fetch the **live Supabase Storage** copy (regenerated from KV on any CMS token save — decision #14 — or a manual Publish), not the repo files. Repo `tokens/*.md` only feed dev/offline + the static back-compat mirrors. Residual: those static `design-system.arcsite.com/tokens/*.md` mirrors can lag KV; agents are told to use the Storage URLs. |
 | Bundled `tokens/*.json` and KV diverge | §3a token pipeline | Public token pages prefer KV via `useAppData()` since PR #32; the bundled JSON is fallback only |
 | Meta-docs (this file, CLAUDE.md) go stale after architecture changes | this whole document | `.github/workflows/docs-drift-check.yml` advisory comment; PR template architectural-impact checklist; CLAUDE.md substantial-PR rule |
 | `NaNpx` / `undefined` values leak into published CSS | §3a token pipeline | `sizeRowsToFlat` filters non-finite values; byte-identical CI test would catch any reintroduction |
@@ -212,7 +212,7 @@ The HTML slots that used to exist for `sizeArticle` / `colorArticle` / `typograp
                             │   breakpointTokens           │
                             └──────────────┬───────────────┘
                                            │
-                                  click [Publish to Production]
+                  auto on any token save · or click [Publish to Production]
                                            │
                                            ▼
                 ┌──────────────────────────────────────────────┐
@@ -237,14 +237,17 @@ The HTML slots that used to exist for `sizeArticle` / `colorArticle` / `typograp
 > **Current model — `.claude/decisions.md` #12 (2026-05-29), which reverses #7.**
 > The token artifacts are served **live from Supabase Storage**: the CMS
 > `POST /design-tokens/publish` regenerates `bootstrap.css` / `breakpoints.js` /
-> `tokens-*.md` in Storage from KV on every Publish, and `llms.txt` points AI
-> agents straight at those Storage URLs — so a token edit reaches agents +
-> prototypes within seconds, no rebuild. The diagram above is now accurate again
+> `tokens-*.md` in Storage from KV on every Publish **and automatically after any
+> token-slot KV write** (decision #14 — `maybeAutoPublishTokens` in the edge
+> function), and `llms.txt` points AI agents straight at those Storage URLs — so
+> a token edit (CMS Save *or* `PUT /state/*`) reaches agents + prototypes within
+> seconds, no rebuild and no separate Publish click. The manual Publish endpoint
+> remains as a force-refresh. The diagram above is now accurate again
 > (Storage = canonical for agents). **Egress trade-off:** consumers behind an
 > allowlist that excludes `*.supabase.co` won't load tokens (accepted; see #12).
 
 **`bootstrap.css` is produced two ways, both from the same KV → `buildBootstrapCss`:**
-1. **CMS publish** (canonical for consumers) — `POST /design-tokens/publish` reads KV, regenerates `bootstrap.css` + `breakpoints.js` + `tokens-*.md`, writes them to Supabase Storage. This is what `llms.txt` points agents at and what the `bootstrap.css` shim forwards to.
+1. **CMS publish** (canonical for consumers) — `POST /design-tokens/publish` reads KV, regenerates `bootstrap.css` + `breakpoints.js` + `tokens-*.md`, writes them to Supabase Storage. This is what `llms.txt` points agents at and what the `bootstrap.css` shim forwards to. Triggered **automatically on any token-slot save** (`PUT /state/{colorTokens,sizeTokens,breakpointTokens,fontTokens,tokenDocs}` → `maybeAutoPublishTokens`, decision #14, best-effort) as well as by the manual Publish button.
 2. **Prebuild** (`scripts/generate-llms-txt.mjs`) — in **production** emits a 1-line `@import` shim at `design-system.arcsite.com/tokens/bootstrap.css` forwarding to the Storage copy (stable-URL back-compat); in **dev** emits the full inlined stylesheet from repo `tokens/*.json` for offline work. The byte-identical parity test pins the inlined path against the CMS round-trip.
 
 Both paths share the same flatten + buildBootstrapCss functions in `supabase/functions/_shared/token-generators.mjs`. CI (`test-bootstrap-parity.yml`) diffs the two outputs byte-by-byte and fails the PR if they disagree. This was the cure for the May 14 2026 `flattenFont` scope bug.
