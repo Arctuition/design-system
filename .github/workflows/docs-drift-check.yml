@@ -21,6 +21,7 @@ on:
       # ARCHITECTURE.md — see that file for which file affects what.
       - "supabase/functions/_shared/state-keys.mjs"
       - "supabase/functions/_shared/token-generators.mjs"
+      - "supabase/functions/_shared/icon-manifest.mjs"
       - "supabase/functions/make-server-067f252d/index.ts"
       - "src/app/store/data-store.tsx"
       - "src/app/store/api.ts"
@@ -64,6 +65,7 @@ jobs:
             case "$f" in
               supabase/functions/_shared/state-keys.mjs|\
               supabase/functions/_shared/token-generators.mjs|\
+              supabase/functions/_shared/icon-manifest.mjs|\
               supabase/functions/make-server-067f252d/index.ts|\
               src/app/store/data-store.tsx|\
               src/app/store/api.ts|\

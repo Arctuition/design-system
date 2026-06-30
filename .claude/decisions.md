@@ -265,3 +265,62 @@ the storage migration from the old project and may be stale (e.g. missing the
 6 tokens KV added). Click **Publish to Production** once after this ships to
 regenerate them from current KV. `bootstrap.css` from KV is ~49 KB (with those
 6 tokens) vs the old ~48 KB.
+
+---
+
+## 13. Icons served live from the edge function (no publish step)
+
+**Decision:** Serve the icon library to AI agents **live from the edge
+function**, reading the `icons` KV slot on each request — the same
+KV-read-on-demand model patterns use for their `.md` (`GET /patterns/:slug.md`).
+Three new routes on `make-server-067f252d`:
+
+```
+GET /icons.index.json   slim search manifest (no SVG bytes)
+GET /icons.json         full manifest (inline svgContent)
+GET /icons/:fileName    raw SVG for one icon (~700 B)
+```
+
+`llms.txt` now points agents at these `*.supabase.co/functions/v1/...` URLs
+(via `EDGE_BASE` in `generate-llms-txt.mjs`) instead of the static
+`design-system.arcsite.com/icons*.json` build artifacts. An icon uploaded or
+retagged in the CMS is reachable to agents **within the route's ~60s cache, no
+rebuild and no publish click**.
+
+**Why this and not a Storage mirror (the token model, #12):**
+- Icons have **no draft/publish concept** — `addIcon`/`updateIcon` in the CMS
+  write straight to KV, and `/iconology` already renders live. A publish gate
+  would be a *new* concept invented only for the agent-facing copy.
+- Icons need **no generation step**. Tokens justify a server-side publish
+  because raw token rows must be flattened into `bootstrap.css`; icons are
+  already consumption-ready in KV, so the manifest is a cheap repackage.
+- Reusing the patterns model means one fewer mechanism to reason about, no
+  bulk per-icon Storage uploads (550+ files today), and no staleness window
+  between upload and publish.
+
+**Parity guard:** both the live routes and the build-time
+`scripts/generate-icons-json.mjs` build their manifests through the shared
+`supabase/functions/_shared/icon-manifest.mjs` (`buildIconManifests` +
+`sanitizeIconFileName`), so the live JSON is byte-identical to the static
+`public/icons*.json` for the same KV input. This mirrors how
+`_shared/token-generators.mjs` is shared between the CMS publish and the
+prebuild. `generate-icon-files.mjs` imports the same `sanitizeIconFileName`, so
+there is one sanitizer, not three.
+
+**Static files kept as back-compat + offline:** `public/icons.json`,
+`public/icons.index.json`, `public/icons/<fileName>` are still generated at
+prebuild (gitignored, per the §3e drift fix / PR #50) so the stable
+`design-system.arcsite.com/icons*.json` URLs keep working for any old consumer
+and so dev/offline builds have icons. They are a snapshot; the edge URLs are
+canonical for agents.
+
+**Trade-off (accepted, same as #12):** the live URLs are on the shared
+multi-tenant `*.supabase.co` host. A consumer behind a network egress allowlist
+that excludes Supabase won't load icons — allowlist
+`dnfzdqyiepjzqrigpvzw.supabase.co` if it bites. This is the same trade-off the
+team already accepted for tokens in #12.
+
+**Deploy note:** the routes go live when `supabase/functions/**` lands on `main`
+(auto-deploy via `.github/workflows/deploy-edge-functions.yml`), and the
+repointed `llms.txt` regenerates on the same deploy's prebuild — so both halves
+flip together. Until then, prod still serves the static icon files.
