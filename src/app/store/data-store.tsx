@@ -419,6 +419,36 @@ const defaultTokenDocs: TokenDocs = {
 const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
+    date: "2026-06-30",
+    version: "1.18.0",
+    title: "Design tokens re-synced from Figma — new component tokens",
+    description: `The full Figma variable set was re-exported and published, bringing the live tokens and the reference docs back in line with the design library.
+
+**What's new**
+- New color token \`color/surface/container/focus\` — the filled backdrop for a focused / pressed container (e.g. a highlighted row).
+- New \`size/touch-target\` token — 44 on touch surfaces, 32 on pointer-driven desktop.
+- Component sizing tokens for nine more components — **alert, card, list item, popover, progress, tab, table, toast, toggle** — alongside the existing button, input, dialog, and tag sets.
+
+**Corrections**
+- Native (iOS) \`padding-component\` and \`button/height-md\` values brought back in line with Figma.
+- The size & color reference docs (what AI agents read via \`llms.txt\`) were updated to match — including dropping a stale \`size/height-*\` group that never actually shipped; control heights live on the component tokens directly.`,
+  },
+  {
+    id: uid(),
+    date: "2026-06-30",
+    version: "1.17.0",
+    title: "Icons are live for AI agents — no rebuild needed",
+    description: `Upload or retag an icon in the CMS and AI agents (and prototypes) can find it within about a minute — no site rebuild or publish step.
+
+**What changed**
+- The icon search manifest and per-icon SVGs that \`llms.txt\` points agents at are now served **straight from the CMS** (\`/icons.index.json\`, \`/icons.json\`, \`/icons/{fileName}\`). Previously these were baked into the site build, so a newly uploaded icon only reached agents on the next deploy.
+- The \`/iconology\` visual browser was already live; this brings the agent-facing endpoints in line with it. No publish click is needed — icons have no draft state, so saving in the CMS is enough.
+
+**Heads-up for prototypes behind a corporate network**
+- Like the token files, the live icon endpoints are served from our Supabase host. If your network blocks it, ask IT to allow \`dnfzdqyiepjzqrigpvzw.supabase.co\` (or ping the design-system maintainers).`,
+  },
+  {
+    id: uid(),
     date: "2026-05-29",
     version: "1.16.0",
     title: "Token changes publish instantly again",

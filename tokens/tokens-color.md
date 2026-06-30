@@ -194,6 +194,7 @@ Note: intent labels skip `primary-increased-contrast` (the regular `primary` is 
 | `color/surface/container/default-increased-contrast` | `gray/00` `#ffffff`                         | `gray/transparency-on-dark/10` `#ffffff1a` |
 | `color/surface/container/high-increased-contrast`    | `gray/transparency-on-light/06` `#0000000f` | `gray/transparency-on-dark/20` `#ffffff33` |
 | `color/surface/container/higher-increased-contrast`  | `gray/transparency-on-light/10` `#0000001a` | `gray/transparency-on-dark/25` `#ffffff40` |
+| `color/surface/container/focus`                      | `gray/55` `#737373`        | `gray/65` `#595959`       |
 | `color/surface/container/action`                     | `blue/10` `#ebf4ff`        | `blue/95` `#1e252b`       |
 | `color/surface/container/action-hover`               | `blue/20` `#d1e7ff`        | `blue/100` `#1f252c`      |
 | `color/surface/container/brand`                      | `brand-orange/10`          | `brand-orange/95`         |
@@ -206,6 +207,8 @@ Note: intent labels skip `primary-increased-contrast` (the regular `primary` is 
 **`default` vs. `dim`**: `default` is the canonical app background. `dim` is one shade further from white in light mode (and further from black in dark mode) — use it as the "outermost" background when a `default`-colored container needs to sit on top and visually separate.
 
 **`container/default` → `high` → `higher`**: the elevation ramp. As surfaces stack (page → card → modal → popover), step up the ramp so each layer is visually distinct from the one below. `higher` is for the topmost floating element.
+
+**`container/focus`** is a solid mid-gray (`gray/55` light, `gray/65` dark) for the filled backdrop of a focused / pressed container state — e.g. a highlighted row or the active well behind a control. It is deliberately darker than the elevation ramp so the focused element reads as distinct from ordinary stacked surfaces.
 
 **Intent-tinted containers** (`container/action`, `container/brand`, `container/success`, etc.) are subtle tinted backgrounds for callouts, alerts, and feature highlights. Always pair their text with the matching `-increased-contrast` label tokens, since the surface itself is no longer neutral.
 
@@ -468,7 +471,7 @@ Button(
 Variables live in the Figma library `QH0keaNSAxGwUxwUV3unEi`. The two collections:
 
 - **`color-global`** — single mode (`global-value`), 167 raw color primitives (includes the `gold` family)
-- **`color`** — two modes (`light`, `dark`), 131 semantic tokens, all aliases pointing to `color-global`
+- **`color`** — two modes (`light`, `dark`), 137 semantic tokens, all aliases pointing to `color-global`
 
 When this doc and Figma disagree, Figma wins. Update this doc when:
 
