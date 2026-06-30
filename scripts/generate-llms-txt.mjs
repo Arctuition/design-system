@@ -53,6 +53,14 @@ if (!SUPABASE_PROJECT_ID) {
 }
 const STORAGE_BASE = `https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/design-tokens`;
 
+// Icons are served LIVE from the CMS edge function (decision #13) — the same
+// KV-read model patterns use for their `.md`. An icon uploaded in the CMS is
+// reachable at these URLs within the route's ~60s cache, with no rebuild or
+// publish step. Egress note matches tokens (decision #12): these are
+// *.supabase.co URLs; a consumer behind an egress allowlist that excludes
+// Supabase must allowlist the host.
+const EDGE_BASE = `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/make-server-067f252d`;
+
 // prebuild = production deploy build; predev / one-off runs = local dev.
 const PRODUCTION_BUILD = process.env.npm_lifecycle_event === "prebuild";
 
@@ -155,22 +163,27 @@ them directly inside the design system itself, never in product UI.
 2. **Working on a prototype or any project that does not have its own
    icon library**? Use the design system's icon library:
    - Visual browser:    /iconology
-   - Search manifest:   /icons.index.json  (slim — name + tags + size, no SVG bytes)
-   - Per-icon SVG file: /icons/{fileName}  (raw SVG, ~700 bytes each)
-   - Full manifest:     /icons.json        (every icon + inline \`svgContent\`)
+   - Search manifest:   ${EDGE_BASE}/icons.index.json  (slim — name + tags + size, no SVG bytes)
+   - Per-icon SVG file: ${EDGE_BASE}/icons/{fileName}  (raw SVG, ~700 bytes each)
+   - Full manifest:     ${EDGE_BASE}/icons.json        (every icon + inline \`svgContent\`)
+
+   These three endpoints are served **live from the CMS** — an icon uploaded
+   or retagged in the CMS shows up here within ~60 seconds, no rebuild. (The
+   stable /icons.json, /icons.index.json, /icons/{fileName} on this site still
+   exist as a build-time snapshot, but the live URLs above are canonical.)
 
    **Two-step flow (recommended for agents):**
-   1. Fetch \`/icons.index.json\` and search by tag (e.g. \`tags.includes("arrow")\`),
-      \`name\`, or \`size\` / \`height\` / \`width\`. The slim index is ~5× smaller
-      than the full manifest, so it fits comfortably into context during the
-      "pick an icon" phase.
-   2. Once you've picked one, fetch \`/icons/\${entry.fileName}\` to get the raw
-      SVG (~700 bytes) and drop it straight into your component. Use this
-      path with \`<img src>\`, \`fetch().then(r => r.text())\`, or any other
-      SVG-loading mechanism.
+   1. Fetch \`${EDGE_BASE}/icons.index.json\` and search by tag (e.g.
+      \`tags.includes("arrow")\`), \`name\`, or \`size\` / \`height\` / \`width\`. The
+      slim index is ~5× smaller than the full manifest, so it fits comfortably
+      into context during the "pick an icon" phase.
+   2. Once you've picked one, fetch \`${EDGE_BASE}/icons/\${entry.fileName}\` to
+      get the raw SVG (~700 bytes) and drop it straight into your component.
+      Use this path with \`<img src>\`, \`fetch().then(r => r.text())\`, or any
+      other SVG-loading mechanism.
 
-   You can skip the manifest and use \`/icons.json\` if you want the entire
-   library inline in one request — but for picking a handful of icons,
+   You can skip the manifest and use \`${EDGE_BASE}/icons.json\` if you want the
+   entire library inline in one request — but for picking a handful of icons,
    slim index → per-file fetch is far lighter.
 
    Each entry has:

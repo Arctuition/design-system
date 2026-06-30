@@ -419,6 +419,20 @@ const defaultTokenDocs: TokenDocs = {
 const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
+    date: "2026-06-30",
+    version: "1.17.0",
+    title: "Icons are live for AI agents — no rebuild needed",
+    description: `Upload or retag an icon in the CMS and AI agents (and prototypes) can find it within about a minute — no site rebuild or publish step.
+
+**What changed**
+- The icon search manifest and per-icon SVGs that \`llms.txt\` points agents at are now served **straight from the CMS** (\`/icons.index.json\`, \`/icons.json\`, \`/icons/{fileName}\`). Previously these were baked into the site build, so a newly uploaded icon only reached agents on the next deploy.
+- The \`/iconology\` visual browser was already live; this brings the agent-facing endpoints in line with it. No publish click is needed — icons have no draft state, so saving in the CMS is enough.
+
+**Heads-up for prototypes behind a corporate network**
+- Like the token files, the live icon endpoints are served from our Supabase host. If your network blocks it, ask IT to allow \`dnfzdqyiepjzqrigpvzw.supabase.co\` (or ping the design-system maintainers).`,
+  },
+  {
+    id: uid(),
     date: "2026-05-29",
     version: "1.16.0",
     title: "Token changes publish instantly again",

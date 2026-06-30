@@ -22,6 +22,11 @@ import { writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// Same builder the edge function serves live (decision #13), so the static
+// public/icons*.json this script writes is byte-identical to GET /icons*.json
+// for the same KV input. Don't reimplement the manifest shape here.
+import { buildIconManifests } from "../supabase/functions/_shared/icon-manifest.mjs";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 
@@ -49,17 +54,6 @@ const STATE_URL = `https://${projectId}.supabase.co/functions/v1/make-server-067
 const outPath = resolve(ROOT, "public/icons.json");
 const indexPath = resolve(ROOT, "public/icons.index.json");
 mkdirSync(dirname(outPath), { recursive: true });
-
-// Names embed the icon size as `{height}x{width}` (e.g. `chevron right 16x10`
-// = 16px tall, 10px wide). Two icons may share the same height bucket but
-// differ in width — height is the authoritative grouping dimension. We
-// surface both numbers in the slim manifest so agents can filter cleanly.
-const SIZE_RE = /\b(\d+)x(\d+)\b/;
-function parseSize(name) {
-  const m = SIZE_RE.exec(name || "");
-  if (!m) return { size: null, height: null, width: null };
-  return { size: `${m[1]}x${m[2]}`, height: Number(m[1]), width: Number(m[2]) };
-}
 
 function writeStub(reason) {
   const stub = {
@@ -99,49 +93,16 @@ try {
   // Edge function shape: { data: { icons: [...], ... } }
   const rawIcons = Array.isArray(body?.data?.icons) ? body.data.icons : [];
 
-  const icons = rawIcons.map((i) => {
-    const { size, height, width } = parseSize(i.name);
-    return {
-      name: i.name,
-      fileName: i.fileName,
-      tags: Array.isArray(i.tags) ? i.tags : [],
-      size,
-      height,
-      width,
-      svgContent: i.svgContent,
-    };
-  });
-
-  const sizeFormatNote =
-    "Icon `size` is encoded as `{height}x{width}` (e.g. \"16x10\" = 16px tall, 10px wide). Height is the canonical grouping dimension — icons in the same height bucket may have varying widths.";
-
-  const manifest = {
-    status: "ok",
+  const { full: manifest, index: indexManifest } = buildIconManifests(rawIcons, {
     generatedAt: new Date().toISOString(),
-    count: icons.length,
-    note: "AI agents: search /icons.index.json (slim, no SVG bytes) to pick an icon, then drop `svgContent` from this file straight into your component.",
-    sizeFormat: sizeFormatNote,
-    icons,
-  };
-
-  // Slim search manifest — drop `svgContent` so agents can scan the whole
-  // library without pulling ~400 KB of inline SVG into context.
-  const indexIcons = icons.map(({ svgContent: _omit, ...rest }) => rest);
-  const indexManifest = {
-    status: "ok",
-    generatedAt: manifest.generatedAt,
-    count: indexIcons.length,
-    note: "Slim search index — no SVG bytes. After picking by name/tag, fetch `svgContent` from /icons.json (look up by `name`).",
-    sizeFormat: sizeFormatNote,
-    icons: indexIcons,
-  };
+  });
 
   writeFileSync(outPath, JSON.stringify(manifest, null, 2), "utf-8");
   writeFileSync(indexPath, JSON.stringify(indexManifest, null, 2), "utf-8");
   const fullKb = (JSON.stringify(manifest).length / 1024).toFixed(1);
   const indexKb = (JSON.stringify(indexManifest).length / 1024).toFixed(1);
   console.log(
-    `[icons.json] wrote ${icons.length} icons — full ${fullKb} KB (${outPath}), index ${indexKb} KB (${indexPath})`
+    `[icons.json] wrote ${manifest.count} icons — full ${fullKb} KB (${outPath}), index ${indexKb} KB (${indexPath})`
   );
 } catch (err) {
   clearTimeout(timeout);

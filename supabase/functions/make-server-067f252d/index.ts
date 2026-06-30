@@ -25,6 +25,8 @@ import {
   buildBootstrapCss,
   buildBreakpointsJs,
 } from "../_shared/token-generators.mjs";
+// @ts-ignore — pure JS module, no .d.ts; Deno bundles it via relative path.
+import { buildIconManifests } from "../_shared/icon-manifest.mjs";
 
 // HTML→MD converter for Pattern saves. Markdown is the canonical source of
 // truth (Agents fetch it via /patterns/:filename.md); when a user edits a
@@ -649,6 +651,78 @@ app.get("/make-server-067f252d/patterns/:filename", async (c) => {
     });
   } catch (err) {
     console.error("Error reading pattern markdown:", err);
+    return c.text("Server error", 500);
+  }
+});
+
+// ──────────────────────────────────────────────
+// Icons — served LIVE from the `icons` KV slot, the same way patterns serve
+// their canonical MD above. No publish/build step: an icon uploaded via the
+// CMS is reachable here within the Cache-Control TTL. `llms.txt` points AI
+// agents at these URLs (decision #13). The manifests are built by the shared
+// `buildIconManifests` so this live output is byte-identical to the static
+// public/icons*.json the prebuild script writes for the same KV input.
+//
+//   GET /icons.index.json   slim search manifest (no SVG bytes)
+//   GET /icons.json         full manifest (inline svgContent)
+//   GET /icons/:fileName     raw SVG for one icon (~700 B)
+//
+// Anon-key Bearer (public) flows through the outer router, same as patterns.
+// ──────────────────────────────────────────────
+async function loadIconManifests() {
+  const raw = (await kv.get(`${PREFIX}icons`)) as unknown[] | null;
+  return buildIconManifests(Array.isArray(raw) ? raw : []);
+}
+
+app.get("/make-server-067f252d/icons.index.json", async (c) => {
+  try {
+    const { index } = await loadIconManifests();
+    return new Response(JSON.stringify(index), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "public, max-age=60",
+      },
+    });
+  } catch (err) {
+    console.error("Error building icon index manifest:", err);
+    return c.json({ error: "Server error" }, 500);
+  }
+});
+
+app.get("/make-server-067f252d/icons.json", async (c) => {
+  try {
+    const { full } = await loadIconManifests();
+    return new Response(JSON.stringify(full), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "public, max-age=60",
+      },
+    });
+  } catch (err) {
+    console.error("Error building icon manifest:", err);
+    return c.json({ error: "Server error" }, 500);
+  }
+});
+
+app.get("/make-server-067f252d/icons/:fileName", async (c) => {
+  try {
+    const fileName = c.req.param("fileName");
+    const { full } = await loadIconManifests();
+    const match = full.icons.find((i: { fileName?: string }) => i.fileName === fileName);
+    if (!match || typeof match.svgContent !== "string" || !match.svgContent) {
+      return c.text("Icon not found", 404);
+    }
+    return new Response(match.svgContent, {
+      status: 200,
+      headers: {
+        "Content-Type": "image/svg+xml; charset=utf-8",
+        "Cache-Control": "public, max-age=60",
+      },
+    });
+  } catch (err) {
+    console.error("Error reading icon svg:", err);
     return c.text("Server error", 500);
   }
 });
