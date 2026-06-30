@@ -23,20 +23,18 @@ import { writeFileSync, readFileSync, mkdirSync, rmSync, existsSync } from "node
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// Single sanitizer shared with the manifest builder + the live edge route
+// (decision #13). generate-icons-json.mjs already sanitized these fileNames,
+// so the calls below are idempotent — kept so this script is still correct if
+// run against an older, unsanitized icons.json.
+import { sanitizeIconFileName as sanitizeFileName } from "../supabase/functions/_shared/icon-manifest.mjs";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 
 const ICONS_JSON = resolve(ROOT, "public/icons.json");
 const INDEX_JSON = resolve(ROOT, "public/icons.index.json");
 const OUT_DIR    = resolve(ROOT, "public/icons");
-
-// Replace anything outside [a-zA-Z0-9._-] with "-" and collapse runs of "-"
-// down to one. Keeps the `.svg` extension intact.
-function sanitizeFileName(name) {
-  if (!name) return name;
-  const replaced = name.replace(/[^a-zA-Z0-9._-]/g, "-");
-  return replaced.replace(/-+/g, "-");
-}
 
 const manifest = JSON.parse(readFileSync(ICONS_JSON, "utf-8"));
 

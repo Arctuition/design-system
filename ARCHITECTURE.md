@@ -31,6 +31,7 @@ The docs-drift CI check (`.github/workflows/docs-drift-check.yml`) posts an advi
 |---|---|
 | `supabase/functions/_shared/state-keys.mjs` | Client/server KV state contract |
 | `supabase/functions/_shared/token-generators.mjs` | Build-time + runtime CSS pipeline |
+| `supabase/functions/_shared/icon-manifest.mjs` | Build-time + runtime icon manifest pipeline (parity contract) |
 | `supabase/functions/make-server-067f252d/index.ts` | Edge function routes + KV storage |
 | `src/app/store/data-store.tsx` | Client app state shape + persistence |
 | `src/app/store/api.ts` | Client ↔ server API surface |
@@ -54,7 +55,8 @@ The table summarises known places where data can silently diverge between code p
 | Meta-docs (this file, CLAUDE.md) go stale after architecture changes | this whole document | `.github/workflows/docs-drift-check.yml` advisory comment; PR template architectural-impact checklist; CLAUDE.md substantial-PR rule |
 | `NaNpx` / `undefined` values leak into published CSS | §3a token pipeline | `sizeRowsToFlat` filters non-finite values; byte-identical CI test would catch any reintroduction |
 | Multi-scope font tokens emit wrong CSS unit | §3a token pipeline | `flattenFont` and `fontRowsToFlat` both read full `com.figma.scopes` array (regression fix PR #36) |
-| In-repo `public/icons/` snapshot drifts from Supabase when designer uploads via CMS | §3e icon pipeline | `public/icons/`, `icons.json`, `icons.index.json` are gitignored (PR #50). Regenerated on every dev start and CI build from Supabase. |
+| In-repo `public/icons/` snapshot drifts from Supabase when designer uploads via CMS | §3e icon pipeline | Mostly mooted by #13 — agents read the **live edge routes** (`GET /icons*.json`, `/icons/:fileName`), regenerated from KV per request. `public/icons*` stay gitignored (PR #50) and regenerated each build; they only back the rarely-hit static `design-system.arcsite.com/icons*` URLs now. |
+| Live edge icon manifest ↔ static `public/icons*.json` diverge | §3e icon pipeline | Both build manifests through the shared `_shared/icon-manifest.mjs` (`buildIconManifests`), so they're byte-identical for the same KV input — the same shared-module guard as the token pipeline. |
 | CMS "login" is a **frontend gate only** — the public write API stays open | §CMS authentication | None. Documented trade-off (decision #9). Add an edge-function token check on mutating routes for real protection. |
 
 ## Substantial-PR checklist
@@ -391,9 +393,39 @@ The `/color`, `/size`, `/typography` pages render Markdown files, not an HTML ar
 
 **Why MD-only and not HTML-twin like patterns**: the content (prose + tables + code) is Markdown-native and round-trips losslessly. There's no design-heavy layout an HTML editor would express that MD can't. Storing an HTML duplicate would be carrying a derived format with no information gain — drift risk for free.
 
-### 3e. Icons — Supabase-canonical, materialized at build time
+### 3e. Icons — KV-canonical, served live from the edge function
 
-Icons follow the same Supabase-canonical pattern as token docs, but they fan out into many small static files for cheap per-icon HTTP fetches.
+Icons are **served live to agents from the edge function** (decision #13),
+reading the `icons` KV slot on demand — the same model patterns use for their
+`.md`. They are *also* materialized into many small static files at build time,
+which now serve only as offline/back-compat copies.
+
+```
+   LIVE PATH (canonical for AI agents — decision #13)
+   ────────────────────────────────────────────────────
+
+  ┌──────────┐  upload via /cms/icon-editor   ┌──────────────────────────┐
+  │ Designer │ ─────────────────────────────► │ Supabase KV  state.icons │
+  └──────────┘   addIcon / updateIcon → KV    └────────────┬─────────────┘
+                 (no publish step; /iconology              │
+                  already renders this live)               │ kv.get on each request
+                                                            ▼
+                              ┌──────────────────────────────────────────┐
+                              │ Edge fn make-server-067f252d:            │
+                              │   GET /icons.index.json   (slim manifest)│
+                              │   GET /icons.json         (full + SVG)   │
+                              │   GET /icons/:fileName    (one raw SVG)  │
+                              │ Built via shared buildIconManifests();   │
+                              │ Cache-Control: public, max-age=60.       │
+                              └──────────────────────┬───────────────────┘
+                                                     │ llms.txt points agents here
+                                                     ▼
+                                     reachable within ~60s of upload,
+                                     no rebuild, no publish click
+
+
+   BUILD-TIME SNAPSHOT (offline + back-compat for design-system.arcsite.com/icons*)
+   ────────────────────────────────────────────────────────────────────────────────
 
 ```
   ┌──────────┐  upload via /cms/icon-editor   ┌──────────────────────────┐
@@ -421,11 +453,19 @@ Icons follow the same Supabase-canonical pattern as token docs, but they fan out
             vite build → dist/  → GH Pages
 ```
 
-**`public/icons/`, `public/icons.json`, `public/icons.index.json` are gitignored** as of PR #50 — they're pure build artifacts regenerated from Supabase on every `npm run dev` and every `npm run build` (which runs in CI before deploy). Don't try to edit them by hand or commit a snapshot — the next `predev` will wipe `public/icons/` (see `rmSync` in `generate-icon-files.mjs`) and any edit will be lost.
+**Shared builder (parity contract):** both the live edge routes and the
+build-time `scripts/generate-icons-json.mjs` construct their manifests through
+`supabase/functions/_shared/icon-manifest.mjs` (`buildIconManifests` +
+`sanitizeIconFileName`), so the live JSON is byte-identical to the static
+`public/icons*.json` for the same KV input — the same shared-module pattern
+`_shared/token-generators.mjs` gives the token pipeline. `generate-icon-files.mjs`
+imports the same `sanitizeIconFileName`, so there is exactly one sanitizer.
 
-**Offline behavior**: if Supabase is unreachable when the script runs, both JSONs are written as stub manifests (`status: "error"`) and individual SVG files aren't generated. The vite build doesn't fail — icons are simply missing on the deployed site for that build. Production fixes itself on the next successful build.
+**`public/icons/`, `public/icons.json`, `public/icons.index.json` are gitignored** as of PR #50 — they're pure build artifacts regenerated from Supabase on every `npm run dev` and every `npm run build` (which runs in CI before deploy). Don't try to edit them by hand or commit a snapshot — the next `predev` will wipe `public/icons/` (see `rmSync` in `generate-icon-files.mjs`) and any edit will be lost. **Since decision #13 these static files are only a back-compat/offline snapshot** — agents read the live edge URLs, which `llms.txt` points at.
 
-**Drift risk** (resolved by gitignore): before PR #50, the in-repo snapshot of `public/icons/` could drift whenever a designer uploaded a new icon via the CMS and nobody manually re-committed the regenerated bundle. The deployed site (`design-system.arcsite.com`) was always correct because CI prebuild regenerated from Supabase, but local clones and PR diffs saw confusing "new untracked SVGs" appearing mid-session. The fix: treat the files as build artifacts, don't track them.
+**Offline behavior**: if Supabase is unreachable when the build script runs, both JSONs are written as stub manifests (`status: "error"`) and individual SVG files aren't generated. The vite build doesn't fail — the *static* icons are simply missing on the deployed site for that build. (The live edge routes are unaffected — they read KV at request time.) Production fixes itself on the next successful build.
+
+**Drift risk** (resolved): before PR #50, the in-repo snapshot of `public/icons/` could drift whenever a designer uploaded a new icon via the CMS and nobody manually re-committed the regenerated bundle. PR #50 gitignored them; decision #13 then made the **agent-facing copy live from KV**, so the static-snapshot lag no longer affects agents at all (only the rarely-hit stable `design-system.arcsite.com/icons*` URLs, which are back-compat). This is the icon analogue of the token-MD drift row — agents fetch the live source, not the materialized snapshot.
 
 ---
 
@@ -464,7 +504,12 @@ Icons follow the same Supabase-canonical pattern as token docs, but they fan out
                 │ ## Design principles                    │     KV.markdownContent
                 │ ...static text inside llms.txt...       │
                 │                                         │
-                │ ## Icons / logos / skills               │
+                │ ## Icons (live)                         │
+                │ - Edge /icons.index.json   (pick)       │  ← from edge function
+                │ - Edge /icons/{fileName}   (one SVG)    │     reads KV.icons live
+                │ - Edge /icons.json         (full)       │     (decision #13)
+                │                                         │
+                │ ## logos / skills                       │
                 │ ...stable URLs to GH Pages assets...    │
                 └─────────────────────┬───────────────────┘
                                       │ agent follows URLs as needed
@@ -475,6 +520,8 @@ Icons follow the same Supabase-canonical pattern as token docs, but they fan out
         │ Storage /design-tokens/   ◄── token CSS, JS, MD docs        │
         │ Storage /pattern-assets/  ◄── pattern images (in MD ![]() ) │
         │ Edge /patterns/:slug.md   ◄── canonical pattern MD          │
+        │ Edge /icons*.json,        ◄── icon manifests + per-icon SVG │
+        │      /icons/:fileName          built live from KV.icons     │
         └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -619,7 +666,8 @@ The public website is a third reader. In **production builds**, `public/tokens/b
 | Pattern image assets | Storage `/pattern-assets/<slug>/*` | Stable URL referenced from MD/HTML | PNG/JPG/SVG | Both website + agents |
 | Inline article images | Storage `/pattern-assets/_inline/<key>/<sha>.<ext>` | Stable URL referenced from HTML | PNG/JPG/SVG | Visitors |
 | llms.txt index | Built from repo template, hosted on GH Pages | Stable GH Pages URL | Plain text | AI agents (entry point) |
-| Design principles, icons, logos | Inside llms.txt (committed in repo) | Stable GH Pages URL | Plain text + SVG | AI agents |
+| Icon library (manifests + per-icon SVG) | **Canonical:** Supabase KV `icons`. | **Live:** edge fn `GET /icons.index.json`, `/icons.json`, `/icons/:fileName` (what `llms.txt` points agents at, decision #13). Static `design-system.arcsite.com/icons*` are a gitignored build snapshot, back-compat only. | JSON + SVG | AI agents, prototypes |
+| Design principles, logos | Inside llms.txt (committed in repo) | Stable GH Pages URL | Plain text + SVG | AI agents |
 
 ---
 
