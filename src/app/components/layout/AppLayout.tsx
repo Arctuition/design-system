@@ -210,6 +210,7 @@ function resolveTitle(
   if (pathname === "/size") return "Size & Space";
   if (pathname === "/size/tokens") return "Size & Space — Design Tokens";
   if (pathname === "/iconology") return "Iconology";
+  if (pathname === "/iconology/library") return "Iconology — Icon Library";
   if (pathname === "/patterns") return "Patterns";
   if (pathname === "/llms.txt") return "AI Reference";
   if (pathname.startsWith("/patterns/")) {

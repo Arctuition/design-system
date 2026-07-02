@@ -47,6 +47,7 @@ export const router = createBrowserRouter([
 
           // Iconology & Patterns
           { path: "iconology", lazy: lazyComponent(() => import("./pages/IconologyPage"), "IconologyPage") },
+          { path: "iconology/library", lazy: lazyComponent(() => import("./pages/IconLibraryPage"), "IconLibraryPage") },
           { path: "patterns", lazy: lazyComponent(() => import("./pages/PatternsPage"), "PatternsPage") },
           { path: "patterns/:id", lazy: lazyComponent(() => import("./pages/PatternDetailPage"), "PatternDetailPage") },
 
@@ -66,7 +67,7 @@ export const router = createBrowserRouter([
           { path: "cms/size-editor/doc", lazy: lazyComponent(() => import("./pages/cms/TokenDocEditors"), "SizeDocEditor") },
           { path: "cms/typography-editor", lazy: lazyComponent(() => import("./pages/cms/TokenDocEditors"), "TypographyDocEditor") },
           { path: "cms/icon-editor", lazy: lazyComponent(() => import("./pages/cms/IconEditor"), "IconEditor") },
-          { path: "cms/icon-editor/article", lazy: lazyComponent(() => import("./pages/cms/IconEditor"), "IconArticleEditor") },
+          { path: "cms/icon-editor/doc", lazy: lazyComponent(() => import("./pages/cms/TokenDocEditors"), "IconologyDocEditor") },
           { path: "cms/patterns-editor", lazy: lazyComponent(() => import("./pages/cms/PatternsEditor"), "PatternsEditor") },
           { path: "cms/patterns-editor/:id/edit", lazy: lazyComponent(() => import("./pages/cms/PatternArticleEditor"), "PatternArticleEditor") },
           // cms/accounts (username/password editor management) retired — auth is

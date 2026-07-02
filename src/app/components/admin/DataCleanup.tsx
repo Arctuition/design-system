@@ -135,7 +135,6 @@ export function DataCleanup() {
       // Clean all HTML content fields
       const htmlFields = [
         "homeArticle",
-        "iconologyArticle",
       ];
 
       for (const field of htmlFields) {
