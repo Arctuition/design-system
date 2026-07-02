@@ -13,17 +13,30 @@ interface Section {
   adminOnly?: boolean;
 }
 
+// Ordered to mirror the public navigation (Home → Typography → Color →
+// Size & Space → Iconology → Patterns). Editors are grouped by the nav section
+// they belong to, and within a section the reference Doc comes first (it's the
+// page the nav item lands on) followed by that section's token/asset editor.
+// Keep this in step with NAV_SECTIONS in AppLayout.tsx.
 const sections: Section[] = [
+  // Home
   { path: "/cms/home-editor", label: "Home Page", description: "Edit the home page article content", icon: FileText },
   { path: "/cms/changelog-editor", label: "Change Log", description: "Manage version changelog entries", icon: Clock },
-  { path: "/cms/color-editor", label: "Color Tokens", description: "Upload and manage color tokens", icon: Palette },
-  { path: "/cms/size-editor", label: "Size & Space Tokens", description: "Upload and manage size tokens", icon: Ruler },
-  { path: "/cms/font-editor", label: "Font Tokens", description: "Upload and manage font tokens", icon: Type },
-  { path: "/cms/color-editor/doc", label: "Color Doc", description: "Edit the /color reference Markdown", icon: BookText },
-  { path: "/cms/size-editor/doc", label: "Size & Space Doc", description: "Edit the /size reference Markdown", icon: BookText },
+  // Typography
   { path: "/cms/typography-editor", label: "Typography Doc", description: "Edit the /typography reference Markdown", icon: BookText },
-  { path: "/cms/icon-editor", label: "Iconology", description: "Upload, tag, and manage icons", icon: Image },
+  { path: "/cms/font-editor", label: "Font Tokens", description: "Upload and manage font tokens", icon: Type },
+  // Color
+  { path: "/cms/color-editor/doc", label: "Color Doc", description: "Edit the /color reference Markdown", icon: BookText },
+  { path: "/cms/color-editor", label: "Color Tokens", description: "Upload and manage color tokens", icon: Palette },
+  // Size & Space
+  { path: "/cms/size-editor/doc", label: "Size & Space Doc", description: "Edit the /size reference Markdown", icon: BookText },
+  { path: "/cms/size-editor", label: "Size & Space Tokens", description: "Upload and manage size tokens", icon: Ruler },
+  // Iconology
+  { path: "/cms/icon-editor/doc", label: "Iconology Doc", description: "Edit the /iconology reference Markdown", icon: BookText },
+  { path: "/cms/icon-editor", label: "Icon Library", description: "Upload, tag, and manage icons", icon: Image },
+  // Patterns
   { path: "/cms/patterns-editor", label: "Patterns", description: "Create, edit, and manage pattern articles", icon: LayoutGrid },
+  // Admin
   { path: "/admin/data-cleanup", label: "Data Cleanup", description: "Reset all content formatting to design system defaults", icon: RefreshCw, adminOnly: true },
 ];
 

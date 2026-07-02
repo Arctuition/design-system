@@ -101,21 +101,22 @@ username/password machinery (`editors` KV slot, `addUser` etc.,
 `AccountManager.tsx`) is now dead code: `AccountManager` is unrouted, and the
 slot/helpers remain only to avoid a wider refactor.
 
-## Article model — MD-canonical for token docs
+## Article model — MD-canonical for token docs + iconology
 
-The `/size`, `/color`, and `/typography` pages render Markdown reference docs (`tokens/tokens-*.md`), not HTML articles. There is no HTML version. This is intentional:
+The `/size`, `/color`, `/typography`, and `/iconology` pages render Markdown reference docs, not HTML articles. There is no HTML version. This is intentional:
 
 - The content (prose + tables + code) round-trips losslessly through Markdown — there's no layout an HTML editor would express that MD can't.
 - AI agents fetch the same source the public website renders. One file, one canonical version.
-- Editing is via direct MD upload by an agent, or via an MD editor in the CMS (not yet built).
+- Editing is via direct MD upload by an agent, or via the MD editor in the CMS ([MarkdownEditorPage.tsx](src/app/components/shared/MarkdownEditorPage.tsx), bound to `tokenDocs` slots by [TokenDocEditors.tsx](src/app/pages/cms/TokenDocEditors.tsx)).
+
+All four MD docs live in the `tokenDocs` KV slot (`{ color, size, typography, iconology }`), seeded at build from `tokens/*.md?raw`, and auto-published to Supabase Storage on save (color/size/typography → `tokens-*.md`; iconology → `iconology.md`). `/iconology` renders `tokenDocs.iconology` and links to the icon **library** browser at `/iconology/library` (the searchable grid, a separate page — same doc-page-plus-entry-points shape as `/color` → `/color/tokens` + `/color/swatches`).
 
 The HTML article pattern (rich-text WYSIWYG → HTML stored in KV → rendered on the public site) **does** still apply to:
 
 - `homeArticle` — rendered on `/` via [HomePage.tsx](src/app/pages/HomePage.tsx)
-- `iconologyArticle` — rendered on `/iconology` via [IconologyPage.tsx](src/app/pages/IconologyPage.tsx)
 - Pattern guides — each pattern has both HTML and MD versions (see §3c)
 
-The HTML slots that used to exist for `sizeArticle` / `colorArticle` / `typographyArticle` were removed in the post-PR-1 cleanup — they were edited via the CMS but never rendered anywhere. Don't re-introduce them.
+The HTML slots that used to exist for `sizeArticle` / `colorArticle` / `typographyArticle` were removed in the post-PR-1 cleanup; `iconologyArticle` was removed when `/iconology` moved to MD (this change). Don't re-introduce any of them.
 
 ---
 
@@ -142,17 +143,18 @@ The HTML slots that used to exist for `sizeArticle` / `colorArticle` / `typograp
 │  │  sizeTokens           { global, webMobile, webTablet, … } │      │
 │  │  fontTokens           { webMobile, webDesktop, ... }      │      │
 │  │  breakpointTokens     { tokens: [{xs:576}, ...] }         │      │
-│  │  tokenDocs            { color, size, typography } (MD)    │      │
+│  │  tokenDocs        { color, size, typography, iconology }  │      │
+│  │                    (MD; iconology added this change)      │      │
 │  │  tokenStatus          per-slot mtime + publishedAt        │      │
 │  │                                                           │      │
 │  │ ARTICLES (HTML, rendered on public pages)                 │      │
 │  │  homeArticle          HTML  (rendered on /)               │      │
-│  │  iconologyArticle     HTML  (rendered on /iconology)      │      │
 │  │                                                           │      │
-│  │ TOKEN REFERENCE DOCS — canonical = KV (see §3d)           │      │
-│  │  tokens-color.md      (rendered on /color)                │      │
-│  │  tokens-size-space.md (rendered on /size)                 │      │
-│  │  tokens-typography.md (rendered on /typography)           │      │
+│  │ REFERENCE DOCS (MD) — canonical = KV (see §3d)            │      │
+│  │  tokenDocs.color      (rendered on /color)                │      │
+│  │  tokenDocs.size       (rendered on /size)                 │      │
+│  │  tokenDocs.typography (rendered on /typography)           │      │
+│  │  tokenDocs.iconology  (rendered on /iconology)            │      │
 │  │                                                           │      │
 │  │ PATTERN GUIDES (HTML + MD pair per pattern)               │      │
 │  │  patterns             [{ id, title,                       │      │
@@ -470,6 +472,8 @@ imports the same `sanitizeIconFileName`, so there is exactly one sanitizer.
 
 **Drift risk** (resolved): before PR #50, the in-repo snapshot of `public/icons/` could drift whenever a designer uploaded a new icon via the CMS and nobody manually re-committed the regenerated bundle. PR #50 gitignored them; decision #13 then made the **agent-facing copy live from KV**, so the static-snapshot lag no longer affects agents at all (only the rarely-hit stable `design-system.arcsite.com/icons*` URLs, which are back-compat). This is the icon analogue of the token-MD drift row — agents fetch the live source, not the materialized snapshot.
 
+**Doc vs. library (route split):** the icon *data* above is unchanged, but the `/iconology` route now renders the **naming/sizing spec** (Markdown, `tokenDocs.iconology`), and the searchable **icon browser grid** moved to `/iconology/library`. `llms.txt` reflects this: the "Visual browser" link is now `/iconology/library`, and it also links the spec at `<Storage>/iconology.md`. The machine endpoints (`/icons.index.json`, `/icons.json`, `/icons/:fileName`) are untouched — the split is UI-only and does not affect agent icon retrieval. **Size-suffix convention (agent-facing contract):** icon names are `{height}x{width}` (height-first); this is documented identically in `iconology.md` and in the `llms.txt` Icons section — keep the two in step.
+
 ---
 
 ## 4. Reading data
@@ -662,8 +666,7 @@ The public website is a third reader. In **production builds**, `public/tokens/b
 | breakpoints.js (generated) | Storage `/design-tokens/breakpoints.js` | Stable URL | ES module | JS consumers, Tailwind config |
 | Token zips (generated) | Storage `/design-tokens/*-tokens.zip` + on-demand client download | Stable URL or CMS button | ZIP | Dev team (handoff) |
 | Home article | Supabase KV `homeArticle` | Public website at runtime | HTML | Visitors to `/` |
-| Iconology article | Supabase KV `iconologyArticle` | Public website at runtime | HTML | Visitors to `/iconology` |
-| Token reference docs (color/size/typography) | **Canonical:** Supabase KV `tokenDocs` → Storage mirror on Publish. Repo `tokens/tokens-*.md` is a seed only. | `llms.txt` points to Storage URLs (canonical for AI agents). Public pages render via the runtime React route. | Markdown | Visitors to `/color`, `/size`, `/typography`; AI agents |
+| Reference docs (color/size/typography/iconology) | **Canonical:** Supabase KV `tokenDocs` → Storage mirror on save (auto-publish, decision #14). Repo `tokens/tokens-*.md` + `tokens/iconology.md` are seeds only. | `llms.txt` points to Storage URLs (canonical for AI agents: `tokens-*.md`, `iconology.md`). Public pages render via the runtime React route. | Markdown | Visitors to `/color`, `/size`, `/typography`, `/iconology`; AI agents |
 | Pattern HTML body | Supabase KV `patterns[i].content` | Public website at runtime | HTML | Visitors to `/patterns/<slug>` |
 | Pattern MD canonical | Supabase KV `patterns[i].markdownContent` | Edge fn `GET /patterns/:slug.md` | Markdown | AI agents |
 | Pattern image assets | Storage `/pattern-assets/<slug>/*` | Stable URL referenced from MD/HTML | PNG/JPG/SVG | Both website + agents |
