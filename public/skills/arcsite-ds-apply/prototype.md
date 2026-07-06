@@ -103,7 +103,7 @@ These are the failures that show up most often when LLMs default to training-set
 
 - The prototype needs a UI pattern the design system does not have a token or principle for. A prototype is often where new patterns get noticed; the team may want to formalize it.
 - You fell back to a primitive because no design-system component exists yet. Name it explicitly so the user knows what is a DS component vs. a one-off.
-- A required asset (logo variant, illustration, icon) is missing. Do not improvise — name the gap.
+- A required asset (logo variant, illustration, icon) is missing. Do not improvise silently — name the gap. For **icons in a prototype**, a third-party stand-in (e.g. Lucide) is acceptable while iterating *if you disclose it to the user when you add it* and track it as an open gap; icon quality is a delivery gate — before final delivery every stand-in is swapped for a DS icon or the DS icon library is extended to cover it.
 
 ## Self-check before considering the prototype done
 
@@ -114,7 +114,7 @@ Walk this list before reporting completion. If any item is "no," fix it first.
 - [ ] Are there zero hardcoded hex / rgb / hsl values outside the bootstrap?
 - [ ] Are there zero hardcoded `px` / `rem` values for spacing, font-size, line-height, radius, or border-width outside the bootstrap?
 - [ ] Are all logos sourced from `/logos/` (not drawn, not recolored)?
-- [ ] Do all icons come from the shared icon library or `arcsite-icons` package (not drawn from scratch)?
+- [ ] Do all icons come from the shared icon library or `arcsite-icons` package (not drawn from scratch)? If any third-party stand-ins remain, were they disclosed to the user and flagged as open gaps — and, for a **final delivery**, resolved (DS icon or a library addition)?
 - [ ] Were sibling-project `components/` directories listed before any chrome was implemented, and reusable components imported rather than re-implemented?
 - [ ] Does toggling `<html class="dark">` produce a coherent dark mode (no broken contrast, no missing tokens)?
 - [ ] Are all interactive states (hover, active, focus, disabled) bound to semantic tokens, not ad-hoc tints?

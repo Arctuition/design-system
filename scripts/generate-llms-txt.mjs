@@ -186,6 +186,13 @@ them directly inside the design system itself, never in product UI.
    entire library inline in one request — but for picking a handful of icons,
    slim index → per-file fetch is far lighter.
 
+   **Library missing an icon?** In a prototype, a third-party icon (e.g.
+   Lucide) is acceptable as a *temporary stand-in* — disclose it to the user
+   when you add it and track it as an open gap. Icon quality is a delivery
+   gate: before final delivery, swap every stand-in for a design-system icon
+   or ask the design team to add the icon to the library (uploaded via the
+   CMS, live at these endpoints within ~a minute).
+
    Each entry has:
    - \`name\`        — kebab-case identifier (with size suffix, e.g. \`chevron right 16x10\`)
    - \`fileName\`    — original upload filename
