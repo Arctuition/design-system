@@ -187,6 +187,13 @@ them directly inside the design system itself, never in product UI.
    entire library inline in one request — but for picking a handful of icons,
    slim index → per-file fetch is far lighter.
 
+   **Library missing an icon?** In a prototype, a third-party icon (e.g.
+   Lucide) is acceptable as a *temporary stand-in* — disclose it to the user
+   when you add it and track it as an open gap. Icon quality is a delivery
+   gate: before final delivery, swap every stand-in for a design-system icon
+   or ask the design team to add the icon to the library (uploaded via the
+   CMS, live at these endpoints within ~a minute).
+
    Each entry has:
    - \`name\`        — kebab-case identifier (with size suffix, e.g. \`chevron right 16x10\`)
    - \`fileName\`    — original upload filename
@@ -321,7 +328,7 @@ LLM application guides for the ArcSite design system:
 
 - [Design-to-code fidelity gate](${SITE_BASE_URL}/skills/arcsite-ds-apply/design-fidelity.md) *(read whenever visual fidelity = contract — the universal "read the design as a contract" rules: annotations first, fetch SVG don't hand-draw, variant diff. Plus the responsive-specific per-band variable protocol and the four-phase verification flow.)*
 - [Canvas-app prototype guide](${SITE_BASE_URL}/skills/arcsite-ds-apply/canvas-prototype.md) *(read whenever surface shape = canvas-app, at any fidelity — coordinate-space contract, device-frame and pan/zoom architecture, counter-scaled stroke, \`ScreenAnchor\` pattern, canvas-specific verification matrix. Composes with the fidelity gate when also pixel-match.)*
-- [Prototype mode guide](${SITE_BASE_URL}/skills/arcsite-ds-apply/prototype.md)
+- [Prototype mode guide](${SITE_BASE_URL}/skills/arcsite-ds-apply/prototype.md) *(standalone DS prototypes built from scratch. Building a **Design Playground** product-simulation prototype instead? The authoritative contract is the Playground's own: \`https://design-playground.arcsite.com/agent-instructions.md\`.)*
 - [AntD conflict handling](${SITE_BASE_URL}/skills/arcsite-ds-apply/antd-conflict.md)
 - [Figma MCP flow](${SITE_BASE_URL}/skills/arcsite-ds-apply/figma-flow.md)
 `;

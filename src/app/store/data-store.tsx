@@ -427,6 +427,19 @@ const defaultTokenDocs: TokenDocs = {
 const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
+    date: "2026-07-06",
+    version: "1.20.0",
+    title: "Skill docs now recognize Design Playground prototypes",
+    description: `The \`arcsite-ds-apply\` skill docs and \`llms.txt\` now distinguish the two kinds of "prototype" and route agents to the right contract for each.
+
+**What changed**
+- \`prototype.md\` opens with a "which kind of prototype?" split: standalone DS prototypes keep following the guide as written; **Design Playground product-simulation prototypes** follow the Playground's own contract (\`design-playground.arcsite.com/agent-instructions.md\`). The Playground template's device-mode token layer and product font (Roboto on iOS/Android) are documented as deliberate — not violations of the anti-patterns.
+- \`prototype.md\` now allows build-time **vendoring of \`bootstrap.css\`** for offline / sandboxed builds (whole-file snapshot via a sync script; hand-copying individual values is still prohibited).
+- \`canvas-prototype.md\` and the \`llms.txt\` Skills section link the Playground contract directly, so agents land on the freshest prototyping instructions.
+- New **icon stand-in policy** for prototypes (\`prototype.md\` + the \`llms.txt\` Icons section): while iterating, a third-party icon is acceptable as a disclosed temporary stand-in when the library lacks one; before final delivery every stand-in is swapped for a design-system icon or the icon library is extended. Icon quality is a delivery gate, not an iteration gate.`,
+  },
+  {
+    id: uid(),
     date: "2026-07-02",
     version: "1.19.0",
     title: "Iconology: an icon spec, plus a dedicated library browser",
