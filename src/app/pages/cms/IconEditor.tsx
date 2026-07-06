@@ -3,7 +3,6 @@ import { Navigate, Link } from "react-router";
 import { useAppData } from "../../store/data-store";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { ArticleEditorPage } from "../../components/shared/ArticleEditorPage";
 import { ArrowLeft, Upload, Plus, Pencil, Trash2, Save, X, Tag, Search, FolderDown, ChevronDown, RefreshCw, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
@@ -414,17 +413,18 @@ export function IconEditor() {
       <Tabs defaultValue="icons">
         <TabsList>
           <TabsTrigger value="icons">Icon Management</TabsTrigger>
-          <TabsTrigger value="article">Article</TabsTrigger>
+          <TabsTrigger value="doc">Reference Doc</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="article" className="mt-6">
+        <TabsContent value="doc" className="mt-6">
           <div className="border rounded-[var(--radius-card)] p-5" style={{ borderColor: "var(--color-border-default)", backgroundColor: "var(--color-surface-container-high)" }}>
             <p className="mb-3" style={{ fontSize: "var(--text-p)", color: "var(--color-label-primary)" }}>
-              Edit the Iconology article content in the full-page editor.
+              Edit the Iconology reference doc (Markdown) shown on <code>/iconology</code>. Saving
+              auto-publishes to Storage for AI agents — same pipeline as the token docs.
             </p>
-            <Link to="/cms/icon-editor/article">
+            <Link to="/cms/icon-editor/doc">
               <Button type="button">
-                <Pencil className="size-4 mr-1.5" /> Open Article Editor
+                <Pencil className="size-4 mr-1.5" /> Open Markdown Editor
               </Button>
             </Link>
           </div>
@@ -668,20 +668,7 @@ export function IconEditor() {
   );
 }
 
-// Separate full-page article editor
-export function IconArticleEditor() {
-  const { isAuthenticated, iconologyArticle, setIconologyArticle } = useAppData();
-  if (!isAuthenticated) return <Navigate to="/cms/login" replace />;
-
-  return (
-    <ArticleEditorPage
-      title="Edit Iconology Article"
-      backTo="/cms/icon-editor"
-      backLabel="Back"
-      articleKey="iconology"
-      serverStateKey="iconologyArticle"
-      initialValue={iconologyArticle}
-      onSave={setIconologyArticle}
-    />
-  );
-}
+// The Iconology reference doc is now Markdown, edited via the shared
+// MarkdownEditorPage (see TokenDocEditors → IconologyDocEditor, mounted at
+// /cms/icon-editor/doc). The old HTML ArticleEditorPage path was retired when
+// the doc moved to the MD-canonical pipeline — see ARCHITECTURE.md.

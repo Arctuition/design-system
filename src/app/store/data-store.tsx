@@ -152,6 +152,14 @@ export interface TokenDocs {
   color: string;
   size: string;
   typography: string;
+  /**
+   * Iconology reference doc. Not a "token" doc per se, but it rides the same
+   * MD-canonical pipeline (CMS Markdown editor → KV → auto-publish to Storage
+   * as iconology.md → llms.txt) as color/size/typography so agents fetch one
+   * canonical source. Rendered on `/iconology`. Replaced the old
+   * `iconologyArticle` HTML slot — see ARCHITECTURE.md §"Article model".
+   */
+  iconology: string;
 }
 
 export interface IconItem {
@@ -242,7 +250,6 @@ export interface AppState {
   icons: IconItem[];
   patterns: PatternArticle[];
   editors: EditorAccount[];
-  iconologyArticle: string;
   isAuthenticated: boolean;
   currentUser: EditorAccount | null;
   authExpiry: number | null;
@@ -262,7 +269,6 @@ interface AppContextType extends AppState {
    *  Stamps the current time as the "Published" baseline for every slot. */
   markTokensPublished: () => void;
   setTokenDoc: (key: keyof TokenDocs, markdown: string) => void;
-  setIconologyArticle: (html: string) => void;
   addIcon: (icon: Omit<IconItem, "id">) => void;
   updateIcon: (id: string, icon: Partial<IconItem>) => void;
   removeIcon: (id: string) => void;
@@ -409,18 +415,20 @@ const defaultFontTokens: FontTokenSet = {
 import seedColorMd from "../../../tokens/tokens-color.md?raw";
 import seedSizeMd from "../../../tokens/tokens-size-space.md?raw";
 import seedTypographyMd from "../../../tokens/tokens-typography.md?raw";
+import seedIconologyMd from "../../../tokens/iconology.md?raw";
 
 const defaultTokenDocs: TokenDocs = {
   color: seedColorMd,
   size: seedSizeMd,
   typography: seedTypographyMd,
+  iconology: seedIconologyMd,
 };
 
 const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
     date: "2026-07-06",
-    version: "1.19.0",
+    version: "1.20.0",
     title: "Skill docs now recognize Design Playground prototypes",
     description: `The \`arcsite-ds-apply\` skill docs and \`llms.txt\` now distinguish the two kinds of "prototype" and route agents to the right contract for each.
 
@@ -429,6 +437,22 @@ const defaultChangeLogs: ChangeLogEntry[] = [
 - \`prototype.md\` now allows build-time **vendoring of \`bootstrap.css\`** for offline / sandboxed builds (whole-file snapshot via a sync script; hand-copying individual values is still prohibited).
 - \`canvas-prototype.md\` and the \`llms.txt\` Skills section link the Playground contract directly, so agents land on the freshest prototyping instructions.
 - New **icon stand-in policy** for prototypes (\`prototype.md\` + the \`llms.txt\` Icons section): while iterating, a third-party icon is acceptable as a disclosed temporary stand-in when the library lacks one; before final delivery every stand-in is swapped for a design-system icon or the icon library is extended. Icon quality is a delivery gate, not an iteration gate.`,
+  },
+  {
+    id: uid(),
+    date: "2026-07-02",
+    version: "1.19.0",
+    title: "Iconology: an icon spec, plus a dedicated library browser",
+    description: `The Iconology section now leads with a written **icon specification** — how our icons are drawn, sized, colored, and named — and the searchable icon grid moved to its own page.
+
+**What's new**
+- **\`/iconology\`** now shows the icon guidelines: sizing (heights first — \`HxW\`), the three color/style families (**default** \`currentColor\`, **duotone** = two \`currentColor\` layers with 0.3 opacity, **color** = fixed hex with a color-name suffix), the full naming grammar, and a legacy/known-issues log.
+- The **Icon Library** browser (search, filters, download) is now at **\`/iconology/library\`**, reached from a card at the top of the Iconology page.
+- **Group by** now defaults to **Date Modified** and remembers your choice between visits.
+
+**Under the hood**
+- The Iconology doc is Markdown on the same pipeline as the token docs, so AI agents fetch it from \`llms.txt\` (\`iconology.md\`) — one canonical source for the site and for agents.
+- CMS tidy-ups: the dashboard is ordered to match the site navigation, and the reference-doc editors' Back links now return to the CMS home.`,
   },
   {
     id: uid(),
@@ -973,7 +997,6 @@ const defaultEditors: EditorAccount[] = [
 
 const defaultHomeArticle = `<h1>Design System</h1><p>Welcome to our Design System. This is a living documentation that provides guidelines, components, and patterns for building consistent user experiences across all our products.</p><p>Our design system helps teams work more efficiently by providing reusable components, clear guidelines, and a shared design language. Explore the sections below to learn about typography, color tokens, iconology, and UI patterns.</p><h2>Getting Started</h2><p>Start by exploring our foundational elements - Typography and Color Tokens. These form the building blocks of every component and pattern in the system. Then dive into our Icon Library and Patterns for more complex implementations.</p>`;
 
-const defaultIconologyArticle = `<h1>Iconology</h1><p>Our icon library provides a comprehensive set of icons designed for consistency across all products. Each icon follows strict grid and sizing guidelines to ensure visual harmony.</p><h2>Usage Guidelines</h2><p>Icons should be used at their designed sizes (16px, 20px, or 24px). Always use the provided SVG files to ensure crisp rendering at any resolution. Icons use <code>currentColor</code> for stroke so they automatically inherit the text color of their container.</p>`;
 
 const STORAGE_KEY = "ds-app-state";
 
@@ -987,7 +1010,6 @@ function getDefaults(): AppState {
     fontTokens: defaultFontTokens,
     tokenDocs: defaultTokenDocs,
     tokenStatus: { tokenSlotMtimes: {}, tokenSlotPublishedAt: {} },
-    iconologyArticle: defaultIconologyArticle,
     icons: defaultIcons,
     patterns: defaultPatterns,
     editors: defaultEditors,
@@ -1073,6 +1095,10 @@ function buildStateFromServer(serverData: Record<string, any>): AppState {
         typeof serverData.tokenDocs?.typography === "string" && serverData.tokenDocs.typography.length > 0
           ? serverData.tokenDocs.typography
           : defaults.tokenDocs.typography,
+      iconology:
+        typeof serverData.tokenDocs?.iconology === "string" && serverData.tokenDocs.iconology.length > 0
+          ? serverData.tokenDocs.iconology
+          : defaults.tokenDocs.iconology,
     },
     tokenStatus: (() => {
       const raw = (serverData.tokenStatus && typeof serverData.tokenStatus === "object")
@@ -1126,7 +1152,6 @@ function buildStateFromServer(serverData: Record<string, any>): AppState {
 
       return { tokenSlotMtimes: mtimes, tokenSlotPublishedAt: publishedAt };
     })(),
-    iconologyArticle: serverData.iconologyArticle ?? defaults.iconologyArticle,
     icons: ensureChromeIcons(
       Array.isArray(serverData.icons)
         ? serverData.icons.map((i: any) => ({
@@ -1228,7 +1253,6 @@ function seedDefaults(): void {
     fontTokens: defaults.fontTokens,
     tokenDocs: defaults.tokenDocs,
     tokenStatus: defaults.tokenStatus,
-    iconologyArticle: defaults.iconologyArticle,
     icons: defaults.icons,
     patterns: defaults.patterns,
     editors: defaults.editors,
@@ -1513,7 +1537,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         fontTokens: state.fontTokens,
         tokenDocs: state.tokenDocs,
         tokenStatus: state.tokenStatus,
-        iconologyArticle: state.iconologyArticle,
         icons: state.icons,
         patterns: state.patterns,
         editors: state.editors,
@@ -1595,7 +1618,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           breakpointTokens: payload.breakpointTokens,
           fontTokens: payload.fontTokens,
           tokenDocs: payload.tokenDocs,
-          iconologyArticle: "",
           icons: [],
           patterns: [],
           editors: payload.editors,
@@ -1654,7 +1676,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           fontTokens: currentState.fontTokens,
           tokenDocs: currentState.tokenDocs,
           tokenStatus: currentState.tokenStatus,
-          iconologyArticle: currentState.iconologyArticle,
           icons: currentState.icons,
           patterns: currentState.patterns,
           editors: currentState.editors,
@@ -1916,7 +1937,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       pendingSyncRef.current.add("tokenDocs");
       syncToServer();
     },
-    setIconologyArticle: (html) => update({ iconologyArticle: html }, "iconologyArticle"),
     addIcon: (icon) => {
       const now = new Date().toISOString();
       const nextIcon = withAutoIconTags({
@@ -2064,7 +2084,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setState((prev) => {
           const currentContentMap: Record<string, string> = {
             home: prev.homeArticle,
-            iconology: prev.iconologyArticle,
           };
           let currentContent = currentContentMap[articleKey];
           if (!currentContent && articleKey.startsWith("pattern-")) {
@@ -2154,9 +2173,8 @@ export function useAppData() {
       sizeTokens: { global: [], deviceMobile: [], deviceTablet: [], webMobile: [], webTablet: [], webDesktop: [], webDesktopLarge: [] },
       breakpointTokens: { tokens: [] },
       fontTokens: { deviceMobile: [], deviceTablet: [], webMobile: [], webDesktop: [] },
-      tokenDocs: { color: "", size: "", typography: "" },
+      tokenDocs: { color: "", size: "", typography: "", iconology: "" },
       tokenStatus: { tokenSlotMtimes: {}, tokenSlotPublishedAt: {} },
-      iconologyArticle: "",
       icons: [],
       patternsArticle: "",
       patterns: [],
@@ -2172,7 +2190,6 @@ export function useAppData() {
       setFontTokens: () => {},
       markTokensPublished: () => {},
       setTokenDoc: () => {},
-      setIconologyArticle: () => {},
       addIcon: () => {},
       updateIcon: () => {},
       removeIcon: () => {},

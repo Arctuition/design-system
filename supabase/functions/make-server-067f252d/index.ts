@@ -198,7 +198,9 @@ const MAX_VERSIONS_PER_ARTICLE = 5;
 // Storage and rewrites the src in place.
 const HTML_KEY_NAMESPACE: Record<string, string> = {
   homeArticle: "home",
-  iconologyArticle: "iconology",
+  // iconologyArticle removed — the iconology doc is now Markdown in
+  // tokenDocs.iconology (no rich-text inline images to strip). See
+  // ARCHITECTURE.md §"Article model".
 };
 
 // ──────────────────────────────────────────────
@@ -1087,14 +1089,17 @@ async function regenerateDesignTokenArtifacts(): Promise<RegenResult> {
   const breakpointsJs = buildBreakpointsJs(breakpointPx);
 
   // 5. Upload bootstrap.css + breakpoints.js to the design-tokens bucket.
-  //    Also mirror the Markdown reference docs (color / size / typography)
-  //    if the CMS has populated them — AI agents fetch these directly from
-  //    Storage to bypass the React SPA. Missing slots are silently skipped
-  //    (publish stays partially successful).
+  //    Also mirror the Markdown reference docs (color / size / typography /
+  //    iconology) if the CMS has populated them — AI agents fetch these
+  //    directly from Storage to bypass the React SPA. Missing slots are
+  //    silently skipped (publish stays partially successful). iconology.md is
+  //    the icon naming/sizing spec; it rides this same pipeline (llms.txt links
+  //    it under the Icons section).
   const md: Record<string, string> = {
     "tokens-color.md": tokenDocs?.color || "",
     "tokens-size-space.md": tokenDocs?.size || "",
     "tokens-typography.md": tokenDocs?.typography || "",
+    "iconology.md": tokenDocs?.iconology || "",
   };
 
   const uploads: Promise<{ key: string; publicUrl: string; bytes: number } | null>[] = [
