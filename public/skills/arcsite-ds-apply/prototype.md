@@ -4,6 +4,15 @@ Use this guide whenever you are building standalone ArcSite UI from scratch — 
 
 > **Maintainer note — this file holds *principles only*.** Do not hardcode token values, breakpoint pixels, mode names, hex codes, font weight lists, exact filenames, or repo paths that may drift. Reference the canonical source (`llms.txt`, the JSON files under `tokens/`, the codebase itself) and let the agent read live values. If you find yourself typing a specific value here, replace it with a pointer to where the value lives.
 
+## Which kind of "prototype"? Two contexts
+
+"Prototype" covers two different artifacts. Identify yours before applying the rules below:
+
+- **Standalone DS prototype** — new ArcSite UI built from scratch on the design system: demos, marketing pages, internal tools, concept screens. **This whole guide applies as written**: bootstrap import, semantic tokens, Inter.
+- **Design Playground product-simulation prototype** — a hi-fi simulation of the *existing shipped ArcSite app*, running inside a simulated device frame on the Design Playground hub. Its authoritative build + publish contract is maintained by the Playground itself: fetch **<https://design-playground.arcsite.com/agent-instructions.md>** and follow it; treat this guide as background reference. Two deliberate differences to expect there — they are **not** violations of the anti-patterns below:
+  - The simulated app surface is themed by the Playground template's **device-mode token layer** (`--primary`, `--background`, `--text-h1`, …) — a separate namespace from the DS semantic tokens, mirroring the shipped product's own theme. Anti-pattern 5 ("no `:root` redefinition") is about re-declaring *DS* token variables; the device-mode layer doesn't touch them.
+  - The simulated app surface uses the product's shipped UI font (currently Roboto on both iOS and Android — a font-licensing decision; the Playground contract is canonical), not Inter. Inter remains the rule for standalone/web DS surfaces, including the Playground hub's own chrome.
+
 ## Non-negotiable bootstrap
 
 Before writing any component CSS, do these three things, in order:
@@ -15,6 +24,8 @@ Before writing any component CSS, do these three things, in order:
    ```
 
    This loads Inter (whatever weights the design system currently ships with), defines every CSS variable referenced in `llms.txt`, and wires up dark-mode swap. **Do not** hand-copy values from `llms.txt` into a local `:root` — that is the failure mode this stylesheet exists to prevent.
+
+   *Offline / sandboxed builds:* when the runtime can't reach `design-system.arcsite.com` (CI sandboxes, egress-restricted networks), vendoring is acceptable — fetch `bootstrap.css` at build time with a sync script and commit the whole-file snapshot (the Design Playground's `scripts/sync-ds-tokens.mjs` is the reference implementation; it also strips the font `@import`, which loads separately). A scripted whole-file snapshot preserves token names, both modes, and the dark-mode swap; hand-copying individual values does not, and stays prohibited.
 
 2. **Pick a logo from `/logos/`** (do not redraw, recolor, or invent). List the directory's current contents and pick by filename: light-background variants vs `on-dark` variants, with-text vs glyph-only as the design needs. Do not enumerate the filenames from memory — `/logos/` is the canonical source and may grow over time.
 
@@ -80,7 +91,7 @@ For older Tailwind 3 prototypes, extend `tailwind.config.js` to alias the variab
 
 These are the failures that show up most often when LLMs default to training-set averages instead of reading this guide. Treat them as hard prohibitions.
 
-1. **No system font stack.** Never write `font-family: -apple-system, system-ui, sans-serif` (or any variant). Inter is loaded by the bootstrap; reference `var(--text-*)` tokens or `font-family: Inter`.
+1. **No system font stack.** Never write `font-family: -apple-system, system-ui, sans-serif` (or any variant). Inter is loaded by the bootstrap; reference `var(--text-*)` tokens or `font-family: Inter`. (One exception: a Design Playground product-simulation surface uses the product's shipped font per the Playground contract — see "Which kind of prototype?" above.)
 2. **No raw values in component CSS.** No hardcoded `font-size: 14px`, `color: #3B82F6`, `padding: 16px`, `border-radius: 8px`, etc. All values must come from token variables. Hex literals and bare px belong only inside the bootstrap (which is generated, not hand-edited).
 3. **No translating values across sources.** Do not read a hex from `llms.txt` and paste it into your CSS; do not read a Figma variable's resolved value and paste it. Always reference by token name so source updates propagate.
 4. **No invented or recolored brand assets.** Do not draw a new logo. Do not apply CSS filters to recolor the provided logos. If you need a variant that does not exist (e.g. monochrome on a tinted background), flag to the user.

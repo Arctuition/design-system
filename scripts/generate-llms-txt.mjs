@@ -320,7 +320,7 @@ LLM application guides for the ArcSite design system:
 
 - [Design-to-code fidelity gate](${SITE_BASE_URL}/skills/arcsite-ds-apply/design-fidelity.md) *(read whenever visual fidelity = contract — the universal "read the design as a contract" rules: annotations first, fetch SVG don't hand-draw, variant diff. Plus the responsive-specific per-band variable protocol and the four-phase verification flow.)*
 - [Canvas-app prototype guide](${SITE_BASE_URL}/skills/arcsite-ds-apply/canvas-prototype.md) *(read whenever surface shape = canvas-app, at any fidelity — coordinate-space contract, device-frame and pan/zoom architecture, counter-scaled stroke, \`ScreenAnchor\` pattern, canvas-specific verification matrix. Composes with the fidelity gate when also pixel-match.)*
-- [Prototype mode guide](${SITE_BASE_URL}/skills/arcsite-ds-apply/prototype.md)
+- [Prototype mode guide](${SITE_BASE_URL}/skills/arcsite-ds-apply/prototype.md) *(standalone DS prototypes built from scratch. Building a **Design Playground** product-simulation prototype instead? The authoritative contract is the Playground's own: \`https://design-playground.arcsite.com/agent-instructions.md\`.)*
 - [AntD conflict handling](${SITE_BASE_URL}/skills/arcsite-ds-apply/antd-conflict.md)
 - [Figma MCP flow](${SITE_BASE_URL}/skills/arcsite-ds-apply/figma-flow.md)
 `;
