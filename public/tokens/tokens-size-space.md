@@ -17,7 +17,8 @@ Hard-coded numbers like `gap: 16px` drift. The same value gets typed independent
 ```
 ┌──────────────────────────────────────────────────────────┐
 │  Layer 3 · Component tokens    size/comp/***             │
-│  e.g. size/comp/button/height-md = size/height-md        │
+│  e.g. size/comp/dialog/padding-md = size/padding-md      │
+│       size/comp/button/gap       = size/spacing-inline-sm│
 ├──────────────────────────────────────────────────────────┤
 │  Layer 2 · Semantic tokens     size/***                  │
 │  e.g. size/spacing-inline-md  (resolved per mode)        │
@@ -30,7 +31,13 @@ Hard-coded numbers like `gap: 16px` drift. The same value gets typed independent
 └──────────────────────────────────────────────────────────┘
 ```
 
-**Global scale** — raw numbers on an even step (2, 4, 6, 8 … 512). No meaning, just math.
+> **Note on heights:** there is no `size/height-*` semantic layer. Control
+> heights are defined directly on the component tokens (e.g.
+> `size/comp/button/height-md`, `size/comp/input/height-lg`), each aliasing a
+> `size-global/*` primitive. Earlier drafts of this doc referenced a
+> `size/height-*` group that never shipped — disregard it.
+
+**Global scale** — a curated set of raw numbers, not a strict even step: `2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 24, 28, 30, 32, 34, 36, 40, 44, 48, 50, 56, 64, 80, 96, 128`, plus the layout widths `680, 720, 960, 1280, 1440` and `9999` (used for fully-rounded radii). 31 values total. No meaning, just math.
 
 **Semantic tokens** — alias global values, carry intent, and change per mode. Split into four groups with clear, non-overlapping responsibilities.
 
@@ -120,10 +127,10 @@ Button horizontal padding, input field padding, tag/chip padding. Device sizes u
 | Token                       | Device Mobile | Device Tablet | Web Mobile | Web Tablet | Web Desktop | Web Desktop Large |
 | --------------------------- | ------------- | ------------- | ---------- | ---------- | ----------- | ----------------- |
 | `size/padding-component-xs` | 6             | 6             | 4          | 4          | 4           | 4                 |
-| `size/padding-component-sm` | 12            | 12            | 8          | 8          | 8           | 10                |
-| `size/padding-component-md` | 16            | 20            | 12         | 12         | 12          | 14                |
-| `size/padding-component-lg` | 20            | 24            | 16         | 20         | 20          | 24                |
-| `size/padding-component-xl` | 24            | 28            | 20         | 24         | 24          | 28                |
+| `size/padding-component-sm` | 10            | 10            | 8          | 8          | 8           | 10                |
+| `size/padding-component-md` | 16            | 16            | 12         | 12         | 12          | 14                |
+| `size/padding-component-lg` | 20            | 20            | 16         | 20         | 20          | 24                |
+| `size/padding-component-xl` | 24            | 24            | 20         | 24         | 24          | 28                |
 
 
 ---
@@ -137,6 +144,20 @@ Button horizontal padding, input field padding, tag/chip padding. Device sizes u
 | `size/icon-md` | 24        |
 | `size/icon-lg` | 30        |
 
+
+---
+
+### Touch target
+
+**Use for: the minimum hit area of an interactive control.**
+
+
+| Token              | Device Mobile | Device Tablet | Web Mobile | Web Tablet | Web Desktop | Web Desktop Large |
+| ------------------ | ------------- | ------------- | ---------- | ---------- | ----------- | ----------------- |
+| `size/touch-target` | 44            | 44            | 44         | 44         | 32          | 32                |
+
+
+44 pt on touch surfaces (iOS HIG / Material minimum for a finger); relaxed to 32 px on the pointer-driven `Web Desktop` modes where a cursor is precise.
 
 ---
 
@@ -158,37 +179,44 @@ Button horizontal padding, input field padding, tag/chip padding. Device sizes u
 
 ## Component token groups
 
-Component tokens are a thin alias layer. They keep component-specific decisions explicit (`dialog uses padding-layout-md`) without adding new raw values.
+Component tokens are a thin alias layer: each aliases a semantic token (or a `size-global/*` primitive directly, for heights) and belongs to one component. They make component-specific decisions explicit (`dialog/padding-md = size/padding-md`) without adding new raw values. Thirteen components are tokenised today: **button, input, dialog, tag, alert, card, list-item, popover, progress, tab, table, toast, toggle.**
+
+Where an alias differs between web and native, the table notes `· device → …`; `· web —` marks a token that is intentionally unset (0) in that platform group. Heights alias `size-global/*` directly — there is no `size/height-*` semantic layer.
 
 ### Button
 
-| Token                                       | Web (mobile/tablet/desktop/large) | Device (mobile/tablet)        |
-| ------------------------------------------- | --------------------------------- | ----------------------------- |
-| `size/comp/button/height-xl`                | `size-global/48`                  | `size-global/50`              |
-| `size/comp/button/height-lg`                | `size-global/40`                  | `size-global/44`              |
-| `size/comp/button/height-md`                | `size-global/32`                  | `size-global/36`              |
-| `size/comp/button/height-sm`                | `size-global/24`                  | `size-global/28`              |
-| `size/comp/button/padding-horizontal-xl`    | `size/padding-component-lg`       | `size/padding-component-lg` (mobile uses `size/padding-lg`) |
-| `size/comp/button/padding-horizontal-lg`    | `size/padding-component-lg`       | `size-global/18`              |
-| `size/comp/button/padding-horizontal-md`    | `size/padding-component-md`       | `size-global/12`              |
-| `size/comp/button/padding-horizontal-sm`    | `size/padding-component-sm`       | `size/padding-component-sm`   |
-| `size/comp/button/radius-default`           | `size/radius-sm`                  | `size/radius-md`              |
-| `size/comp/button/radius-rounded`           | `size/radius-full`                | `size/radius-full`            |
-| `size/comp/button/gap`                      | `size/spacing-inline-sm`          | `size/spacing-inline-sm`      |
+| Token                                    | Web (mobile/tablet/desktop/large) | Device (mobile/tablet)      |
+| ---------------------------------------- | --------------------------------- | --------------------------- |
+| `size/comp/button/height-sm`             | `size-global/24`                  | `size-global/28`            |
+| `size/comp/button/height-md`             | `size-global/32`                  | `size-global/34`            |
+| `size/comp/button/height-lg`             | `size-global/40`                  | `size-global/44`            |
+| `size/comp/button/height-xl`             | `size-global/48`                  | `size-global/50`            |
+| `size/comp/button/padding-horizontal-sm` | `size/padding-component-sm`       | `size/padding-component-sm` |
+| `size/comp/button/padding-horizontal-md` | `size/padding-component-md`       | `size-global/12`            |
+| `size/comp/button/padding-horizontal-lg` | `size/padding-component-lg`       | `size-global/18`            |
+| `size/comp/button/padding-horizontal-xl` | `size/padding-component-lg`       | `size/padding-component-lg` (mobile → `size/padding-lg`) |
+| `size/comp/button/radius-default`        | `size/radius-sm`                  | `size/radius-md`            |
+| `size/comp/button/radius-rounded`        | `size/radius-full`                | `size/radius-full`          |
+| `size/comp/button/gap`                   | `size/spacing-inline-sm`          | `size/spacing-inline-sm`    |
 
-**Per-mode alias note**: Most button comp tokens alias to the same semantic across all modes, but `radius-default`, `height-*`, and `padding-horizontal-{lg,md}` deliberately diverge between web and device platforms — native iOS/Android conventions prefer slightly larger touch targets and softer corners. The CMS round-trip preserves per-mode alias differences faithfully (see PR #29). When you switch mode in Figma, the bound layer recomputes against that mode's alias chain.
-
+**Per-mode alias note**: Most button comp tokens alias the same semantic across all modes, but `radius-default`, `height-*`, and `padding-horizontal-{lg,md}` deliberately diverge between web and device platforms — native iOS/Android conventions prefer slightly larger touch targets and softer corners. The CMS round-trip preserves per-mode alias differences faithfully (see PR #29). When you switch mode in Figma, the bound layer recomputes against that mode's alias chain.
 
 ### Input / Text field
 
+Heights match the button ramp (sm/md/lg = 24·32·40 web, 28·34·44 device; `height-xl` is device-only). `padding-vertical-*` alias `size-global/*` directly.
 
-| Token                                       | Aliases                           |
-| ------------------------------------------- | --------------------------------- |
-| `size/comp/input/height-sm` … `lg`          | `size/height-sm` … `lg`           |
-| `size/comp/input/padding-horizontal`        | `size/padding-component-lg`       |
-| `size/comp/input/padding-vertical-sm/md/lg` | `size/padding-component-xs/sm/md` |
-| `size/comp/input/icon-size`                 | `size/icon-md`                    |
-| `size/comp/input/radius`                    | `size/radius-md`                  |
+| Token                                  | Aliases                                                  |
+| -------------------------------------- | -------------------------------------------------------- |
+| `size/comp/input/height-sm`            | `size-global/24` · device → `size-global/28`             |
+| `size/comp/input/height-md`            | `size-global/32` · device → `size-global/34`             |
+| `size/comp/input/height-lg`            | `size-global/40` · device → `size-global/44`             |
+| `size/comp/input/height-xl`            | device → `size-global/50` · web —                        |
+| `size/comp/input/gap`                  | `size/spacing-inline-xs`                                 |
+| `size/comp/input/padding-horizontal`   | `size/padding-component-md` · device → `size/padding-component-sm` |
+| `size/comp/input/padding-vertical-sm`  | `size-global/4`                                          |
+| `size/comp/input/padding-vertical-md`  | `size-global/6`                                          |
+| `size/comp/input/padding-vertical-lg`  | `size-global/12`                                         |
+| `size/comp/input/radius`               | `size/radius-xs`                                         |
 
 
 ### Dialog / Modal
@@ -207,11 +235,114 @@ Component tokens are a thin alias layer. They keep component-specific decisions 
 ### Tag / Badge
 
 
-| Token                              | Aliases                     |
-| ---------------------------------- | --------------------------- |
-| `size/comp/tag/height-sm/md`       | `size/height-xs/sm`         |
-| `size/comp/tag/padding-horizontal` | `size/padding-component-sm` |
-| `size/comp/tag/radius`             | `size/radius-sm`            |
+| Token                          | Aliases                                      |
+| ------------------------------ | -------------------------------------------- |
+| `size/comp/tag/height-sm`      | `size-global/18`                             |
+| `size/comp/tag/height-md`      | `size-global/24`                             |
+| `size/comp/tag/height-lg`      | `size-global/32`                             |
+| `size/comp/tag/padding-h-sm`   | `size-global/6`                              |
+| `size/comp/tag/padding-h-md`   | `size-global/8`                              |
+| `size/comp/tag/padding-h-lg`   | `size-global/10`                             |
+| `size/comp/tag/padding-h-tiny` | device → `size-global/4` · web —             |
+| `size/comp/tag/gap`            | `size/spacing-inline-sm`                     |
+| `size/comp/tag/radius-default` | `size/radius-sm` · device → `size/radius-xs` |
+| `size/comp/tag/radius-rounded` | `size/radius-full`                           |
+
+
+### Alert
+
+
+| Token                     | Aliases                     |
+| ------------------------- | --------------------------- |
+| `size/comp/alert/gap`     | `size/spacing-inline-xs`    |
+| `size/comp/alert/padding` | `size/padding-component-md` |
+| `size/comp/alert/radius`  | `size/radius-xs`            |
+
+
+### Card
+
+
+| Token                    | Aliases                |
+| ------------------------ | ---------------------- |
+| `size/comp/card/gap`     | `size/spacing-stack-sm`|
+| `size/comp/card/padding` | `size/padding-sm`      |
+| `size/comp/card/radius`  | `size/radius-md`       |
+
+
+### List item
+
+
+| Token                                | Aliases                                       |
+| ------------------------------------ | --------------------------------------------- |
+| `size/comp/list-item/gap`            | `size/spacing-inline-md`                      |
+| `size/comp/list-item/height-sm`      | `size-global/32` · device —                   |
+| `size/comp/list-item/height-lg`      | `size-global/40` · device → `size-global/44`  |
+| `size/comp/list-item/padding-horizontal` | `size/padding-component-md`               |
+
+
+### Popover
+
+
+| Token                       | Aliases                     |
+| --------------------------- | --------------------------- |
+| `size/comp/popover/gap`     | `size/spacing-inline-md`    |
+| `size/comp/popover/padding` | `size/padding-component-md` |
+| `size/comp/popover/radius`  | `size/radius-xs`            |
+
+
+### Progress
+
+
+| Token                             | Aliases            |
+| --------------------------------- | ------------------ |
+| `size/comp/progress/track-height` | `size-global/4`    |
+| `size/comp/progress/radius`       | `size/radius-full` |
+
+
+### Tab
+
+Tabs flip layout between platforms: web uses taller free-standing tabs (`height-md` = 40); device uses a shorter segmented control (`height-md` = 32) with a padded, rounded container.
+
+| Token                                     | Aliases                                      |
+| ----------------------------------------- | -------------------------------------------- |
+| `size/comp/tab/height-sm`                 | `size-global/32` · device → `size-global/28` |
+| `size/comp/tab/height-md`                 | `size-global/40` · device → `size-global/32` |
+| `size/comp/tab/padding`                   | `size/spacing-stack-sm` · device —           |
+| `size/comp/tab/button-padding-horizontal` | device → `size-global/8` · web —             |
+| `size/comp/tab/button-radius`             | `size/radius-sm`                             |
+| `size/comp/tab/container-padding`         | device → `size-global/2` · web —             |
+| `size/comp/tab/container-radius`          | device → `size-global/8` · web —             |
+
+
+### Table
+
+
+| Token                                    | Aliases                                      |
+| ---------------------------------------- | -------------------------------------------- |
+| `size/comp/table/cell-height`            | `size-global/24` · device → `size-global/36` |
+| `size/comp/table/cell-padding-horizontal`| `size-global/8`                              |
+| `size/comp/table/cell-padding-vertical`  | `size-global/4`                              |
+| `size/comp/table/header-gap`             | `size-global/8`                              |
+
+
+### Toast
+
+
+| Token                                | Aliases                     |
+| ------------------------------------ | --------------------------- |
+| `size/comp/toast/gap`                | `size/spacing-inline-md`    |
+| `size/comp/toast/padding-horizontal` | `size/padding-component-md` |
+| `size/comp/toast/padding-vertical`   | `size/padding-component-sm` |
+| `size/comp/toast/radius`             | `size/radius-sm`            |
+
+
+### Toggle
+
+
+| Token                        | Aliases                  |
+| ---------------------------- | ------------------------ |
+| `size/comp/toggle/gap`       | `size/spacing-inline-sm` |
+| `size/comp/toggle/label-gap` | `size/spacing-inline-md` |
 
 
 ---
