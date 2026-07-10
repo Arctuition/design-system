@@ -427,6 +427,17 @@ const defaultTokenDocs: TokenDocs = {
 const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
+    date: "2026-07-10",
+    version: "1.21.0",
+    title: "Surface-container hover tokens now documented",
+    description: `The color reference doc now lists the \`surface/container\` hover tokens, matching what's already live in the published token CSS.
+
+**What changed**
+- Added four rows to the \`color/surface/*\` table: \`color/surface/container/default-hover\`, \`high-hover\`, \`higher-hover\`, and \`focus-hover\` — each with its light and dark → global mapping. Together with the existing \`action-hover\`, every interactive container surface now has a documented hover value.
+- The reference doc (\`tokens-color.md\`) had fallen behind \`bootstrap.css\`, which already shipped these tokens; the doc is now back in sync.`,
+  },
+  {
+    id: uid(),
     date: "2026-07-06",
     version: "1.20.0",
     title: "Skill docs now recognize Design Playground prototypes",

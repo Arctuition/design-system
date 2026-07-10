@@ -189,12 +189,16 @@ Note: intent labels skip `primary-increased-contrast` (the regular `primary` is 
 | `color/surface/default`                              | `gray/00` `#ffffff`        | `gray/90` `#1a1a1a`       |
 | `color/surface/dim`                                  | `gray/02` `#fafafa`        | `gray/95` `#0d0d0d`       |
 | `color/surface/container/default`                    | `gray/00` `#ffffff`        | `gray/90` `#1a1a1a`       |
+| `color/surface/container/default-hover`              | `gray/10` `#e6e6e6`        | `gray/85` `#262626`       |
 | `color/surface/container/high`                       | `gray/06` `#f0f0f0`        | `gray/80` `#333333`       |
+| `color/surface/container/high-hover`                 | `gray/15` `#d9d9d9`        | `gray/70` `#4d4d4d`       |
 | `color/surface/container/higher`                     | `gray/10` `#e6e6e6`        | `gray/75` `#404040`       |
+| `color/surface/container/higher-hover`               | `gray/20` `#cccccc`        | `gray/60` `#666666`       |
 | `color/surface/container/default-increased-contrast` | `gray/00` `#ffffff`                         | `gray/transparency-on-dark/10` `#ffffff1a` |
 | `color/surface/container/high-increased-contrast`    | `gray/transparency-on-light/06` `#0000000f` | `gray/transparency-on-dark/20` `#ffffff33` |
 | `color/surface/container/higher-increased-contrast`  | `gray/transparency-on-light/10` `#0000001a` | `gray/transparency-on-dark/25` `#ffffff40` |
 | `color/surface/container/focus`                      | `gray/55` `#737373`        | `gray/65` `#595959`       |
+| `color/surface/container/focus-hover`                | `gray/65` `#595959`        | `gray/55` `#737373`       |
 | `color/surface/container/action`                     | `blue/10` `#ebf4ff`        | `blue/95` `#1e252b`       |
 | `color/surface/container/action-hover`               | `blue/20` `#d1e7ff`        | `blue/100` `#1f252c`      |
 | `color/surface/container/brand`                      | `brand-orange/10`          | `brand-orange/95`         |
