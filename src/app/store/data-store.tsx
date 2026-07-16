@@ -436,6 +436,7 @@ const defaultChangeLogs: ChangeLogEntry[] = [
 - **Bulk Import now accepts a ZIP archive or a whole folder**, not just multi-selected SVGs. SVGs are pulled out of the archive/folder automatically (nested paths are flattened, macOS junk skipped).
 - **Upload preview** — every bulk upload (files, folder, or ZIP) now opens a review dialog first. Each icon shows a thumbnail and whether it's **New** or will **Overwrite** an existing icon; you can drop individual files before confirming. Overwrites still keep the existing tags. Nothing is saved until you confirm.
 - **Default sort is now Date Modified** in the Icon Manager, and your Group-by choice is remembered between visits.
+- **Copy name** now copies the dashed file name (e.g. \`arrow-right\`) rather than the prettified display name — on the public Icon Library, and via a new per-row copy button in the Icon Manager.
 
 **Housekeeping**
 - The page previously titled "Iconology Manager" is now "Icon Manager".`,

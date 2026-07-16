@@ -23,3 +23,14 @@ export function getIconDownloadFileName(fileName: string | undefined, fallbackNa
   const normalized = (fileName || displayNameToIconFileName(fallbackName)).trim();
   return normalized.toLowerCase().endsWith(".svg") ? normalized : `${normalized}.svg`;
 }
+
+/**
+ * The name copied by the "copy name" affordances — the dashed file base name
+ * (e.g. `arrow-right`), NOT the prettified display name (`Arrow Right`). This
+ * is the identifier the CMS edit form treats as the icon's name and what code
+ * uses to reference an icon. Extension is dropped; falls back to deriving a
+ * dashed name from the display name when no fileName is stored.
+ */
+export function getIconCopyName(fileName: string | undefined, fallbackName: string): string {
+  return getIconDownloadFileName(fileName, fallbackName).replace(/\.svg$/i, "");
+}

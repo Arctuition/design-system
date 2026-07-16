@@ -3,11 +3,12 @@ import { Navigate, Link } from "react-router";
 import { useAppData } from "../../store/data-store";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { ArrowLeft, Upload, Plus, Pencil, Trash2, Save, X, Tag, Search, FolderDown, FolderUp, ChevronDown, RefreshCw, MoreHorizontal, Loader2 } from "lucide-react";
+import { ArrowLeft, Upload, Plus, Pencil, Trash2, Save, X, Tag, Search, FolderDown, FolderUp, ChevronDown, RefreshCw, MoreHorizontal, Loader2, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
 import { downloadIconsAsZip, collectSvgUploads } from "../../components/shared/icon-zip-utils";
-import { getIconDownloadFileName, iconFileNameToDisplayName } from "../../components/shared/icon-file-utils";
+import { getIconDownloadFileName, getIconCopyName, iconFileNameToDisplayName } from "../../components/shared/icon-file-utils";
+import { copyToClipboard } from "../../utils/clipboard";
 import { buildIconTagsFromName } from "../../store/icon-tag-enrichment";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../components/ui/dropdown-menu";
 import {
@@ -301,6 +302,14 @@ export function IconEditor() {
     writeGroupByCookie(value);
   };
 
+  const copyIconName = (icon: IconItem) => {
+    // Copy the dashed file base name (e.g. `arrow-right`), matching the public
+    // Icon Library — not the prettified display name.
+    const copyName = getIconCopyName(icon.fileName, icon.name);
+    copyToClipboard(copyName);
+    toast.success(`Copied name: ${copyName}`);
+  };
+
   const handleReplace = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !replacingId) return;
@@ -463,6 +472,9 @@ export function IconEditor() {
             )}
           </div>
           <div className="flex gap-1 shrink-0">
+            <Button variant="ghost" size="icon" className="size-8" onClick={() => copyIconName(icon)} title="Copy name">
+              <Copy className="size-3.5" />
+            </Button>
             <Button variant="ghost" size="icon" className="size-8" onClick={() => startEdit(icon)} title="Edit">
               <Pencil className="size-3.5" />
             </Button>
