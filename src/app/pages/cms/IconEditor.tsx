@@ -740,7 +740,7 @@ export function IconEditor() {
                   <span>
                     <span className="font-medium" style={{ color: "var(--color-label-primary)" }}>{pendingIcons?.length ?? 0}</span> file{(pendingIcons?.length ?? 0) !== 1 ? "s" : ""} ready
                   </span>
-                  <span style={{ color: "var(--color-label-success, green)" }}>{newCount} new</span>
+                  <span style={{ color: "var(--color-label-success-primary)" }}>{newCount} new</span>
                   <span style={{ color: "var(--color-label-action-primary)" }}>{updateCount} will overwrite</span>
                   {pendingDuplicates > 0 && (
                     <span>{pendingDuplicates} duplicate{pendingDuplicates !== 1 ? "s" : ""} collapsed</span>
@@ -768,8 +768,8 @@ export function IconEditor() {
                         className="shrink-0 px-2 py-0.5 rounded-[var(--radius)]"
                         style={{
                           fontSize: "11px",
-                          backgroundColor: item.isUpdate ? "var(--color-fill-secondary)" : "var(--color-fill-success, var(--color-fill-secondary))",
-                          color: item.isUpdate ? "var(--color-label-action-primary)" : "var(--color-label-success, green)",
+                          backgroundColor: "var(--color-fill-secondary)",
+                          color: item.isUpdate ? "var(--color-label-action-primary)" : "var(--color-label-success-primary)",
                         }}
                       >
                         {item.isUpdate ? "Overwrite" : "New"}
@@ -818,7 +818,7 @@ export function IconEditor() {
             </div>
             <div className="flex justify-between">
               <span>New icons added</span>
-              <span className="font-medium" style={{ color: "var(--color-label-success, green)" }}>{bulkResult?.added ?? 0}</span>
+              <span className="font-medium" style={{ color: "var(--color-label-success-primary)" }}>{bulkResult?.added ?? 0}</span>
             </div>
             <div className="flex justify-between">
               <span>Existing icons updated</span>
