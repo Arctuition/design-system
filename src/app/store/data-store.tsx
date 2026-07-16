@@ -427,6 +427,22 @@ const defaultTokenDocs: TokenDocs = {
 const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
+    date: "2026-07-16",
+    version: "1.22.0",
+    title: "Icon Manager: ZIP & folder upload, with an upload preview",
+    description: `The CMS icon tool (now called **Icon Manager**) gained bulk-upload options and a review step before anything is written.
+
+**What's new**
+- **Bulk Import now accepts a ZIP archive or a whole folder**, not just multi-selected SVGs. SVGs are pulled out of the archive/folder automatically (nested paths are flattened, macOS junk skipped).
+- **Upload preview** — every bulk upload (files, folder, or ZIP) now opens a review dialog first. Each icon shows a thumbnail and whether it's **New** or will **Overwrite** an existing icon; you can drop individual files before confirming. Overwrites still keep the existing tags. Nothing is saved until you confirm.
+- **Default sort is now Date Modified** in the Icon Manager, and your Group-by choice is remembered between visits.
+- **Copy name** now copies the dashed file name (e.g. \`arrow-right\`) rather than the prettified display name — on the public Icon Library, and via a new per-row copy button in the Icon Manager.
+
+**Housekeeping**
+- The page previously titled "Iconology Manager" is now "Icon Manager".`,
+  },
+  {
+    id: uid(),
     date: "2026-07-10",
     version: "1.21.0",
     title: "Surface-container hover tokens now documented",

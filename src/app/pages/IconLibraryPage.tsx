@@ -6,7 +6,7 @@ import { Button } from "../components/ui/button";
 import { Search, Download, Copy, FolderDown, X, ChevronDown, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { downloadIconsAsZip } from "../components/shared/icon-zip-utils";
-import { getIconDownloadFileName } from "../components/shared/icon-file-utils";
+import { getIconDownloadFileName, getIconCopyName } from "../components/shared/icon-file-utils";
 import type { IconItem } from "../store/data-store";
 import { copyToClipboard } from "../utils/clipboard";
 
@@ -275,8 +275,11 @@ export function IconLibraryPage() {
   };
 
   const copyIconName = (icon: IconItem) => {
-    copyToClipboard(icon.name);
-    toast.success(`Copied name: ${icon.name}`);
+    // Copy the dashed file base name (e.g. `arrow-right`) — the identifier used
+    // to reference the icon — not the prettified display name (`Arrow Right`).
+    const copyName = getIconCopyName(icon.fileName, icon.name);
+    copyToClipboard(copyName);
+    toast.success(`Copied name: ${copyName}`);
   };
 
   const renderIconCard = (icon: IconItem) => {
