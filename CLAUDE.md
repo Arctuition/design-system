@@ -44,7 +44,7 @@ React + Vite + TypeScript design system CMS. Content is managed through `/src/ap
 ## Key files
 | Path | Purpose |
 |------|---------|
-| `src/app/pages/cms/IconEditor.tsx` | Icon upload, deduplication, bulk import |
+| `src/app/pages/cms/IconEditor.tsx` | Icon Manager — upload (single / bulk SVG / ZIP / folder), pre-upload preview, deduplication |
 | `src/app/store/api.ts` | All backend API calls (switches local/prod automatically) |
 | `supabase/functions/make-server-067f252d/index.ts` | Hono-based edge function (state CRUD). Deployed as `make-server-067f252d`; this is the canonical source (there is no `server/index.tsx`) |
 | `utils/supabase/client.ts` + `utils/supabase/allowlist.ts` | CMS Google sign-in (Supabase Auth). Frontend gate only — see `.claude/decisions.md` #9 |

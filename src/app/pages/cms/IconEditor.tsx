@@ -3,10 +3,10 @@ import { Navigate, Link } from "react-router";
 import { useAppData } from "../../store/data-store";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { ArrowLeft, Upload, Plus, Pencil, Trash2, Save, X, Tag, Search, FolderDown, ChevronDown, RefreshCw, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, Upload, Plus, Pencil, Trash2, Save, X, Tag, Search, FolderDown, FolderUp, ChevronDown, RefreshCw, MoreHorizontal, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
-import { downloadIconsAsZip } from "../../components/shared/icon-zip-utils";
+import { downloadIconsAsZip, collectSvgUploads } from "../../components/shared/icon-zip-utils";
 import { getIconDownloadFileName, iconFileNameToDisplayName } from "../../components/shared/icon-file-utils";
 import { buildIconTagsFromName } from "../../store/icon-tag-enrichment";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../components/ui/dropdown-menu";
@@ -109,6 +109,34 @@ function groupIconsByDateModified(icons: IconItem[]): Map<string, IconItem[]> {
 
 type GroupByMode = "size" | "date" | "dateModified";
 
+// Persist the Icon Manager's "Group by" choice in a cookie so the sort order
+// survives reloads and navigation. Default is "dateModified" (most-recently
+// changed first) — the most useful default for a library that's actively being
+// added to. Kept independent from the public library's cookie so a CMS editor's
+// working preference doesn't change what visitors see (that page has its own).
+const GROUP_BY_COOKIE = "ds-icon-manager-group-by";
+
+function readGroupByCookie(): GroupByMode {
+  if (typeof document === "undefined") return "dateModified";
+  const m = document.cookie.match(/(?:^|;\s*)ds-icon-manager-group-by=([^;]+)/);
+  const v = m?.[1];
+  return v === "size" || v === "date" || v === "dateModified" ? v : "dateModified";
+}
+
+function writeGroupByCookie(v: GroupByMode) {
+  if (typeof document === "undefined") return;
+  // ~1 year persistence; scoped to the whole site, lax same-site.
+  document.cookie = `${GROUP_BY_COOKIE}=${v}; path=/; max-age=31536000; SameSite=Lax`;
+}
+
+/** One SVG staged for a bulk upload, resolved against the current library. */
+interface StagedIcon {
+  fileName: string;
+  svgContent: string;
+  /** True when an icon with this fileName already exists (upload = overwrite). */
+  isUpdate: boolean;
+}
+
 function tagsToInputValue(tags: string[]): string {
   return tags.join(", ");
 }
@@ -136,13 +164,21 @@ export function IconEditor() {
   const [search, setSearch] = useState("");
   const [sizeFilter, setSizeFilter] = useState<number | null>(null);
   const [styleFilters, setStyleFilters] = useState<Set<string>>(new Set());
-  const [groupBy, setGroupBy] = useState<GroupByMode>("size");
+  const [groupBy, setGroupBy] = useState<GroupByMode>(() => readGroupByCookie());
   const [isDownloading, setIsDownloading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bulkInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
   const [replacingId, setReplacingId] = useState<string | null>(null);
   const [bulkResult, setBulkResult] = useState<{ added: number; updated: number; duplicatesInBatch: number } | null>(null);
+  // Pre-upload preview: files are parsed and staged here so the user can review
+  // (and drop) them before anything is written to the library. null = no
+  // preview open. `pendingDuplicates` counts same-named files collapsed within
+  // the batch (last one wins), surfaced in the preview footer.
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [pendingIcons, setPendingIcons] = useState<StagedIcon[] | null>(null);
+  const [pendingDuplicates, setPendingDuplicates] = useState(0);
 
   if (!isAuthenticated) return <Navigate to="/cms/login" replace />;
 
@@ -172,55 +208,97 @@ export function IconEditor() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleBulkUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-    const svgFiles = Array.from(files).filter((file) => file.name.toLowerCase().endsWith(".svg"));
-    if (svgFiles.length === 0) {
-      toast.error("No SVG files found in the selection.");
-      if (bulkInputRef.current) bulkInputRef.current.value = "";
-      return;
-    }
-    // Dedupe within the batch by fileName (last upload wins). Without this,
-    // parallel FileReader callbacks all close over the same `icons` snapshot,
-    // so two same-named files in one batch would both miss the existence
-    // check and produce two records with the same fileName.
-    const dedupedByName = new Map<string, File>();
-    svgFiles.forEach((f) => dedupedByName.set(f.name, f));
-    const uniqueFiles = Array.from(dedupedByName.values());
-    const duplicatesInBatch = svgFiles.length - uniqueFiles.length;
+  // Parse a bulk selection (multi-select SVGs, a folder, and/or ZIP archives)
+  // and open the preview dialog. Nothing is written to the library yet — the
+  // user reviews the staged list first (requirement: preview before any upload,
+  // whether the files are new or overwrite existing icons).
+  const prepareBulkUpload = async (files: File[]) => {
+    if (files.length === 0) return;
+    setIsPreparing(true);
+    try {
+      const { items, errors } = await collectSvgUploads(files);
+      if (errors.length > 0) {
+        toast.error(`Could not read ${errors.length} file${errors.length === 1 ? "" : "s"}`);
+      }
+      if (items.length === 0) {
+        if (errors.length === 0) toast.error("No SVG files found in the selection.");
+        return;
+      }
+      // Dedupe within the batch by fileName (last one wins), so two same-named
+      // files don't both stage as separate rows.
+      const dedupedByName = new Map<string, string>();
+      items.forEach((item) => dedupedByName.set(item.fileName, item.svgContent));
+      const duplicatesInBatch = items.length - dedupedByName.size;
 
-    let count = 0;
-    let updatedCount = 0;
-    const total = uniqueFiles.length;
-    uniqueFiles.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const content = ev.target?.result as string;
-        const existing = icons.find((i) => i.fileName === file.name);
-        if (existing) {
-          updateIcon(existing.id, { svgContent: content });
-          updatedCount++;
-        } else {
-          addIcon({
-            name: iconFileNameToDisplayName(file.name),
-            tags: [],
-            svgContent: content,
-            fileName: file.name,
-          });
-        }
-        count++;
-        if (count === total) {
-          setBulkResult({
-            added: total - updatedCount,
-            updated: updatedCount,
-            duplicatesInBatch,
-          });
-        }
-      };
-      reader.readAsText(file);
-    });
+      const staged: StagedIcon[] = Array.from(dedupedByName.entries()).map(([fileName, svgContent]) => ({
+        fileName,
+        svgContent,
+        isUpdate: icons.some((i) => i.fileName === fileName),
+      }));
+      // New icons first, then overwrites; alphabetical within each group.
+      staged.sort(
+        (a, b) => Number(a.isUpdate) - Number(b.isUpdate) || a.fileName.localeCompare(b.fileName),
+      );
+
+      setPendingDuplicates(duplicatesInBatch);
+      setPendingIcons(staged);
+    } finally {
+      setIsPreparing(false);
+    }
+  };
+
+  const handleBulkUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
     if (bulkInputRef.current) bulkInputRef.current.value = "";
+    void prepareBulkUpload(files);
+  };
+
+  const handleFolderUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if (folderInputRef.current) folderInputRef.current.value = "";
+    void prepareBulkUpload(files);
+  };
+
+  const removePendingIcon = (fileName: string) => {
+    setPendingIcons((prev) => (prev ? prev.filter((i) => i.fileName !== fileName) : prev));
+  };
+
+  const cancelPendingUpload = () => {
+    setPendingIcons(null);
+    setPendingDuplicates(0);
+  };
+
+  // Commit the reviewed batch. Existence is re-resolved against the current
+  // library at write time (not the flag captured at preview) so the counts and
+  // add-vs-update decision stay correct even if the library changed meanwhile.
+  const confirmPendingUpload = () => {
+    if (!pendingIcons || pendingIcons.length === 0) return;
+    let added = 0;
+    let updated = 0;
+    pendingIcons.forEach((item) => {
+      const existing = icons.find((i) => i.fileName === item.fileName);
+      if (existing) {
+        updateIcon(existing.id, { svgContent: item.svgContent });
+        updated++;
+      } else {
+        addIcon({
+          name: iconFileNameToDisplayName(item.fileName),
+          tags: [],
+          svgContent: item.svgContent,
+          fileName: item.fileName,
+        });
+        added++;
+      }
+    });
+    const duplicatesInBatch = pendingDuplicates;
+    setPendingIcons(null);
+    setPendingDuplicates(0);
+    setBulkResult({ added, updated, duplicatesInBatch });
+  };
+
+  const handleGroupByChange = (value: GroupByMode) => {
+    setGroupBy(value);
+    writeGroupByCookie(value);
   };
 
   const handleReplace = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -406,7 +484,7 @@ export function IconEditor() {
         <ArrowLeft className="size-4" /> Back to CMS
       </Link>
       <h1 style={{ fontSize: "var(--text-h2)", fontWeight: "var(--font-weight-normal)", color: "var(--color-label-primary)" }}>
-        Iconology Manager
+        Icon Manager
       </h1>
       <div className="h-px mt-3 mb-6" style={{ backgroundColor: "var(--color-divider-default)" }} />
 
@@ -434,13 +512,37 @@ export function IconEditor() {
           {/* Upload & download area */}
           <div className="flex flex-wrap items-center gap-3 mb-6 p-4 border rounded-[var(--radius-card)]" style={{ borderColor: "var(--color-border-default)", backgroundColor: "var(--color-surface-container-high)" }}>
             <input ref={fileInputRef} type="file" accept=".svg" className="hidden" onChange={handleSingleUpload} />
-            <input ref={bulkInputRef} type="file" accept=".svg" multiple className="hidden" onChange={handleBulkUpload} />
+            <input ref={bulkInputRef} type="file" accept=".svg,.zip" multiple className="hidden" onChange={handleBulkUpload} />
+            {/* `webkitdirectory` turns the native picker into a folder picker; it
+                yields every file inside (flattened to basenames). React's types
+                don't include the attribute, so it's spread as a plain prop. */}
+            <input
+              ref={folderInputRef}
+              type="file"
+              className="hidden"
+              onChange={handleFolderUpload}
+              {...({ webkitdirectory: "", directory: "", multiple: true } as Record<string, unknown>)}
+            />
             <input ref={replaceInputRef} type="file" accept=".svg" className="hidden" onChange={handleReplace} />
             <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
               <Plus className="size-4 mr-1.5" /> Upload Single
             </Button>
-            <Button variant="outline" onClick={() => bulkInputRef.current?.click()}>
-              <Upload className="size-4 mr-1.5" /> Bulk Import
+            <Button
+              variant="outline"
+              onClick={() => bulkInputRef.current?.click()}
+              disabled={isPreparing}
+              title="Select multiple SVG files or a ZIP archive"
+            >
+              {isPreparing ? <Loader2 className="size-4 mr-1.5 animate-spin" /> : <Upload className="size-4 mr-1.5" />}
+              Bulk Import (SVG / ZIP)
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => folderInputRef.current?.click()}
+              disabled={isPreparing}
+              title="Select a folder of SVG files"
+            >
+              <FolderUp className="size-4 mr-1.5" /> Upload Folder
             </Button>
             <div className="w-px h-6" style={{ backgroundColor: "var(--color-divider-default)" }} />
             <Button
@@ -578,7 +680,7 @@ export function IconEditor() {
                 </span>
                 <select
                   value={groupBy}
-                  onChange={(e) => setGroupBy(e.target.value as GroupByMode)}
+                  onChange={(e) => handleGroupByChange(e.target.value as GroupByMode)}
                   className="appearance-none border rounded-[var(--radius)] pl-2 pr-6 py-1 cursor-pointer"
                   style={{ fontSize: "var(--text-label)", backgroundColor: "var(--color-surface-default)", borderColor: "var(--color-border-default)", color: "var(--color-label-primary)" }}
                 >
@@ -622,6 +724,86 @@ export function IconEditor() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Pre-upload preview dialog — review staged icons before writing them */}
+      <Dialog open={pendingIcons !== null} onOpenChange={(open) => { if (!open) cancelPendingUpload(); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Review before uploading</DialogTitle>
+          </DialogHeader>
+          {(() => {
+            const newCount = pendingIcons?.filter((i) => !i.isUpdate).length ?? 0;
+            const updateCount = pendingIcons?.filter((i) => i.isUpdate).length ?? 0;
+            return (
+              <>
+                <div className="flex flex-wrap items-center gap-3 py-1" style={{ fontSize: "var(--text-label)", color: "var(--color-label-secondary)" }}>
+                  <span>
+                    <span className="font-medium" style={{ color: "var(--color-label-primary)" }}>{pendingIcons?.length ?? 0}</span> file{(pendingIcons?.length ?? 0) !== 1 ? "s" : ""} ready
+                  </span>
+                  <span style={{ color: "var(--color-label-success, green)" }}>{newCount} new</span>
+                  <span style={{ color: "var(--color-label-action-primary)" }}>{updateCount} will overwrite</span>
+                  {pendingDuplicates > 0 && (
+                    <span>{pendingDuplicates} duplicate{pendingDuplicates !== 1 ? "s" : ""} collapsed</span>
+                  )}
+                </div>
+
+                <div className="mt-1 max-h-[52vh] overflow-y-auto space-y-2 pr-1">
+                  {pendingIcons?.map((item) => (
+                    <div
+                      key={item.fileName}
+                      className="flex items-center gap-3 p-2.5 border rounded-[var(--radius-card)]"
+                      style={{ borderColor: "var(--color-border-default)" }}
+                    >
+                      <div
+                        className="size-9 flex items-center justify-center shrink-0 overflow-hidden [&>svg]:max-w-full [&>svg]:max-h-full"
+                        style={{ color: "var(--color-label-primary)" }}
+                        dangerouslySetInnerHTML={{ __html: item.svgContent }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate" style={{ fontSize: "var(--text-p)", fontWeight: "var(--font-weight-medium)", color: "var(--color-label-primary)" }}>
+                          {item.fileName}
+                        </p>
+                      </div>
+                      <span
+                        className="shrink-0 px-2 py-0.5 rounded-[var(--radius)]"
+                        style={{
+                          fontSize: "11px",
+                          backgroundColor: item.isUpdate ? "var(--color-fill-secondary)" : "var(--color-fill-success, var(--color-fill-secondary))",
+                          color: item.isUpdate ? "var(--color-label-action-primary)" : "var(--color-label-success, green)",
+                        }}
+                      >
+                        {item.isUpdate ? "Overwrite" : "New"}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 shrink-0"
+                        onClick={() => removePendingIcon(item.fileName)}
+                        title="Remove from this batch"
+                      >
+                        <X className="size-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+
+                {updateCount > 0 && (
+                  <p style={{ fontSize: "var(--text-label)", color: "var(--color-label-secondary)" }}>
+                    Overwrites replace the SVG only — existing tags are kept.
+                  </p>
+                )}
+
+                <DialogFooter>
+                  <Button variant="ghost" onClick={cancelPendingUpload}>Cancel</Button>
+                  <Button onClick={confirmPendingUpload} disabled={(pendingIcons?.length ?? 0) === 0}>
+                    Upload {pendingIcons?.length ?? 0} icon{(pendingIcons?.length ?? 0) !== 1 ? "s" : ""}
+                  </Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Bulk import result dialog */}
       <Dialog open={bulkResult !== null} onOpenChange={(open) => { if (!open) setBulkResult(null); }}>
