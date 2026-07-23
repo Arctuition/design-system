@@ -1084,15 +1084,18 @@ Both platforms ship a **semibold** text variant (\`font/text-*-semibold\` / \`ap
 
 ## Icon layouts
 
-Both components expose the same core layouts (Figma variant \`Icon Layout\`):
+The icon-with-text layout carries its icon through a **left / right toggle**: one layout gives you a **leading icon, a trailing icon, or both** by switching the left and right icon slots on or off. So there is no need for a separate "text-then-icon" layout — use the icon+text layout and turn on the **right (trailing)** slot when you want the icon after the label.
+
+Core layouts (Figma variant \`Icon Layout\`):
 
 - **text** — label only.
-- **icon-text** — leading icon + label. The default when an icon reinforces the action.
-- **text-icon** — label + trailing icon (e.g. a "next" affordance).
+- **icon-text** — label with a toggleable **leading and/or trailing** icon (left slot, right slot, or both). This is *the* layout for any icon-with-text button. On the app the equivalent toggle-carrier is the **default** layout (label with optional left/right icons).
 - **icon** — icon only, square container (width = height). Always give it an accessible label (\`aria-label\`).
-- **icon-drop down** / **text-drop down** / **icon-text-drop down** — content plus a trailing chevron for menu/split buttons.
+- **icon-drop down** / **text-drop down** / **icon-text-drop down** — content plus a trailing chevron for menu / split buttons.
 - **icon-text-vertical** — icon stacked above the label; used for toolbar / tab-bar entries. Pairs with the \`active\` status.
-- App-only extras: **default** (label with optional left/right icons), **big icon-text**.
+- App-only extra: **big icon-text**.
+
+> **Legacy — don't reach for \`text-icon\`.** The standalone \`text-icon\` variant (label + fixed trailing icon) is **superseded**: \`icon-text\` already covers a trailing icon via its right-icon toggle. Use \`icon-text\` with the **right slot** enabled instead of \`text-icon\`. Older variants exist in Figma for back-compat, but new work should use the toggle. Same principle for any other single-purpose "text-then-X" variant — prefer the toggle-based \`icon-text\` (app: \`default\`).
 
 **Icon size inside buttons:** web buttons pair with **24×24** icons; app buttons pair with **16×16** icons. Use the icon at its **native size** — per the [Iconology spec](iconology.md), never rescale an icon across size buckets (a 24 shrunk to 16 gets the wrong stroke weight). Pick the icon whose height matches the button's icon slot.
 
@@ -1119,6 +1122,7 @@ Statuses shipped as component variants:
 | Use **danger** only for destructive actions | Use danger as a generic "important" color | Red is reserved for destructive intent (Delete/Remove) |
 | Use **no border** / secondary for lower-emphasis actions | Make every action a primary | Emphasis hierarchy is what makes the primary readable |
 | Pair buttons with icons at the button's icon size (web 24, app 16), at native size | Rescale a 24 icon down to sit in an app button | Rescaled icons get the wrong stroke weight (see Iconology) |
+| Use \`icon-text\` and toggle the **right** slot for a trailing icon | Use the legacy \`text-icon\` layout | \`icon-text\` already toggles leading / trailing / both; \`text-icon\` is redundant and being retired |
 | Keep default radius unless the design calls for a pill | Randomly use \`rounded\` / pill variants | Pill/circular are reserved for FABs, chips, and specific pill treatments |
 | Let size tokens set height + padding | Set custom heights/padding to "make it fit" | Off-grid buttons break vertical rhythm and alignment |
 
@@ -1128,7 +1132,7 @@ Statuses shipped as component variants:
 2. **Type?** Main action → **primary** (one per view). Supporting → **secondary**. Low-emphasis → **no border**. Destructive → **danger**. Pill/FAB/chip only when the design says so.
 3. **Size?** Default **medium** (web 32 / app 34). Use small for dense UI, large/xl for prominent CTAs.
 4. **Tokens, not literals.** Fill/border/label from the Types tables; height/padding/text from the Sizes tables; radius from the radius tokens. Import \`bootstrap.css\` and reference \`var(--token-name)\`.
-5. **Icons** at native size — web 24, app 16 — never rescaled (see Iconology).
+5. **Icons** at native size — web 24, app 16 — never rescaled (see Iconology). For a trailing icon, use \`icon-text\` with the right slot toggled on — not the legacy \`text-icon\` layout.
 6. **States** — ship default + disabled; do hover/pressed via \`*-hover\` tokens, not invented colors.
 `,
     markdownUpdatedAt: "2026-07-23",
