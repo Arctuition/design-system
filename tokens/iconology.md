@@ -2,11 +2,19 @@
 
 Icons are a core part of the ArcSite visual language. They carry meaning at a glance, so they must stay visually consistent, predictable to find, and safe to recolor across light and dark themes. This page is the working specification for how our icons are drawn, sized, colored, and named. It reflects the rules we build to going forward — the library still contains older icons that predate it (see **Legacy & known issues** at the end).
 
+> 🤖 **Agents — read this spec before you reference any icon.** Icons are drawn
+> individually per size and are **not interchangeable across sizes**. Pick the
+> icon whose size (**height**) matches your context and use it at its native
+> dimensions — never rescale one size to stand in for another. Skipping this is
+> the single most common way icon usage goes wrong, and it produces mismatched
+> line weights. The rule is spelled out under **Sizes → Sizes are not
+> interchangeable** below; read it before pulling an icon from the library.
+
 ## Principles
 
 - **One glyph, one meaning.** An icon names a thing or an action, never a color or a screen. The same concept looks the same everywhere.
 - **Themeable by default.** A UI icon inherits its color from its context via `currentColor`. Hardcoded color is the exception, and when it happens the name must say so.
-- **Drawn per size, not scaled.** A 16px icon is redrawn for legibility, not a shrunken 24px icon.
+- **Drawn per size, not scaled — and consumed per size too.** A 16px icon is redrawn for legibility, not a shrunken 24px icon; likewise, when *using* an icon, reference the one already drawn at the size you need and render it at its native dimensions. Never rescale one size to substitute for another — it breaks stroke consistency (see **Sizes → Sizes are not interchangeable**).
 - **Predictable names.** Anyone should be able to guess an icon's name from what it is, and read its style and size straight from the name.
 
 ## Anatomy & grid
@@ -33,6 +41,39 @@ Size is always the last token in the name, written **`HxW` — height first, the
 | **Non-square** (e.g. `16x10`, `24x12`) | Intrinsic shape | Only when the glyph is genuinely non-square (chevrons, grips, dividers). Keep `HxW` honest. |
 
 New **web** work targets **16 and 24** (plus 40/48/64 for illustration); new **iOS** work targets **30**.
+
+### Sizes are not interchangeable — match, never rescale
+
+> ⛔ **Never resize an icon across size buckets.** Each size (16, 24, 30, …) is
+> *drawn at that size*, with its own stroke thickness, padding, and level of
+> detail. Take a `24x24` icon, drop it into a 16px box — via `width`/`height`,
+> `viewBox`, `transform: scale()`, or any CSS — and its strokes shrink with it,
+> so it no longer matches the real 16px icons beside it. The result is a set
+> with visibly inconsistent line weights (and muddy detail at small sizes).
+> Upscaling is just as wrong: a 16px glyph blown up to 24 looks thin and
+> under-detailed next to the real 24px set.
+
+Rules for anyone consuming icons — people **and** agents:
+
+- **Pick by height.** Choose the icon whose size-suffix *height* matches the
+  context: **16** for dense / inline UI, **24** for default web UI, **30** for
+  the iOS app. Match the height, not the width (see the height-first rule
+  above).
+- **Render at native size.** A `… 16x16` icon → `width="16" height="16"`; a
+  `… 24x24` icon → `24`. Don't "make it fit" by scaling a different size.
+- **Don't mix buckets in one surface.** Everything sitting together — a toolbar,
+  a menu, a button row — must come from the *same* size bucket. A real 24 next
+  to a 24-scaled-down-to-16 is exactly the inconsistency this rule prevents.
+- **Missing the size you need?** Ask the design team to add it (upload via the
+  CMS). In a throwaway prototype only, a rescaled stand-in is tolerable **if you
+  disclose it and track it as a gap** — never ship it.
+
+| Do | Don't | Why |
+|---|---|---|
+| Use `menu 16x16` in a dense table row | Render `menu 24x24` at 16px | The 24's strokes shrink to a thinner weight than the real 16 set → mismatched line widths |
+| Match icon **height** to the row / text it sits with | Pick by width, or scale "to fit" | Height is the grouping dimension; scaling breaks stroke consistency |
+| Keep every icon in one toolbar from a single bucket | Mix a native 24 with a scaled-down 24 | Even a 1–2px stroke delta reads as "off" across a set |
+| Request the missing size (or disclose a temporary stand-in) | Silently ship a rescaled icon | Rescaled icons look broken next to native ones |
 
 ## Color & style variants
 

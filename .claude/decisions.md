@@ -360,3 +360,36 @@ instant publish is the stated direction since #12, so the trade is accepted.
 **Deploy note:** takes effect when `supabase/functions/**` lands on `main`
 (auto-deploy via `.github/workflows/deploy-edge-functions.yml`). Until then,
 Save-without-Publish still leaves Storage stale.
+
+## 15. Agents must read the icon spec before referencing icons; `llms.txt` gates it + lists patterns
+
+**Decision:** the icon-usage rule — *icons are drawn per size and are not
+interchangeable; never rescale one size to stand in for another* — is elevated to
+a hard, agent-facing gate. `llms.txt` (the agent entry point) now opens its Icons
+section with a STOP directing agents to read `iconology.md` first, and
+`iconology.md` gains a dedicated **"Sizes are not interchangeable"** section with
+do/don'ts and an agent callout at the top. Separately, `llms.txt` gains a
+`## Patterns` section so agents can discover the component pattern guides —
+starting with a new **Buttons** spec.
+
+**Why:** prototypes were pulling one icon size and rescaling it to another,
+producing inconsistent stroke weights across a set. The guidance existed (the
+height-first note) but wasn't positioned as a blocking rule, and agents jumped
+straight to the icon endpoints. Two adjacent gaps compounded it: (1)
+`tokenDocs.iconology` was never populated in prod KV, so the canonical
+`iconology.md` Storage URL that `llms.txt` already advertised returned **404** —
+the spec agents were told to read did not exist; (2) patterns were not listed in
+`llms.txt` at all, so agents had no way to find component guides like Buttons.
+
+**How:** edited the template in `scripts/generate-llms-txt.mjs` (icon STOP +
+per-endpoint reminders + a Patterns list) and `tokens/iconology.md` (new section
++ agent callout). Wrote `tokenDocs.iconology` to prod KV — which auto-publishes
+to Storage (decision #14). Created the `Buttons` pattern in prod KV `patterns`
+(MD-only: `content:""`, canonical `markdownContent`, served at
+`GET /patterns/buttons.md`) and seeded it in `defaultPatterns`.
+
+**Trade-off / maintenance:** the `llms.txt` Patterns list is **hardcoded** — a
+new / renamed / deleted pattern needs the list updated or its `.md` link 404s.
+Accepted over a build-time fetch, which would make the generator impure and
+network-dependent (it currently reads only local JSON); this matches how the icon
+endpoints are already hardcoded in the same template.
