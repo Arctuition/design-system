@@ -1009,10 +1009,12 @@ Buttons trigger an action — submit, confirm, open, cancel, navigate. They are 
 
 There are **two button components**, one per platform. They are deliberately different — different typeface, sizing, and corner radius — and they must not be mixed across scopes:
 
-| Component | Platform | Typeface | Corner radius | When to use |
+| Component | Platform | Typeface (resolved) | Radius (token) | When to use |
 |---|---|---|---|---|
-| **\`web/btn\`** | User site + marketing web | **Inter** | 4px (tight) | Anything on the public web / marketing surfaces (\`web/*\` scope) |
-| **\`app/btn\`** | iOS / iPadOS / cross-platform app | **Roboto** | 6–10px (rounder) | Anything inside the native app (\`app/*\` scope) |
+| **\`web/btn\`** | User site + marketing web | **Inter** | tighter — \`radius-default\`→\`radius-sm\` | Anything on the public web / marketing surfaces (\`web/*\` scope) |
+| **\`app/btn\`** | iOS / iPadOS / cross-platform app | **Roboto** (product font) | rounder — \`radius-default\`→\`radius-md\` | Anything inside the native app (\`app/*\` scope) |
+
+The typeface and radius differences above are **not two hardcoded specs** — they are the *same* tokens resolving under different platform modes (see **Sizes & typography** below). Don't copy the resolved values into code.
 
 > 🤖 **Agents — before you write a button, decide the platform first, then use that platform's component and typeface.** Never render a web button with Roboto or an app button with Inter, and never reuse \`app/btn\` styling on the web (or vice-versa). Bind every color, size, and radius to the tokens in this doc — do not hardcode hex or pixel values. This mirrors design-system principle #1 (component namespace must not cross scopes).
 
@@ -1056,31 +1058,37 @@ Pick a type by **emphasis and intent**, not by color. Use exactly **one primary 
 
 > The app has more type variants than the web because it covers native patterns (circular FABs, filter chips, rounded pills). On the web, stick to primary / secondary / danger / no-border unless the design explicitly calls for a pill.
 
-## Sizes
+## Sizes & typography — all token-driven
 
-Match the size to platform and density. **Medium is the default** on both platforms. Heights, horizontal padding, and the text token are all driven by size tokens — never set them ad hoc.
+> **Every dimensional and typographic value on a button is a token — never hardcode px, font-size, line-height, or font family.** These tokens are **mode-scoped**: the *same* token resolves to different values on the user site vs the native app (and across breakpoints). That is *why* a web button is 32px tall with Inter and a tighter radius while an app button is 34px tall with the product font and a rounder radius — it is **one token set** (\`--size-comp-button-*\`, \`--font-size-body-*\`, \`--font-typeface-text\`) resolving under the web modes vs the device / native modes, **not two separate specs**. Bind to the token and let the platform mode resolve it. (Prototypes emulate the native app by applying the device-mode class on \`<html>\` — see \`llms.txt\`.)
 
-### User site — \`web/btn\` (Inter)
+**Medium is the default** size on both platforms.
 
-| Size | Height | H-padding | Text token | Typeface size |
+### Dimensions — bind to these tokens
+
+| Size | Height | Horizontal padding | Text | Reference value (web → app) |
 |---|---|---|---|---|
-| **small** | \`--size/comp/button/height-sm\` (24px) | \`--size/comp/button/padding-horizontal-sm\` (8px) | \`font/text-small\` | 12 / 16 |
-| **medium** ⭐ | \`--size/comp/button/height-md\` (32px) | \`--size/comp/button/padding-horizontal-md\` (12px) | \`font/text-medium\` | 14 / 18 |
-| **large** | \`--size/comp/button/height-lg\` (40px) | \`--size/comp/button/padding-horizontal-lg\` (20px) | \`font/text-large\` | 16 / 22 |
-| **extra large** | \`--size/comp/button/height-xl\` (48px) | ~20px | \`font/text-large\` | 16 / 22 |
+| **small** | \`--size-comp-button-height-sm\` | \`--size-comp-button-padding-horizontal-sm\` | \`--font-size-body-small\` | 24→28px tall · 8→10 pad · 12→13 text |
+| **medium** ⭐ | \`--size-comp-button-height-md\` | \`--size-comp-button-padding-horizontal-md\` | \`--font-size-body-medium\` | 32→34px · 12→12 · 14→15 |
+| **large** | \`--size-comp-button-height-lg\` | \`--size-comp-button-padding-horizontal-lg\` | \`--font-size-body-large\` | 40→44px · 20→18 · 16→17 |
+| **extra large** | \`--size-comp-button-height-xl\` | (uses the \`-lg\` padding) | \`--font-size-body-large\` | 48→50px |
 
-### App — \`app/btn\` (Roboto)
+The **Reference value** column is illustrative only — it shows what the tokens resolve to *today* in the web vs device modes, to make the platform difference concrete. Do **not** copy it into code; reference the token and the correct value follows automatically.
 
-| Size | Height | H-padding | Text token | Typeface size |
-|---|---|---|---|---|
-| **small** | \`--size/comp/button/height-sm\` (28px) | \`--size/comp/button/padding-horizontal-sm\` (10px) | \`app/text-small\` | 13 / 18 |
-| **medium** ⭐ | \`--size/comp/button/height-md\` (34px) | \`--size/comp/button/padding-horizontal-md\` (12px) | \`app/text-medium\` | 15 / 20 |
-| **large** | \`--size/comp/button/height-lg\` (44px) | \`--size/comp/button/padding-horizontal-lg\` (18px) | \`app/text-large\` | 17 / 22 |
-| **extra-large** | 50px | \`--size/comp/button/padding-horizontal-xl\` (20px) | \`app/text-large\` | 17 / 22 |
+### Typography — bind to the body-text token
 
-Both platforms ship a **semibold** text variant (\`font/text-*-semibold\` / \`app/text-*-semibold\`, weight 600) used on primary / emphasized buttons; regular (400) elsewhere.
+Button labels use the **body text** token, never a fixed font:
 
-**Corner radius:** web = \`--size/comp/button/radius-default\` (4px). App = \`--size/radius-sm\` (≈6px) by default, up to \`--size/comp/button/radius-default\` (10px) on larger sizes. Both use \`--size/comp/button/radius-rounded\` (9999) for the \`rounded\` / \`circular\` / pill variants.
+- **Family:** \`--font-typeface-text\` — resolves to **Inter** on the web and to the **product font** in the native app (the device token mode; the shipping app uses Roboto).
+- **Size + line-height:** \`--font-size-body-{small|medium|large}\` with the matching \`--font-size-body-line-height-{small|medium|large}\` (the \`medium\` step is also available as the composite \`font: var(--text-body-medium)\`).
+- **Weight:** \`--font-font-weight-regular\` (default) or \`--font-font-weight-semibold\` for primary / emphasized buttons.
+
+Because the token is mode-scoped, \`body/medium\` resolves to **14 / 18 on web** and **15 / 20 in the app** — same token, different platform. That is the whole point: reference the token and the right value follows.
+
+### Radius & gap
+
+- **Corner radius:** \`--size-comp-button-radius-default\` — aliases a *smaller* radius in web modes (\`radius-sm\`) and a *rounder* one in the device / native mode (\`radius-md\`), so the same token gives web its tight corners and the app its rounder ones. Use \`--size-comp-button-radius-rounded\` for the \`rounded\` / \`circular\` / pill variants. Don't hardcode 4 vs 6/10.
+- **Icon ↔ label gap:** \`--size-comp-button-gap\`.
 
 ## Icon layouts
 
@@ -1128,10 +1136,10 @@ Statuses shipped as component variants:
 
 ## For agents — quick contract
 
-1. **Platform?** Web → \`web/btn\` (Inter, radius 4). App → \`app/btn\` (Roboto, radius ≈6–10). Never cross scopes.
+1. **Platform?** Web → \`web/btn\`. App → \`app/btn\`. The same token names resolve per platform (web modes vs device / native modes) — that's what makes web tighter + Inter and app rounder + product-font. Never cross scopes.
 2. **Type?** Main action → **primary** (one per view). Supporting → **secondary**. Low-emphasis → **no border**. Destructive → **danger**. Pill/FAB/chip only when the design says so.
-3. **Size?** Default **medium** (web 32 / app 34). Use small for dense UI, large/xl for prominent CTAs.
-4. **Tokens, not literals.** Fill/border/label from the Types tables; height/padding/text from the Sizes tables; radius from the radius tokens. Import \`bootstrap.css\` and reference \`var(--token-name)\`.
+3. **Size?** Default **medium**; bind height / padding to \`--size-comp-button-*\` (they resolve to 32/34px etc. per platform — don't hardcode). Small for dense UI, large / xl for prominent CTAs.
+4. **Tokens, not literals.** Fill / border / label from the Types tables; height / padding / radius / gap from \`--size-comp-button-*\`; **typography from \`--font-typeface-text\` + \`--font-size-body-*\` (+ line-height) + \`--font-font-weight-*\`** — never a hardcoded px, family, or line-height. Import \`bootstrap.css\` and reference \`var(--token-name)\`.
 5. **Icons** at native size — web 24, app 16 — never rescaled (see Iconology). For a trailing icon, use \`icon-text\` with the right slot toggled on — not the legacy \`text-icon\` layout.
 6. **States** — ship default + disabled; do hover/pressed via \`*-hover\` tokens, not invented colors.
 `,
