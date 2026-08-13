@@ -427,6 +427,18 @@ const defaultTokenDocs: TokenDocs = {
 const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
+    date: "2026-07-23",
+    version: "1.23.0",
+    title: "Button pattern, icon size rule, and an agent read-the-spec-first gate",
+    description: `Two design-guideline additions aimed at keeping generated UI consistent, plus a fix so AI agents actually read our specs before pulling from the library.
+
+**What's new**
+- **New \`Buttons\` pattern guide** — the button spec covering **both** the user-site (\`web/btn\`, Inter) and app (\`app/btn\`, Roboto) components: every type, size, icon layout, and state, with the exact design token behind each variant. Written so agents build buttons from tokens instead of hand-rolling colors, sizes, and radii.
+- **Iconology — "Sizes are not interchangeable."** A new, prominent rule (with do/don'ts) that icons must be used at their native size and never rescaled across size buckets — a \`24x24\` shrunk to 16px gets the wrong stroke weight. The \`/iconology\` spec is now also published to prod + Storage, where it had been missing.
+- **\`llms.txt\` gates icon usage and lists patterns.** The Icons section now opens with a "read the icon spec first" stop, and a new **Patterns** section points agents at the live guides (Buttons, Modal Dialogs, Web View) so they can find and follow them before building.`,
+  },
+  {
+    id: uid(),
     date: "2026-07-16",
     version: "1.22.0",
     title: "Icon Manager: ZIP & folder upload, with an upload preview",
@@ -983,6 +995,160 @@ function ensureChromeIcons(icons: IconItem[]): IconItem[] {
 }
 
 const defaultPatterns: PatternArticle[] = [
+  {
+    id: uid(),
+    title: "Buttons",
+    // MD-only pattern: canonical markdown lives here (and in prod KV). No HTML
+    // twin — the public page renders this via MarkdownRenderer and agents fetch
+    // it at GET /patterns/buttons.md. Authored from the web/btn + app/btn Figma
+    // components; see .claude/pattern-doc-workflow.md.
+    content: "",
+    markdownContent: `## Overview
+
+Buttons trigger an action — submit, confirm, open, cancel, navigate. They are the most-used interactive component in the product, so getting them consistent matters more than almost anything else. This guide is the working specification for how ArcSite buttons are built: which component to use, the type / size / state matrix, and the exact design tokens that back every variant.
+
+There are **two button components**, one per platform. They are deliberately different — different typeface, sizing, and corner radius — and they must not be mixed across scopes:
+
+| Component | Platform | Typeface (resolved) | Radius (token) | When to use |
+|---|---|---|---|---|
+| **\`web/btn\`** | User site + marketing web | **Inter** | tighter — \`radius-default\`→\`radius-sm\` | Anything on the public web / marketing surfaces (\`web/*\` scope) |
+| **\`app/btn\`** | iOS / iPadOS / cross-platform app | **Roboto** (product font) | rounder — \`radius-default\`→\`radius-md\` | Anything inside the native app (\`app/*\` scope) |
+
+The typeface and radius differences above are **not two hardcoded specs** — they are the *same* tokens resolving under different platform modes (see **Sizes & typography** below). Don't copy the resolved values into code.
+
+> 🤖 **Agents — before you write a button, decide the platform first, then use that platform's component and typeface.** Never render a web button with Roboto or an app button with Inter, and never reuse \`app/btn\` styling on the web (or vice-versa). Bind every color, size, and radius to the tokens in this doc — do not hardcode hex or pixel values. This mirrors design-system principle #1 (component namespace must not cross scopes).
+
+## Anatomy
+
+A button is a horizontal (occasionally vertical) flex container:
+
+- **Container** — sets the height, horizontal padding, corner radius, fill, and border. Height and padding come from size tokens; fill/border/label come from type tokens.
+- **Label** — the text, in the platform typeface at the size's text token.
+- **Optional leading / trailing icon** — an icon before or after the label, or the only child (icon-only button).
+- **Gap** — space between icon and label: \`--size/comp/button/gap\` (8px).
+
+Icon-only buttons are square (width = height). The dropdown variants add a small chevron/caret after the content.
+
+## Types
+
+Pick a type by **emphasis and intent**, not by color. Use exactly **one primary button per view / decision** — it's the single most important action. Everything else is secondary, no-border, or (for destructive actions) danger.
+
+### User site — \`web/btn\`
+
+| Type | Fill | Border | Label | Use for |
+|---|---|---|---|---|
+| **primary** | \`--color/fill/action/primary\` (#398ae7) | — | \`--color/label/primary-on-dark-increased-contrast\` (#fff) | The main action of a view (Save, Continue, Submit) |
+| **secondary** | \`--color/surface/default\` (#fff) | 1px \`--color/border/default\` (#d9d9d9) | \`--color/label/primary-increased-contrast\` (#000000d9) | Secondary actions next to a primary |
+| **danger** | \`--color/surface/default\` (#fff) | 1px \`--color/label/danger/primary\` (#e31c1c) | \`--color/label/danger/primary\` (#e31c1c) | Destructive actions (Delete, Remove) |
+| **no border** | transparent | — | \`--color/label/action/primary\` (#398ae7) | Low-emphasis / tertiary actions, links-as-buttons, toolbar actions |
+| **rounded-primary** | = primary | — | = primary | Same as primary but pill-shaped (\`--size/comp/button/radius-rounded\`, 9999) |
+| **rounded-secondary** | = secondary | 1px border | = secondary | Same as secondary but pill-shaped |
+
+### App — \`app/btn\`
+
+| Type | Fill | Border | Label | Use for |
+|---|---|---|---|---|
+| **primary** | \`--color/label/action/primary\` (#398ae7) | — | \`--color/label/primary-on-dark-increased-contrast\` (#fff) | The main action of a screen |
+| **secondary** | transparent | 1px \`--color/label/action/primary\` (#398ae7) | \`--color/label/action/primary\` (#398ae7) | Secondary actions (outlined blue) |
+| **danger** | \`--color/fill/bright\` (#fff) | 0.5px \`--color/label/danger/primary\` (#e31c1c) | \`--color/label/danger/primary\` (#e31c1c) | Destructive actions |
+| **no border** / **secondary-no border** | transparent | — | action blue / label primary | Low-emphasis actions, toolbar/inline actions |
+| **primary rounded** / **secondary rounded** (+ **no-border** variants) | = primary / secondary | per variant | per variant | Pill-shaped equivalents (\`--size/comp/button/radius-rounded\`, 9999) |
+| **primary-circular** / **secondary-circular** | = primary / secondary | per variant | icon only | Round icon buttons (FAB-style); carry \`shadow/02 medium\` when floating |
+| **filter** | tint on select | — | — | Filter chips — use with the \`filter-selected\` / \`filter-deselected\` statuses |
+
+> The app has more type variants than the web because it covers native patterns (circular FABs, filter chips, rounded pills). On the web, stick to primary / secondary / danger / no-border unless the design explicitly calls for a pill.
+
+## Sizes & typography — all token-driven
+
+> **Every dimensional and typographic value on a button is a token — never hardcode px, font-size, line-height, or font family.** These tokens are **mode-scoped**: the *same* token resolves to different values on the user site vs the native app (and across breakpoints). That is *why* a web button is 32px tall with Inter and a tighter radius while an app button is 34px tall with the product font and a rounder radius — it is **one token set** (\`--size-comp-button-*\`, \`--font-size-body-*\`, \`--font-typeface-text\`) resolving under the web modes vs the device / native modes, **not two separate specs**. Bind to the token and let the platform mode resolve it. (Prototypes emulate the native app by applying the device-mode class on \`<html>\` — see \`llms.txt\`.)
+
+**Medium is the default** size on both platforms.
+
+### Dimensions — bind to these tokens
+
+| Size | Height | Horizontal padding | Text | Reference value (web → app) |
+|---|---|---|---|---|
+| **small** | \`--size-comp-button-height-sm\` | \`--size-comp-button-padding-horizontal-sm\` | \`--font-size-body-small\` | 24→28px tall · 8→10 pad · 12→13 text |
+| **medium** ⭐ | \`--size-comp-button-height-md\` | \`--size-comp-button-padding-horizontal-md\` | \`--font-size-body-medium\` | 32→34px · 12→12 · 14→15 |
+| **large** | \`--size-comp-button-height-lg\` | \`--size-comp-button-padding-horizontal-lg\` | \`--font-size-body-large\` | 40→44px · 20→18 · 16→17 |
+| **extra large** | \`--size-comp-button-height-xl\` | (uses the \`-lg\` padding) | \`--font-size-body-large\` | 48→50px |
+
+The **Reference value** column is illustrative only — it shows what the tokens resolve to *today* in the web vs device modes, to make the platform difference concrete. Do **not** copy it into code; reference the token and the correct value follows automatically.
+
+### Typography — bind to the body-text token
+
+Button labels use the **body text** token, never a fixed font:
+
+- **Family:** \`--font-typeface-text\` — resolves to **Inter** on the web and to the **product font** in the native app (the device token mode; the shipping app uses Roboto).
+- **Size + line-height:** \`--font-size-body-{small|medium|large}\` with the matching \`--font-size-body-line-height-{small|medium|large}\` (the \`medium\` step is also available as the composite \`font: var(--text-body-medium)\`).
+- **Weight:** \`--font-font-weight-regular\` (default) or \`--font-font-weight-semibold\` for primary / emphasized buttons.
+
+Because the token is mode-scoped, \`body/medium\` resolves to **14 / 18 on web** and **15 / 20 in the app** — same token, different platform. That is the whole point: reference the token and the right value follows.
+
+### Radius & gap
+
+- **Corner radius:** \`--size-comp-button-radius-default\` — aliases a *smaller* radius in web modes (\`radius-sm\`) and a *rounder* one in the device / native mode (\`radius-md\`), so the same token gives web its tight corners and the app its rounder ones. Use \`--size-comp-button-radius-rounded\` for the \`rounded\` / \`circular\` / pill variants. Don't hardcode 4 vs 6/10.
+- **Icon ↔ label gap:** \`--size-comp-button-gap\`.
+
+## Icon layouts
+
+The icon-with-text layout carries its icon through a **left / right toggle**: one layout gives you a **leading icon, a trailing icon, or both** by switching the left and right icon slots on or off. So there is no need for a separate "text-then-icon" layout — use the icon+text layout and turn on the **right (trailing)** slot when you want the icon after the label.
+
+Core layouts (Figma variant \`Icon Layout\`):
+
+- **text** — label only.
+- **icon-text** — label with a toggleable **leading and/or trailing** icon (left slot, right slot, or both). This is *the* layout for any icon-with-text button. On the app the equivalent toggle-carrier is the **default** layout (label with optional left/right icons).
+- **icon** — icon only, square container (width = height). Always give it an accessible label (\`aria-label\`).
+- **icon-drop down** / **text-drop down** / **icon-text-drop down** — content plus a trailing chevron for menu / split buttons.
+- **icon-text-vertical** — icon stacked above the label; used for toolbar / tab-bar entries. Pairs with the \`active\` status.
+- App-only extra: **big icon-text**.
+
+> **Legacy — don't reach for \`text-icon\`.** The standalone \`text-icon\` variant (label + fixed trailing icon) is **superseded**: \`icon-text\` already covers a trailing icon via its right-icon toggle. Use \`icon-text\` with the **right slot** enabled instead of \`text-icon\`. Older variants exist in Figma for back-compat, but new work should use the toggle. Same principle for any other single-purpose "text-then-X" variant — prefer the toggle-based \`icon-text\` (app: \`default\`).
+
+**Icon size inside buttons:** web buttons pair with **24×24** icons; app buttons pair with **16×16** icons. Use the icon at its **native size** — per the [Iconology spec](iconology.md), never rescale an icon across size buckets (a 24 shrunk to 16 gets the wrong stroke weight). Pick the icon whose height matches the button's icon slot.
+
+## States
+
+Statuses shipped as component variants:
+
+| Status | Web | App | Notes |
+|---|---|---|---|
+| **default** | ✓ | ✓ | Resting state |
+| **disabled** | ✓ | ✓ | Label → \`--color/label/tertiary-increased-contrast\` (#00000040); filled buttons use \`--color/surface/container/high\` (#f0f0f0). Non-interactive |
+| **active / selected** | ✓ (icon-text-vertical) | ✓ | For toggles, selected nav/toolbar entries |
+| **filter-selected / filter-deselected** | — | ✓ (filter type) | Filter-chip on/off states; selected uses the action tint \`--color/surface/container/action\` (#ebf4ff) |
+
+> **Hover and pressed are not separate Figma variants** — they're handled in code using the token hover set (e.g. \`--color/surface/container/*-hover\`, \`--color/fill/action/primary-hover\`). Don't invent hover colors; use the \`*-hover\` tokens. Focus states use the action focus ring.
+
+## Do & Don't
+
+| Do | Don't | Why |
+|---|---|---|
+| Use the platform component + typeface (\`web/btn\`+Inter, \`app/btn\`+Roboto) | Use Inter in the app or reuse app styling on the web | The two products have different visual language; mixing looks off and breaks scope rules |
+| Bind color / size / radius to the tokens above | Hardcode \`#398ae7\`, \`32px\`, \`4px\`, etc. | Tokens follow theme + platform automatically; literals drift and break dark mode |
+| Use exactly one primary button per view | Stack two primaries competing for attention | The primary marks *the* action; two primaries means none |
+| Use **danger** only for destructive actions | Use danger as a generic "important" color | Red is reserved for destructive intent (Delete/Remove) |
+| Use **no border** / secondary for lower-emphasis actions | Make every action a primary | Emphasis hierarchy is what makes the primary readable |
+| Pair buttons with icons at the button's icon size (web 24, app 16), at native size | Rescale a 24 icon down to sit in an app button | Rescaled icons get the wrong stroke weight (see Iconology) |
+| Use \`icon-text\` and toggle the **right** slot for a trailing icon | Use the legacy \`text-icon\` layout | \`icon-text\` already toggles leading / trailing / both; \`text-icon\` is redundant and being retired |
+| Keep default radius unless the design calls for a pill | Randomly use \`rounded\` / pill variants | Pill/circular are reserved for FABs, chips, and specific pill treatments |
+| Let size tokens set height + padding | Set custom heights/padding to "make it fit" | Off-grid buttons break vertical rhythm and alignment |
+
+## For agents — quick contract
+
+1. **Platform?** Web → \`web/btn\`. App → \`app/btn\`. The same token names resolve per platform (web modes vs device / native modes) — that's what makes web tighter + Inter and app rounder + product-font. Never cross scopes.
+2. **Type?** Main action → **primary** (one per view). Supporting → **secondary**. Low-emphasis → **no border**. Destructive → **danger**. Pill/FAB/chip only when the design says so.
+3. **Size?** Default **medium**; bind height / padding to \`--size-comp-button-*\` (they resolve to 32/34px etc. per platform — don't hardcode). Small for dense UI, large / xl for prominent CTAs.
+4. **Tokens, not literals.** Fill / border / label from the Types tables; height / padding / radius / gap from \`--size-comp-button-*\`; **typography from \`--font-typeface-text\` + \`--font-size-body-*\` (+ line-height) + \`--font-font-weight-*\`** — never a hardcoded px, family, or line-height. Import \`bootstrap.css\` and reference \`var(--token-name)\`.
+5. **Icons** at native size — web 24, app 16 — never rescaled (see Iconology). For a trailing icon, use \`icon-text\` with the right slot toggled on — not the legacy \`text-icon\` layout.
+6. **States** — ship default + disabled; do hover/pressed via \`*-hover\` tokens, not invented colors.
+`,
+    markdownUpdatedAt: "2026-07-23",
+    htmlUpdatedAt: "",
+    createdAt: "2026-07-23",
+    updatedAt: "2026-07-23",
+    deleted: false,
+  },
   {
     id: uid(),
     title: "Web View",

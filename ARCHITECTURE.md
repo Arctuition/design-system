@@ -534,6 +534,13 @@ imports the same `sanitizeIconFileName`, so there is exactly one sanitizer.
 
 Key property: `llms.txt` is the **index**. Token values are NOT duplicated inline. Agents that only need names + principles read `llms.txt` and stop; agents that need numeric values follow the URLs.
 
+**Discovery gates (added 2026-07-23).** Two additions to the `llms.txt` template (`scripts/generate-llms-txt.mjs`) steer agents to read specs before consuming assets:
+
+- The **Icons** section now opens with a hard "read the icon spec (`iconology.md`) before referencing any icon" stop — icons are drawn per size and must never be rescaled across size buckets (a `24x24` shrunk to 16px gets the wrong stroke weight). Reinforced inline at the per-icon fetch step and the size-convention block.
+- A new **`## Patterns`** section lists the live pattern guides via `${EDGE_BASE}/patterns/{slug}.md` (Buttons, Modal Dialogs, Web View) so agents can find and follow them. This list is a **hardcoded slug list** in `generate-llms-txt.mjs` — keep it in sync when a pattern is added, renamed, or deleted, or its `.md` link will 404. (Kept hardcoded rather than a build-time fetch so the generator stays pure/offline-safe, matching the hardcoded icon endpoints.)
+
+Note: `tokenDocs.iconology` was previously **absent** from prod KV, so the `iconology.md` Storage URL that `llms.txt` advertised returned 404. It is now populated and auto-published (decision #14 path), so `/iconology` and the agent-facing spec URL resolve.
+
 ### 4b. Dev team — three download patterns
 
 ```

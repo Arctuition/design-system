@@ -146,7 +146,36 @@ them directly inside the design system itself, never in product UI.
 
 ---
 
+## Patterns (component & interaction guides)
+
+Before building one of these components, read its pattern guide so you match the
+intended structure, variants, sizing, and do/don'ts — don't hand-roll a component
+whose behaviour is already specified here. Each guide is canonical Markdown,
+served live from the CMS:
+
+- **Buttons** — types, sizes, states, and exact tokens for **web & app**: ${EDGE_BASE}/patterns/buttons.md
+- **Modal Dialogs**: ${EDGE_BASE}/patterns/modal-dialogs.md
+- **Web View**: ${EDGE_BASE}/patterns/web-view.md
+
+**Building a button? Read \`patterns/buttons.md\` first.** It tells you which
+component to use (\`web/btn\` vs \`app/btn\`), the type / size / state matrix, and
+the exact token → property mapping, so you don't invent colors, sizes, or radii.
+
+---
+
 ## Icons — which library to use
+
+> ⛔ **STOP — read the icon spec before you reference ANY icon.**
+> Before using an icon from the design-system library, read the naming & sizing
+> spec: ${STORAGE_BASE}/iconology.md — it is short, and it is a *contract*, not
+> just reference material. The rule that gets violated most:
+> **icons are drawn per size and are NOT interchangeable across sizes.** Never
+> take one size (e.g. \`24x24\`) and rescale it — via width/height, \`viewBox\`,
+> \`transform: scale()\`, or CSS — to stand in for another (e.g. \`16x16\`): the
+> stroke weight shrinks with it and no longer matches the real icons at that
+> size. Pick the icon whose size **height** matches your context (16 = dense,
+> 24 = default web, 30 = iOS app), render it at its **native** dimensions, and
+> don't mix size buckets in the same toolbar / menu / row.
 
 **Rule of thumb: prefer the project's own icon library when one exists.**
 
@@ -181,7 +210,8 @@ them directly inside the design system itself, never in product UI.
    2. Once you've picked one, fetch \`${EDGE_BASE}/icons/\${entry.fileName}\` to
       get the raw SVG (~700 bytes) and drop it straight into your component.
       Use this path with \`<img src>\`, \`fetch().then(r => r.text())\`, or any
-      other SVG-loading mechanism.
+      other SVG-loading mechanism. Render it at its **native** size (the size in
+      the name) — never rescale across size buckets (see iconology.md).
 
    You can skip the manifest and use \`${EDGE_BASE}/icons.json\` if you want the
    entire library inline in one request — but for picking a handful of icons,
@@ -212,6 +242,9 @@ them directly inside the design system itself, never in product UI.
    glyph), but they're all considered the "16-height" set and should be
    used together for visual consistency. When deciding which size to use,
    match the **height** to the surrounding text/UI density, not the width.
+   **Never rescale across buckets:** a 24 shrunk to 16 has the wrong stroke
+   weight — fetch the icon already drawn at your target height instead of
+   resizing a different one. Full rule + do/don'ts: ${STORAGE_BASE}/iconology.md
 
 ---
 
