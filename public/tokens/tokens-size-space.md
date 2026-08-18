@@ -88,16 +88,17 @@ xs and sm are universal — icon-to-text gaps and chip spacing don't change betw
 List items, stacked form fields, cards in a feed, space between content sections on a page.
 
 
-| Token                   | Device Mobile | Device Tablet | Web Mobile | Web Tablet | Web Desktop | Web Desktop Large |
-| ----------------------- | ------------- | ------------- | ---------- | ---------- | ----------- | ----------------- |
-| `size/spacing-stack-xs` | 4             | 4             | 4          | 4          | 4           | 4                 |
-| `size/spacing-stack-sm` | 8             | 8             | 8          | 8          | 8           | 8                 |
-| `size/spacing-stack-md` | 16            | 16            | 12         | 16         | 16          | 20                |
-| `size/spacing-stack-lg` | 24            | 24            | 20         | 24         | 24          | 32                |
-| `size/spacing-stack-xl` | 32            | 48            | 24         | 32         | 32          | 48                |
+| Token                    | Device Mobile | Device Tablet | Web Mobile | Web Tablet | Web Desktop | Web Desktop Large |
+| ------------------------ | ------------- | ------------- | ---------- | ---------- | ----------- | ----------------- |
+| `size/spacing-stack-xxs` | 2             | 2             | 2          | 2          | 2           | 2                 |
+| `size/spacing-stack-xs`  | 4             | 4             | 4          | 4          | 4           | 4                 |
+| `size/spacing-stack-sm`  | 8             | 8             | 8          | 8          | 8           | 8                 |
+| `size/spacing-stack-md`  | 16            | 16            | 12         | 16         | 16          | 20                |
+| `size/spacing-stack-lg`  | 24            | 24            | 20         | 24         | 24          | 32                |
+| `size/spacing-stack-xl`  | 32            | 48            | 24         | 32         | 32          | 48                |
 
 
-xs/sm match inline for tight micro-spacing. md–xl diverge: Device Tablet's xl is 48pt because vertical page rhythm is more generous on large screens; Web Desktop Large bumps `md`/`lg`/`xl` for the same reason.
+`xxs` sits below `xs` at a flat 2pt in every mode, for hairline vertical separation. xs/sm match inline for tight micro-spacing. md–xl diverge: Device Tablet's xl is 48pt because vertical page rhythm is more generous on large screens; Web Desktop Large bumps `md`/`lg`/`xl` for the same reason.
 
 ---
 
@@ -181,7 +182,7 @@ Button horizontal padding, input field padding, tag/chip padding. Device sizes u
 
 Component tokens are a thin alias layer: each aliases a semantic token (or a `size-global/*` primitive directly, for heights) and belongs to one component. They make component-specific decisions explicit (`dialog/padding-md = size/padding-md`) without adding new raw values. Thirteen components are tokenised today: **button, input, dialog, tag, alert, card, list-item, popover, progress, tab, table, toast, toggle.**
 
-Where an alias differs between web and native, the table notes `· device → …`; `· web —` marks a token that is intentionally unset (0) in that platform group. Heights alias `size-global/*` directly — there is no `size/height-*` semantic layer.
+Where an alias differs between web and native, the table notes `· device → …`; `· web —` marks a token that is intentionally unset (0) in that platform group, and a bare `—` marks one that is unset (0) in every mode. Heights alias `size-global/*` directly — there is no `size/height-*` semantic layer.
 
 ### Button
 
@@ -203,14 +204,14 @@ Where an alias differs between web and native, the table notes `· device → �
 
 ### Input / Text field
 
-Heights match the button ramp (sm/md/lg = 24·32·40 web, 28·34·44 device; `height-xl` is device-only). `padding-vertical-*` alias `size-global/*` directly.
+Heights match the button ramp exactly (sm/md/lg/xl = 24·32·40·48 web, 28·34·44·50 device). `padding-vertical-*` alias `size-global/*` directly.
 
 | Token                                  | Aliases                                                  |
 | -------------------------------------- | -------------------------------------------------------- |
 | `size/comp/input/height-sm`            | `size-global/24` · device → `size-global/28`             |
 | `size/comp/input/height-md`            | `size-global/32` · device → `size-global/34`             |
 | `size/comp/input/height-lg`            | `size-global/40` · device → `size-global/44`             |
-| `size/comp/input/height-xl`            | device → `size-global/50` · web —                        |
+| `size/comp/input/height-xl`            | `size-global/48` · device → `size-global/50`             |
 | `size/comp/input/gap`                  | `size/spacing-inline-xs`                                 |
 | `size/comp/input/padding-horizontal`   | `size/padding-component-md` · device → `size/padding-component-sm` |
 | `size/comp/input/padding-vertical-sm`  | `size-global/4`                                          |
@@ -244,7 +245,7 @@ Heights match the button ramp (sm/md/lg = 24·32·40 web, 28·34·44 device; `he
 | `size/comp/tag/padding-h-md`   | `size-global/8`                              |
 | `size/comp/tag/padding-h-lg`   | `size-global/10`                             |
 | `size/comp/tag/padding-h-tiny` | device → `size-global/4` · web —             |
-| `size/comp/tag/gap`            | `size/spacing-inline-sm`                     |
+| `size/comp/tag/gap`            | —                                            |
 | `size/comp/tag/radius-default` | `size/radius-sm` · device → `size/radius-xs` |
 | `size/comp/tag/radius-rounded` | `size/radius-full`                           |
 

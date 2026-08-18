@@ -427,6 +427,22 @@ const defaultTokenDocs: TokenDocs = {
 const defaultChangeLogs: ChangeLogEntry[] = [
   {
     id: uid(),
+    date: "2026-08-18",
+    version: "1.24.0",
+    title: "New spacing-stack-xxs token, plus input and tag size fixes",
+    description: `The **size** token set is back in sync with the Figma Design Library — one new token and two corrections, all live in the published token CSS.
+
+**What's new**
+- **\`size/spacing-stack-xxs\`** — a new 2pt step below \`spacing-stack-xs\`, flat across all six modes, for hairline vertical separation. Use it as \`var(--size-spacing-stack-xxs)\`.
+
+**Fixed**
+- **\`size/comp/input/height-xl\`** was unset (0) on all four web modes, so anything bound to \`--size-comp-input-height-xl\` collapsed to \`0px\` on web. It now matches the button ramp at 48 (device stays 50).
+- **\`size/comp/tag/gap\`** no longer aliases \`spacing-inline-sm\` — it is a literal 0 in every mode, matching the library.
+
+The **Size & Space** reference doc was updated to match: the new token is in the stack scale table, and the Input and Tag tables no longer describe the old values.`,
+  },
+  {
+    id: uid(),
     date: "2026-07-23",
     version: "1.23.0",
     title: "Button pattern, icon size rule, and an agent read-the-spec-first gate",

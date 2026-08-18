@@ -85,6 +85,23 @@
         }
       }
     },
+    "spacing-stack-xxs": {
+      "$type": "number",
+      "$value": 2,
+      "$extensions": {
+        "com.figma.variableId": "VariableID:11426:11237",
+        "com.figma.scopes": [
+          "GAP",
+          "FONT_VARIATIONS"
+        ],
+        "com.figma.aliasData": {
+          "targetVariableId": "VariableID:ab85c0a669e0adc3c18cf64091e35d4864bbe917/-1:-1",
+          "targetVariableName": "size-global/2",
+          "targetVariableSetId": "VariableCollectionId:e99486199cbd5a213ad65f2ef971ba66fb8c49ef/-1:-1",
+          "targetVariableSetName": "size-global"
+        }
+      }
+    },
     "spacing-stack-xs": {
       "$type": "number",
       "$value": 4,
@@ -274,7 +291,7 @@
     },
     "padding-component-sm": {
       "$type": "number",
-      "$value": 12,
+      "$value": 10,
       "$extensions": {
         "com.figma.variableId": "VariableID:10177:4899",
         "com.figma.scopes": [
@@ -282,8 +299,8 @@
           "FONT_VARIATIONS"
         ],
         "com.figma.aliasData": {
-          "targetVariableId": "VariableID:6505bc8faeca21871c19917b5dfa82040ccea0f8/-1:-1",
-          "targetVariableName": "size-global/12",
+          "targetVariableId": "VariableID:86f6ad6cbf32c97a8194589dc8aa2551e63b59fe/-1:-1",
+          "targetVariableName": "size-global/10",
           "targetVariableSetId": "VariableCollectionId:e99486199cbd5a213ad65f2ef971ba66fb8c49ef/-1:-1",
           "targetVariableSetName": "size-global"
         }
@@ -291,9 +308,26 @@
     },
     "padding-component-md": {
       "$type": "number",
-      "$value": 20,
+      "$value": 16,
       "$extensions": {
         "com.figma.variableId": "VariableID:10177:4900",
+        "com.figma.scopes": [
+          "GAP",
+          "FONT_VARIATIONS"
+        ],
+        "com.figma.aliasData": {
+          "targetVariableId": "VariableID:b91cf00b1ed0ded47e12f8b32d5e9242c28ee306/-1:-1",
+          "targetVariableName": "size-global/16",
+          "targetVariableSetId": "VariableCollectionId:e99486199cbd5a213ad65f2ef971ba66fb8c49ef/-1:-1",
+          "targetVariableSetName": "size-global"
+        }
+      }
+    },
+    "padding-component-lg": {
+      "$type": "number",
+      "$value": 20,
+      "$extensions": {
+        "com.figma.variableId": "VariableID:10177:4901",
         "com.figma.scopes": [
           "GAP",
           "FONT_VARIATIONS"
@@ -306,26 +340,9 @@
         }
       }
     },
-    "padding-component-lg": {
-      "$type": "number",
-      "$value": 24,
-      "$extensions": {
-        "com.figma.variableId": "VariableID:10177:4901",
-        "com.figma.scopes": [
-          "GAP",
-          "FONT_VARIATIONS"
-        ],
-        "com.figma.aliasData": {
-          "targetVariableId": "VariableID:5e4b66beb9356b758e97e713f789b66166ad2ccf/-1:-1",
-          "targetVariableName": "size-global/24",
-          "targetVariableSetId": "VariableCollectionId:e99486199cbd5a213ad65f2ef971ba66fb8c49ef/-1:-1",
-          "targetVariableSetName": "size-global"
-        }
-      }
-    },
     "padding-component-xl": {
       "$type": "number",
-      "$value": 28,
+      "$value": 24,
       "$extensions": {
         "com.figma.variableId": "VariableID:10177:4902",
         "com.figma.scopes": [
@@ -333,8 +350,8 @@
           "FONT_VARIATIONS"
         ],
         "com.figma.aliasData": {
-          "targetVariableId": "VariableID:9fd33dc8dc82953085c9399f2fc55d9275313285/-1:-1",
-          "targetVariableName": "size-global/28",
+          "targetVariableId": "VariableID:5e4b66beb9356b758e97e713f789b66166ad2ccf/-1:-1",
+          "targetVariableName": "size-global/24",
           "targetVariableSetId": "VariableCollectionId:e99486199cbd5a213ad65f2ef971ba66fb8c49ef/-1:-1",
           "targetVariableSetName": "size-global"
         }
@@ -728,11 +745,11 @@
             ]
           }
         },
-        "padding-horizontal-lg": {
+        "padding-horizontal-xl": {
           "$type": "number",
           "$value": "{size.padding-component-lg}",
           "$extensions": {
-            "com.figma.variableId": "VariableID:10148:4941",
+            "com.figma.variableId": "VariableID:10603:10605",
             "com.figma.scopes": [
               "TEXT_CONTENT",
               "CORNER_RADIUS",
@@ -745,9 +762,32 @@
             ]
           }
         },
+        "padding-horizontal-lg": {
+          "$type": "number",
+          "$value": 18,
+          "$extensions": {
+            "com.figma.variableId": "VariableID:10148:4941",
+            "com.figma.scopes": [
+              "TEXT_CONTENT",
+              "CORNER_RADIUS",
+              "WIDTH_HEIGHT",
+              "GAP",
+              "STROKE_FLOAT",
+              "EFFECT_FLOAT",
+              "OPACITY",
+              "FONT_VARIATIONS"
+            ],
+            "com.figma.aliasData": {
+              "targetVariableId": "VariableID:b7e5b9819d026197970adab41711db3ffe2364cf/-1:-1",
+              "targetVariableName": "size-global/18",
+              "targetVariableSetId": "VariableCollectionId:e99486199cbd5a213ad65f2ef971ba66fb8c49ef/-1:-1",
+              "targetVariableSetName": "size-global"
+            }
+          }
+        },
         "padding-horizontal-md": {
           "$type": "number",
-          "$value": "{size.padding-component-md}",
+          "$value": 12,
           "$extensions": {
             "com.figma.variableId": "VariableID:10148:4942",
             "com.figma.scopes": [
@@ -759,7 +799,13 @@
               "EFFECT_FLOAT",
               "OPACITY",
               "FONT_VARIATIONS"
-            ]
+            ],
+            "com.figma.aliasData": {
+              "targetVariableId": "VariableID:6505bc8faeca21871c19917b5dfa82040ccea0f8/-1:-1",
+              "targetVariableName": "size-global/12",
+              "targetVariableSetId": "VariableCollectionId:e99486199cbd5a213ad65f2ef971ba66fb8c49ef/-1:-1",
+              "targetVariableSetName": "size-global"
+            }
           }
         },
         "padding-horizontal-sm": {
@@ -1163,7 +1209,7 @@
         },
         "gap": {
           "$type": "number",
-          "$value": "{size.spacing-inline-sm}",
+          "$value": 0,
           "$extensions": {
             "com.figma.variableId": "VariableID:10148:4959",
             "com.figma.scopes": [
