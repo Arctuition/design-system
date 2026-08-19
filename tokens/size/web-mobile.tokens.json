@@ -85,6 +85,23 @@
         }
       }
     },
+    "spacing-stack-xxs": {
+      "$type": "number",
+      "$value": 2,
+      "$extensions": {
+        "com.figma.variableId": "VariableID:11426:11237",
+        "com.figma.scopes": [
+          "GAP",
+          "FONT_VARIATIONS"
+        ],
+        "com.figma.aliasData": {
+          "targetVariableId": "VariableID:ab85c0a669e0adc3c18cf64091e35d4864bbe917/-1:-1",
+          "targetVariableName": "size-global/2",
+          "targetVariableSetId": "VariableCollectionId:e99486199cbd5a213ad65f2ef971ba66fb8c49ef/-1:-1",
+          "targetVariableSetName": "size-global"
+        }
+      }
+    },
     "spacing-stack-xs": {
       "$type": "number",
       "$value": 4,
@@ -716,6 +733,23 @@
             ]
           }
         },
+        "padding-horizontal-xl": {
+          "$type": "number",
+          "$value": "{size.padding-component-lg}",
+          "$extensions": {
+            "com.figma.variableId": "VariableID:10603:10605",
+            "com.figma.scopes": [
+              "TEXT_CONTENT",
+              "CORNER_RADIUS",
+              "WIDTH_HEIGHT",
+              "GAP",
+              "STROKE_FLOAT",
+              "EFFECT_FLOAT",
+              "OPACITY",
+              "FONT_VARIATIONS"
+            ]
+          }
+        },
         "padding-horizontal-lg": {
           "$type": "number",
           "$value": "{size.padding-component-lg}",
@@ -788,7 +822,7 @@
       "input": {
         "height-xl": {
           "$type": "number",
-          "$value": 0,
+          "$value": 48,
           "$extensions": {
             "com.figma.variableId": "VariableID:10148:4945",
             "com.figma.scopes": [
@@ -800,7 +834,13 @@
               "EFFECT_FLOAT",
               "OPACITY",
               "FONT_VARIATIONS"
-            ]
+            ],
+            "com.figma.aliasData": {
+              "targetVariableId": "VariableID:d01a8cbf884e8cf1ebf48d82ec91c1250c36631e/-1:-1",
+              "targetVariableName": "size-global/48",
+              "targetVariableSetId": "VariableCollectionId:e99486199cbd5a213ad65f2ef971ba66fb8c49ef/-1:-1",
+              "targetVariableSetName": "size-global"
+            }
           }
         },
         "height-lg": {
@@ -1139,7 +1179,7 @@
         },
         "gap": {
           "$type": "number",
-          "$value": "{size.spacing-inline-sm}",
+          "$value": 0,
           "$extensions": {
             "com.figma.variableId": "VariableID:10148:4959",
             "com.figma.scopes": [
