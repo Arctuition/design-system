@@ -224,6 +224,17 @@ the exact token → property mapping, so you don't invent colors, sizes, or radi
    or ask the design team to add the icon to the library (uploaded via the
    CMS, live at these endpoints within ~a minute).
 
+   **A project's local icon components are a snapshot, not a catalog.** Per
+   the flow above, a fetched SVG typically gets committed as a component in
+   the consuming project's own codebase (e.g. \`src/icons/ds-icons.tsx\`) so
+   the prototype renders offline — that's correct. But it means the local
+   file only contains whatever has been fetched *so far*, not everything the
+   design system offers. If a size or style you need isn't among what's
+   already committed locally, that tells you nothing about whether the
+   design system has it — check the live index (\`icons.index.json\`) before
+   concluding a gap exists. Don't reason from local absence to "the design
+   system doesn't have this."
+
    Each entry has:
    - \`name\`        — kebab-case identifier (with size suffix, e.g. \`chevron right 16x10\`)
    - \`fileName\`    — original upload filename
